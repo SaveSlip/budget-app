@@ -2,7 +2,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Tailwind v4 explicitly requires us to map our CSS variables to theme colors here */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -30,51 +29,52 @@
 
 @layer base {
   :root {
-    --background: hsl(210 40% 98%);
-    --foreground: hsl(222.2 84% 4.9%);
+    /* Light Mode */
+    --background: hsl(153 86% 98%);
+    --foreground: hsl(195 46% 5%);
     --card: hsl(0 0% 100%);
-    --card-foreground: hsl(222.2 84% 4.9%);
+    --card-foreground: hsl(195 46% 5%);
     --popover: hsl(0 0% 100%);
-    --popover-foreground: hsl(222.2 84% 4.9%);
-    --primary: hsl(142.1 76.2% 36.3%);
-    --primary-foreground: hsl(355.7 100% 97.3%);
-    --secondary: hsl(210 40% 96.1%);
-    --secondary-foreground: hsl(222.2 47.4% 11.2%);
-    --muted: hsl(210 40% 96.1%);
-    --muted-foreground: hsl(215.4 16.3% 46.9%);
-    --accent: hsl(210 40% 96.1%);
-    --accent-foreground: hsl(222.2 47.4% 11.2%);
-    --destructive: hsl(0 84.2% 60.2%);
-    --destructive-foreground: hsl(210 40% 98%);
-    --border: hsl(214.3 31.8% 91.4%);
-    --input: hsl(214.3 31.8% 91.4%);
-    --ring: hsl(142.1 76.2% 36.3%);
-    --radius: 0.75rem;
+    --popover-foreground: hsl(195 46% 5%);
+    --primary: hsl(148 24% 44%);
+    --primary-foreground: hsl(153 86% 92%);
+    --secondary: hsl(258 68% 81%);
+    --secondary-foreground: hsl(195 46% 5%);
+    --muted: hsl(153 86% 92%);
+    --muted-foreground: hsl(195 46% 35%);
+    --accent: hsl(258 68% 81%);
+    --accent-foreground: hsl(195 46% 5%);
+    --destructive: hsl(22 100% 86%);
+    --destructive-foreground: hsl(195 46% 5%);
+    --border: hsl(153 86% 85%);
+    --input: hsl(153 86% 85%);
+    --ring: hsl(148 24% 44%);
+    --radius: 0.5rem;
   }
 
   .dark {
-    --background: hsl(222.2 84% 4.9%);
-    --foreground: hsl(210 40% 98%);
-    --card: hsl(222.2 84% 4.9%);
-    --card-foreground: hsl(210 40% 98%);
-    --popover: hsl(222.2 84% 4.9%);
-    --popover-foreground: hsl(210 40% 98%);
-    --primary: hsl(142.1 70.6% 45.3%);
-    --primary-foreground: hsl(144.9 80.4% 10%);
-    --secondary: hsl(217.2 32.6% 17.5%);
-    --secondary-foreground: hsl(210 40% 98%);
-    --muted: hsl(217.2 32.6% 17.5%);
-    --muted-foreground: hsl(215 20.2% 65.1%);
-    --accent: hsl(217.2 32.6% 17.5%);
-    --accent-foreground: hsl(210 40% 98%);
-    --destructive: hsl(0 62.8% 30.6%);
-    --destructive-foreground: hsl(210 40% 98%);
-    --border: hsl(217.2 32.6% 17.5%);
-    --input: hsl(217.2 32.6% 17.5%);
-    --ring: hsl(142.1 70.6% 45.3%);
+    /* Dark Mode (Rich Black Base) */
+    --background: hsl(195 46% 5%);
+    --foreground: hsl(153 86% 92%);
+    --card: hsl(195 46% 8%);
+    --card-foreground: hsl(153 86% 92%);
+    --popover: hsl(195 46% 8%);
+    --popover-foreground: hsl(153 86% 92%);
+    --primary: hsl(148 24% 44%);
+    --primary-foreground: hsl(195 46% 5%);
+    --secondary: hsl(258 68% 81%);
+    --secondary-foreground: hsl(195 46% 5%);
+    --muted: hsl(195 46% 12%);
+    --muted-foreground: hsl(153 86% 70%);
+    --accent: hsl(195 46% 15%);
+    --accent-foreground: hsl(153 86% 92%);
+    --destructive: hsl(22 100% 86%);
+    --destructive-foreground: hsl(195 46% 5%);
+    --border: hsl(195 46% 15%);
+    --input: hsl(195 46% 15%);
+    --ring: hsl(148 24% 44%);
   }
 
-  /* This specifically fixes your screenshot error */
   * {
     border-color: var(--border);
   }
@@ -83,14 +83,5 @@
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: var(--font-main);
   }
 }

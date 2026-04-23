@@ -1,7 +1,6 @@
 // src/components/MonthlyChart.tsx
 "use client";
 
-import dynamic from "next/dynamic";
 import {
   BarChart,
   Bar,
@@ -29,62 +28,61 @@ const mockChartData = [
   { month: "Apr", income: 5240, expense: 3150 },
 ];
 
-// 1. Notice we removed "export" from here and renamed it to BaseChart
-function BaseChart() {
+export function MonthlyChart() {
   return (
-    <Card className="border-white/5 bg-white/5 backdrop-blur-sm">
+    <Card className="border-border bg-card shadow-sm">
       <CardHeader>
-        <CardTitle className="text-white">6-Month Trend</CardTitle>
-        <CardDescription className="text-slate-400">
-          Income vs. Expenses over time. Look at that fake financial stability!
+        <CardTitle className="text-foreground">6-Month Trend</CardTitle>
+        <CardDescription className="text-muted-foreground">
+          Historical analysis of income versus expenses.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-75 w-full mt-4">
-          <ResponsiveContainer height={300} aspect={2.3}>
+        <div className="h-[300px] w-full mt-4">
+          <ResponsiveContainer width="100%" height={300} aspect={2.3}>
             <BarChart
               data={mockChartData}
               margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
             >
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="#334155"
+                stroke="var(--color-border)"
                 vertical={false}
               />
               <XAxis
                 dataKey="month"
-                stroke="#94a3b8"
+                stroke="var(--color-muted-foreground)"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
-                stroke="#94a3b8"
+                stroke="var(--color-muted-foreground)"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `$${value}`}
               />
               <Tooltip
-                cursor={{ fill: "#1e293b", opacity: 0.4 }}
+                cursor={{ fill: "var(--color-muted)", opacity: 0.2 }}
                 contentStyle={{
-                  backgroundColor: "#0f172a",
-                  border: "1px solid rgba(255,255,255,0.1)",
+                  backgroundColor: "var(--color-card)",
+                  border: "1px solid var(--color-border)",
                   borderRadius: "8px",
-                  color: "#f8fafc",
+                  color: "var(--color-foreground)",
                 }}
               />
               <Legend wrapperStyle={{ paddingTop: "20px" }} />
               <Bar
                 dataKey="income"
                 name="Income"
-                fill="#34d399"
+                fill="#558B6E"
                 radius={[4, 4, 0, 0]}
               />
               <Bar
                 dataKey="expense"
                 name="Expense"
-                fill="#fb7185"
+                fill="#FFD3BA"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -94,13 +92,3 @@ function BaseChart() {
     </Card>
   );
 }
-
-// 2. The Magic Trick: Dynamically export the component from WITHIN its own client file
-export const MonthlyChart = dynamic(() => Promise.resolve(BaseChart), {
-  ssr: false,
-  loading: () => (
-    <Card className="border-white/5 bg-white/5 backdrop-blur-sm h-[430px] flex items-center justify-center text-slate-500">
-      Loading analytics...
-    </Card>
-  ),
-});

@@ -30,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     // Forcing dark mode globally so our premium aesthetic works
-    <html lang="en" className="dark">
+    <html lang="en">
       <body
         className={`${fontMain.variable} ${fontSans.variable} ${fontMono.variable} font-sans antialiased min-h-screen bg-slate-950 bg-gradient-to-br from-slate-900 via-black to-slate-950 text-slate-100`}
       >
