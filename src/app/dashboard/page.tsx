@@ -1,4 +1,5 @@
 // app/dashboard/page.tsx
+import { MonthlyChart } from "@/components/MonthlyChart";
 import {
   Card,
   CardContent,
@@ -79,7 +80,10 @@ export default function DashboardPage() {
             </Card>
           </FadeIn>
         </div>
-
+        {/* --- NEW CHART COMPONENT GOES HERE --- */}
+        <FadeIn delay={0.35}>
+          <MonthlyChart />
+        </FadeIn>
         <FadeIn delay={0.4}>
           <Card className="border-white/5 bg-white/5 backdrop-blur-sm">
             <CardHeader>
