@@ -40,11 +40,11 @@ function BaseChart() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full mt-4">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-75 w-full mt-4">
+          <ResponsiveContainer height={300} aspect={2.3}>
             <BarChart
               data={mockChartData}
-              margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
+              margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
             >
               <CartesianGrid
                 strokeDasharray="3 3"
