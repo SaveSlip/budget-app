@@ -1,4 +1,6 @@
-// app/dashboard/page.tsx
+// src/app/dashboard/page.tsx
+import Link from "next/link";
+import { getCategoryBreakdown } from "@/app/lib/mockData"; // Using your updated path!
 import { MonthlyChart } from "@/components/MonthlyChart";
 import {
   Card,
@@ -19,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { uploadBankStatement } from "./actions";
 import { FadeIn } from "@/components/FadeIn";
-import { UploadCloud } from "lucide-react"; // Our shiny new icon
+import { UploadCloud, Settings } from "lucide-react";
 
 const mockSummary = {
   totalIncome: 5240.0,
@@ -27,19 +29,12 @@ const mockSummary = {
   netBalance: 2089.25,
 };
 
-const mockCategoryBreakdown = [
-  { id: 1, category: "Housing", amount: 1500, type: "expense" },
-  { id: 2, category: "Groceries", amount: 450, type: "expense" },
-  { id: 3, category: "Coffee", amount: 1200, type: "expense" },
-  { id: 4, category: "Salary", amount: 5000, type: "income" },
-  { id: 5, category: "Side Hustle", amount: 240, type: "income" },
-];
-
 export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-6xl grid gap-6 md:grid-cols-12">
       {/* LEFT COLUMN */}
       <div className="md:col-span-8 flex flex-col gap-6">
+        {/* 1. TOP SUMMARY CARDS */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <FadeIn delay={0.1}>
             <Card className="h-full border-white/5 bg-white/5 backdrop-blur-sm transition-all hover:bg-white/10 hover:border-emerald-500/30">
@@ -80,17 +75,26 @@ export default function DashboardPage() {
             </Card>
           </FadeIn>
         </div>
-        {/* --- NEW CHART COMPONENT GOES HERE --- */}
-        <FadeIn delay={0.35}>
-          <MonthlyChart />
-        </FadeIn>
+
+        {/* 2. CATEGORY BREAKDOWN (Bumped up!) */}
         <FadeIn delay={0.4}>
           <Card className="border-white/5 bg-white/5 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-white">Category Breakdown</CardTitle>
-              <CardDescription className="text-slate-400">
-                Where your money is actually going this month.
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-white/10 mb-4">
+              <div className="space-y-1">
+                <CardTitle className="text-white">Category Breakdown</CardTitle>
+                <CardDescription className="text-slate-400">
+                  Where your money is actually going this month.
+                </CardDescription>
+              </div>
+              <Link href="/dashboard/settings/categories">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-white/10 bg-black/20 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition-all"
+                >
+                  <Settings className="w-4 h-4 mr-2" /> Manage
+                </Button>
+              </Link>
             </CardHeader>
             <CardContent>
               <Table>
@@ -102,20 +106,24 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockCategoryBreakdown.map((item) => (
+                  {getCategoryBreakdown().map((item) => (
                     <TableRow
                       key={item.id}
-                      className="border-white/5 hover:bg-white/5"
+                      className="relative border-white/5 hover:bg-emerald-500/10 transition-colors group"
                     >
-                      <TableCell className="font-medium text-slate-200">
-                        {item.category}
+                      <TableCell className="font-medium text-slate-200 group-hover:text-emerald-400">
+                        <Link
+                          href={`/dashboard/category/${item.id}`}
+                          className="absolute inset-0"
+                        />
+                        {item.name}
                       </TableCell>
                       <TableCell>
                         <Badge
                           className={
                             item.type === "income"
-                              ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border-none"
-                              : "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border-none"
+                              ? "bg-emerald-500/20 text-emerald-400 border-none relative z-10"
+                              : "bg-rose-500/20 text-rose-400 border-none relative z-10"
                           }
                         >
                           {item.type}
@@ -131,12 +139,17 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </FadeIn>
+
+        {/* 3. MONTHLY CHART (Moved to the bottom) */}
+        <FadeIn delay={0.5}>
+          <MonthlyChart />
+        </FadeIn>
       </div>
 
       {/* RIGHT COLUMN */}
       <div className="md:col-span-4">
-        <FadeIn delay={0.5}>
-          <Card className="border-white/5 bg-white/5 backdrop-blur-sm border-t-emerald-500/50 border-t-2">
+        <FadeIn delay={0.6}>
+          <Card className="border-white/5 bg-white/5 backdrop-blur-sm border-t-emerald-500/50 border-t-2 sticky top-24">
             <CardHeader>
               <CardTitle className="text-white">Upload Statement</CardTitle>
               <CardDescription className="text-slate-400">
@@ -148,7 +161,6 @@ export default function DashboardPage() {
                 action={uploadBankStatement}
                 className="flex flex-col gap-4"
               >
-                {/* The Custom Dropzone UI */}
                 <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-600 rounded-xl cursor-pointer bg-black/20 hover:bg-black/40 hover:border-emerald-500/50 transition-all group">
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
                     <UploadCloud className="w-10 h-10 mb-3 text-slate-400 group-hover:text-emerald-400 transition-colors" />
@@ -162,7 +174,6 @@ export default function DashboardPage() {
                       CSV or PDF (MAX. 10MB)
                     </p>
                   </div>
-                  {/* The actual input is hidden! */}
                   <input
                     type="file"
                     name="statement"

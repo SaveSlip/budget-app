@@ -1,65 +1,138 @@
-import Image from "next/image";
+// src/app/page.tsx
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Lock, Mail, ShieldCheck, Loader2, Key } from "lucide-react";
+import { FadeIn } from "@/components/FadeIn";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleFakeLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    // The Illusion of Security:
+    // We make the user stare at a spinning icon for 1.2 seconds so they
+    // feel like we are doing serious enterprise cryptography.
+    setTimeout(() => {
+      router.push("/dashboard");
+    }, 1200);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+      {/* Background Decorative Elements so it doesn't look empty */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/10 blur-[120px] rounded-full pointer-events-none" />
+
+      <div className="w-full max-w-md px-4 z-10">
+        <FadeIn delay={0.1}>
+          {/* The Logo */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.3)] mb-4 border border-emerald-500/30">
+              <ShieldCheck className="h-8 w-8 text-emerald-400" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-white">
+              HSMT <span className="text-emerald-500">9000</span>
+            </h1>
+            <p className="text-slate-400 mt-2">
+              Zero-Trust Financial Architecture
+            </p>
+          </div>
+
+          <Card className="border-white/10 bg-black/40 backdrop-blur-xl shadow-2xl">
+            <CardHeader className="space-y-1 text-center">
+              <CardTitle className="text-2xl text-white">Sign in</CardTitle>
+              <CardDescription className="text-slate-400">
+                Enter your credentials to access the mainframe.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleFakeLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <Input
+                      type="email"
+                      placeholder="admin@hacker.com"
+                      required
+                      className="pl-10 bg-slate-900/50 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-500/50"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <Input
+                      type="password"
+                      placeholder="••••••••"
+                      required
+                      className="pl-10 bg-slate-900/50 border-white/10 text-white placeholder:text-slate-600 focus:border-emerald-500/50"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:shadow-[0_0_25px_rgba(16,185,129,0.4)]"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Decrypting Vault...
+                    </>
+                  ) : (
+                    "Initialize Session"
+                  )}
+                </Button>
+              </form>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-white/10" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-black/40 px-2 text-slate-500">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              {/* Just for show, clicking this also does the fake login */}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-white/10 bg-transparent text-slate-300 hover:bg-white/5 hover:text-white"
+                onClick={handleFakeLogin}
+                disabled={isLoading}
+              >
+                <Key className="mr-2 h-4 w-4" />
+                Enterprise SSO
+              </Button>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-2 text-center text-sm text-slate-500 pb-6">
+              <p>Strictly restricted to authorized personnel.</p>
+              <p>Violators will be logged.</p>
+            </CardFooter>
+          </Card>
+        </FadeIn>
+      </div>
     </div>
   );
 }

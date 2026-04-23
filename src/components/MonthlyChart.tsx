@@ -1,6 +1,7 @@
-// components/MonthlyChart.tsx
-"use client"; // Required because Recharts uses browser APIs
+// src/components/MonthlyChart.tsx
+"use client";
 
+import dynamic from "next/dynamic";
 import {
   BarChart,
   Bar,
@@ -19,17 +20,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-// Our meticulously crafted fake historical data
 const mockChartData = [
   { month: "Nov", income: 4200, expense: 3800 },
   { month: "Dec", income: 4800, expense: 4100 },
   { month: "Jan", income: 5100, expense: 3200 },
   { month: "Feb", income: 4900, expense: 2900 },
   { month: "Mar", income: 5300, expense: 3400 },
-  { month: "Apr", income: 5240, expense: 3150 }, // Current month
+  { month: "Apr", income: 5240, expense: 3150 },
 ];
 
-export function MonthlyChart() {
+// 1. Notice we removed "export" from here and renamed it to BaseChart
+function BaseChart() {
   return (
     <Card className="border-white/5 bg-white/5 backdrop-blur-sm">
       <CardHeader>
@@ -45,13 +46,11 @@ export function MonthlyChart() {
               data={mockChartData}
               margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
             >
-              {/* Subtle background grid lines */}
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke="#334155"
                 vertical={false}
               />
-
               <XAxis
                 dataKey="month"
                 stroke="#94a3b8"
@@ -66,8 +65,6 @@ export function MonthlyChart() {
                 axisLine={false}
                 tickFormatter={(value) => `$${value}`}
               />
-
-              {/* Custom Dark Mode Tooltip */}
               <Tooltip
                 cursor={{ fill: "#1e293b", opacity: 0.4 }}
                 contentStyle={{
@@ -78,8 +75,6 @@ export function MonthlyChart() {
                 }}
               />
               <Legend wrapperStyle={{ paddingTop: "20px" }} />
-
-              {/* The actual bars using our theme colors */}
               <Bar
                 dataKey="income"
                 name="Income"
@@ -99,3 +94,13 @@ export function MonthlyChart() {
     </Card>
   );
 }
+
+// 2. The Magic Trick: Dynamically export the component from WITHIN its own client file
+export const MonthlyChart = dynamic(() => Promise.resolve(BaseChart), {
+  ssr: false,
+  loading: () => (
+    <Card className="border-white/5 bg-white/5 backdrop-blur-sm h-[430px] flex items-center justify-center text-slate-500">
+      Loading analytics...
+    </Card>
+  ),
+});
