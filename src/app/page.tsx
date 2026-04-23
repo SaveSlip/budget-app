@@ -1,6 +1,7 @@
 // src/app/page.tsx
 "use client";
 
+import { Lock, Mail, Loader2, Key, Fingerprint } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -13,7 +14,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Lock, Mail, ShieldCheck, Loader2, Key } from "lucide-react";
 import { FadeIn } from "@/components/FadeIn";
 
 export default function LoginPage() {
@@ -42,10 +42,10 @@ export default function LoginPage() {
           {/* The Logo */}
           <div className="flex flex-col items-center mb-8">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.3)] mb-4 border border-emerald-500/30">
-              <ShieldCheck className="h-8 w-8 text-emerald-400" />
+              <Fingerprint className="h-10 w-10 text-emerald-400" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-white">
-              HSMT <span className="text-emerald-500">9000</span>
+            <h1 className="text-4xl font-bold tracking-tight text-white">
+              Nexus<span className="text-emerald-500">Vault</span>
             </h1>
             <p className="text-slate-400 mt-2">
               Zero-Trust Financial Architecture

@@ -1,31 +1,55 @@
-// app/dashboard/layout.tsx
+// src/app/dashboard/layout.tsx
+import { User, LogOut, Fingerprint } from "lucide-react";
 import { ReactNode } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col relative">
       {/* Semi-transparent blur header */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-black/40 backdrop-blur-md p-4">
-        <div className="mx-auto max-w-6xl flex items-center gap-3">
-          {/* Custom SVG Logo */}
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-6 w-6 text-emerald-500"
-            >
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              <path d="m9 12 2 2 4-4" />
-            </svg>
+        <div className="mx-auto max-w-6xl flex items-center justify-between gap-3">
+          {/* LEFT SIDE: Logo & Brand */}
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 transition-opacity hover:opacity-80"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-500/30">
+              <Fingerprint className="h-6 w-6 text-emerald-500" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-white hidden sm:block">
+              Nexus<span className="text-emerald-500">Vault</span>
+            </h1>
+          </Link>
+
+          {/* RIGHT SIDE: Action Buttons */}
+          <div className="flex items-center gap-3">
+            {/* The Eject Seat (Log Out) */}
+            {/* Pointing to "/" violently drops them back at the root login page */}
+            <Link href="/">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+              >
+                <LogOut className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Log Out</span>
+              </Button>
+            </Link>
+
+            {/* The BIGGER Profile Settings Link */}
+            <Link href="/dashboard/settings/profile">
+              {/* Bumped from h-10 w-10 to h-12 w-12, and icon from h-5 to h-6 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-full h-12 w-12 transition-colors"
+              >
+                <User className="h-6 w-6" />
+              </Button>
+            </Link>
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-white">
-            HSMT <span className="text-emerald-500">9000</span>
-          </h1>
         </div>
       </header>
 
