@@ -1,0 +1,53 @@
+# Gemini Context & Guidelines
+
+## Project Overview: Budgify
+
+Budgify is a full-stack, enterprise-grade, serverless financial dashboard. The application strictly enforces a zero-trust architecture, a highly polished data-dense UI, and is designed to be VC-ready.
+
+## About Budgify: Enterprise Financial Intelligence
+
+Budgify is a full-stack, serverless financial dashboard engineered for high performance, strict data security, and operational scalability. Designed to meet venture capital and institutional standards, the application leverages a modern, cloud-native architecture to deliver a dense, highly interactive financial intelligence interface.
+
+### Core Architectural Pillars
+
+- **Zero-Trust Security Model:** Implements a strict authentication boundary using NextAuth v5 (Auth.js) and custom Credentials providers. All data payloads enforce rigorous validation through shared Zod schemas across both client forms and server actions, ensuring absolute data integrity before interacting with the database.
+- **Serverless AWS Infrastructure:** Provisioned natively to AWS utilizing SST (Serverless Stack). The backend relies on a highly scalable DynamoDB implementation utilizing single-table design principles to ensure low-latency data retrieval at scale.
+- **Cost-Optimized Development:** The infrastructure is context-aware, dynamically scaling configurations based on deployment stages. Features like Point-in-Time Recovery (PITR) are selectively disabled during local execution to maintain a strict $0.00 AWS footprint without compromising production resilience.
+- **Institutional UI/UX:** The frontend is built on the Next.js App Router, utilizing Tailwind CSS v4 and Shadcn UI. It features a high-contrast dark mode aesthetic and precision typography to prioritize data density and clarity, paired with Recharts for robust, SSR-safe financial visualizations.
+- **Enterprise Workflows:** Development is governed by strict version control standards, mandating isolated feature branches, required pull requests, and semantic versioning to guarantee that the main branch remains production-ready at all times.
+
+## Tech Stack
+
+- **Framework:** Next.js (App Router)
+- **Styling:** Tailwind CSS v4, Shadcn UI 4.4
+- **Data Visualization:** Recharts (strict height/aspect ratio constraints to prevent SSR hydration warnings)
+- **Icons:** Lucide React
+- **Package Manager:** pnpm
+- **Infrastructure:** SST v4.6.9 (Serverless AWS)
+- **Database:** AWS DynamoDB (Single-table design)
+- **Authentication:** Auth.js / NextAuth v5 (Credentials Provider, Zod validation, bcryptjs)
+- **Domain:** `amanbrar.pro` (managed via Cloudflare DNS)
+
+## Enterprise Workflow Rules
+
+1. **Strict Tone:** Absolutely no jokes, informal comments, or non-essential content in the codebase. All UI text, variable names, and code comments must maintain a strictly professional, institutional tone.
+2. **Branching Strategy:** Direct commits to `main` are prohibited. Enforce strict feature branching, mandatory pull requests, and squash merging.
+3. **Commit Standards:** Use Conventional Commits and Semantic Versioning for all changes.
+4. **Environment Variables:** Strictly use `.env` for all environment variables. Do NOT use `.env.local`, as this breaks SST token and secret detection during infrastructure provisioning.
+5. **AWS SSO Authentication:** Infrastructure operations must utilize the `amanbrar-dev` AWS SSO profile.
+
+## Infrastructure & Cost Controls
+
+- **Zero-Cost Local Development:** Maintain a strictly $0.00 AWS footprint during local development.
+- **DynamoDB Configuration:** Point-in-time recovery (PITR) must be dynamically disabled for local development (`input?.stage !== "production"`) and only enabled in production.
+- **Resource Binding:** AWS SDK clients must interface with DynamoDB exclusively through SST Resource bindings (`import { Resource } from "sst"`). Never hardcode table names or manage IAM credentials manually in the Next.js application.
+
+## UI/UX Standards
+
+- **Theme:** Default to a high-contrast Dark Mode visual theme.
+- **Color Palette:** - Rich Black (`#071013`)
+  - Viridian Green (`#558B6E`)
+  - Mauve Purple (`#C2AFF0`)
+  - Mint Cream (`#D7FDEC`)
+  - Peach (`#FFD3BA`)
+- **Typography:** Utilize highly legible, data-dense enterprise font pairings (e.g., Vercel Geist/Geist Mono, Inter/JetBrains Mono, or IBM Plex Sans/Mono) mapped to Tailwind v4 CSS variables.
