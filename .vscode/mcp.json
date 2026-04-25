@@ -1,0 +1,34 @@
+{
+  "servers": {
+    "github": {
+      "type": "stdio",
+      "command": "sh",
+      "args": [
+        "-c",
+        "GITHUB_PERSONAL_ACCESS_TOKEN=$(gh auth token) pnpm dlx @modelcontextprotocol/server-github"
+      ]
+    },
+    "linear": {
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["dlx", "mcp-remote", "https://mcp.linear.app/mcp"]
+    },
+    "notion": {
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["dlx", "mcp-remote", "https://mcp.notion.com/mcp"]
+    },
+
+    "next-devtools": {
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["dlx", "next-devtools-mcp@latest"]
+    },
+    "shadcn": {
+      "type": "stdio",
+      "command": "pnpm",
+      "args": ["dlx", "shadcn@latest", "mcp"]
+    }
+  },
+  "inputs": []
+}
