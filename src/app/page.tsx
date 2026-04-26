@@ -1,7 +1,7 @@
 // src/app/page.tsx
 "use client";
 
-import { Lock, Mail, Loader2, Key, BarChart3 } from "lucide-react";
+import { Lock, Mail, Loader2, Key, Wallet } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -10,7 +10,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +34,7 @@ export default function LoginPage() {
         <FadeIn delay={0.1}>
           <div className="flex flex-col items-center mb-8">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-4 border border-primary/20">
-              <BarChart3 className="h-10 w-10 text-primary" />
+              <Wallet className="h-10 w-10 text-primary" />
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
               Budgify

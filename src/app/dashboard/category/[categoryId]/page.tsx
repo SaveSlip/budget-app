@@ -1,4 +1,3 @@
-// app/dashboard/category/[categoryId]/page.tsx
 "use client"; // Needs to be a client component so we can use useRouter for the dropdown
 
 import { useParams, useRouter } from "next/navigation";
@@ -27,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { categories, getTransactionsByCategory } from "@/app/lib/mockData";
 import { FadeIn } from "@/components/FadeIn";
+import { GlassCard } from "@/components/GlassCard";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -45,7 +45,7 @@ export default function CategoryDetailPage() {
   // If someone types a random URL like /dashboard/category/unicorns
   if (!category) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4 text-white">
+      <div className="flex flex-col items-center justify-center h-64 gap-4 text-foreground">
         <h2 className="text-2xl font-bold">Category not found</h2>
         <Link href="/dashboard">
           <Button variant="outline">Go Back Home</Button>
@@ -67,7 +67,7 @@ export default function CategoryDetailPage() {
           <Link href="/dashboard">
             <Button
               variant="ghost"
-              className="text-slate-400 hover:text-white hover:bg-white/10"
+              className="text-muted-foreground hover:text-foreground hover:bg-foreground/10"
             >
               <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
             </Button>
@@ -79,15 +79,15 @@ export default function CategoryDetailPage() {
               value={currentCategoryId}
               onValueChange={handleCategoryChange}
             >
-              <SelectTrigger className="bg-black/40 border-white/10 text-white">
+              <SelectTrigger className="bg-background/40 border-foreground/10 text-foreground">
                 <SelectValue placeholder="Switch Category" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10 text-white">
+              <SelectContent className="bg-background border-foreground/10 text-foreground">
                 {categories.map((cat) => (
                   <SelectItem
                     key={cat.id}
                     value={cat.id}
-                    className="hover:bg-emerald-500/20 focus:bg-emerald-500/20 cursor-pointer"
+                    className="hover:bg-primary/20 focus:bg-primary/20 cursor-pointer"
                   >
                     {cat.name}
                   </SelectItem>
@@ -100,24 +100,24 @@ export default function CategoryDetailPage() {
 
       {/* The Transactions Table Card */}
       <FadeIn delay={0.2}>
-        <Card className="border-white/5 bg-white/5 backdrop-blur-sm border-t-emerald-500/50 border-t-2">
+        <GlassCard className="border-t-primary/50 border-t-2">
           <CardHeader>
-            <CardTitle className="text-2xl text-white">
+            <CardTitle className="text-2xl text-foreground">
               {category.name} Transactions
             </CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardDescription className="text-muted-foreground">
               All parsed entries for this month.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {transactions.length === 0 ? (
-              <p className="text-slate-500 py-8 text-center">
+              <p className="text-muted-foreground py-8 text-center">
                 No transactions found for this category.
               </p>
             ) : (
               <Table>
-                <TableHeader className="border-white/10">
-                  <TableRow className="hover:bg-transparent border-white/10 text-slate-300">
+                <TableHeader className="border-foreground/10">
+                  <TableRow className="hover:bg-transparent border-foreground/10 text-muted-foreground">
                     <TableHead>Date</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
@@ -127,14 +127,14 @@ export default function CategoryDetailPage() {
                   {transactions.map((t) => (
                     <TableRow
                       key={t.id}
-                      className="border-white/5 hover:bg-white/5"
+                      className="border-foreground/5 hover:bg-foreground/5"
                     >
-                      <TableCell className="text-slate-400">{t.date}</TableCell>
-                      <TableCell className="font-medium text-slate-200">
+                      <TableCell className="text-muted-foreground">{t.date}</TableCell>
+                      <TableCell className="font-medium text-foreground">
                         {t.description}
                       </TableCell>
                       <TableCell
-                        className={`text-right font-mono ${category.type === "income" ? "text-emerald-400" : "text-rose-400"}`}
+                        className={`text-right font-mono ${category.type === "income" ? "text-primary" : "text-destructive"}`}
                       >
                         {category.type === "income" ? "+" : "-"}$
                         {t.amount.toFixed(2)}
@@ -145,7 +145,7 @@ export default function CategoryDetailPage() {
               </Table>
             )}
           </CardContent>
-        </Card>
+        </GlassCard>
       </FadeIn>
     </div>
   );

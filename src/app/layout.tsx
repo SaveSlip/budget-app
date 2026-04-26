@@ -19,8 +19,8 @@ const fontMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HSMT 9000",
-  description: "Hyper-Secure Money Tracker",
+  title: "Budgify",
+  description: "Monthly budget Tracker",
 };
 
 export default function RootLayout({
@@ -32,7 +32,7 @@ export default function RootLayout({
     // Forcing dark mode globally so our premium aesthetic works
     <html lang="en">
       <body
-        className={`${fontMain.variable} ${fontSans.variable} ${fontMono.variable} font-sans antialiased min-h-screen bg-slate-950 bg-gradient-to-br from-slate-900 via-black to-slate-950 text-slate-100`}
+        className={`${fontMain.variable} ${fontSans.variable} ${fontMono.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
       >
         {children}
       </body>

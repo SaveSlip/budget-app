@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Lock, Mail, Loader2, ShieldCheck } from "lucide-react";
+import { Lock, Mail, Loader2, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { signupSchema, SignupInput } from "@/lib/validations/auth";
 import { registerUser } from "@/app/actions/auth";
@@ -55,7 +55,7 @@ export default function SignupPage() {
         <FadeIn delay={0.1}>
           <div className="flex flex-col items-center mb-8">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-4 border border-primary/20">
-              <ShieldCheck className="h-10 w-10 text-primary" />
+              <Wallet className="h-10 w-10 text-primary" />
             </div>
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
               Budgify

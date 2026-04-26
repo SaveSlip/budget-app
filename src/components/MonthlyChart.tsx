@@ -30,7 +30,7 @@ const mockChartData = [
 
 export function MonthlyChart() {
   return (
-    <Card className="border-border bg-card shadow-sm">
+    <Card className="border-border bg-foreground/5 backdrop-blur-sm shadow-sm">
       <CardHeader>
         <CardTitle className="text-foreground">6-Month Trend</CardTitle>
         <CardDescription className="text-muted-foreground">
@@ -38,7 +38,7 @@ export function MonthlyChart() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full mt-4">
+        <div className="h-75 w-full mt-4">
           <ResponsiveContainer width="100%" height={300} aspect={2.3}>
             <BarChart
               data={mockChartData}
@@ -76,13 +76,13 @@ export function MonthlyChart() {
               <Bar
                 dataKey="income"
                 name="Income"
-                fill="#558B6E"
+                fill="var(--chart-1)"
                 radius={[4, 4, 0, 0]}
               />
               <Bar
                 dataKey="expense"
                 name="Expense"
-                fill="#FFD3BA"
+                fill="var(--chart-2)"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>

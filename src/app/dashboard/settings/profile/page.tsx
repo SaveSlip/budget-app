@@ -1,10 +1,8 @@
-// src/app/dashboard/settings/profile/page.tsx
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
@@ -14,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FadeIn } from "@/components/FadeIn";
+import { GlassCard } from "@/components/GlassCard";
 import {
   ArrowLeft,
   User,
@@ -61,7 +60,7 @@ export default function ProfileSettingsPage() {
           <Link href="/dashboard">
             <Button
               variant="ghost"
-              className="text-slate-400 hover:text-white hover:bg-white/10"
+              className="text-muted-foreground hover:text-foreground hover:bg-foreground/10"
             >
               <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
             </Button>
@@ -77,7 +76,7 @@ export default function ProfileSettingsPage() {
               <Link href="/dashboard/settings/profile">
                 <Button
                   variant="secondary"
-                  className="w-full justify-start bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20"
+                  className="w-full justify-start bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
                 >
                   <User className="w-4 h-4 mr-2" /> Profile
                 </Button>
@@ -85,7 +84,7 @@ export default function ProfileSettingsPage() {
               <Link href="/dashboard/settings/categories">
                 <Button
                   variant="ghost"
-                  className="w-full justify-start text-slate-400 hover:text-white hover:bg-white/5"
+                  className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                 >
                   {/* Re-using the layout logic to make it look like a real app */}
                   Category Rules
@@ -99,53 +98,53 @@ export default function ProfileSettingsPage() {
         <div className="md:col-span-8 flex flex-col gap-6">
           {/* Form 1: Personal Info */}
           <FadeIn delay={0.3}>
-            <Card className="border-white/5 bg-white/5 backdrop-blur-sm">
+            <GlassCard>
               <CardHeader>
-                <CardTitle className="text-white">
+                <CardTitle className="text-foreground">
                   Personal Information
                 </CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardDescription className="text-muted-foreground">
                   Update your identity on the mainframe.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSaveProfile} className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300">
+                    <label className="text-sm font-medium text-muted-foreground">
                       Full Name
                     </label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="pl-10 bg-black/40 border-white/10 text-white focus:border-emerald-500/50"
+                        className="pl-10 bg-background/40 border-foreground/10 text-foreground focus:border-primary/50"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300">
+                    <label className="text-sm font-medium text-muted-foreground">
                       Email Address
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 bg-black/40 border-white/10 text-white focus:border-emerald-500/50"
+                        className="pl-10 bg-background/40 border-foreground/10 text-foreground focus:border-primary/50"
                       />
                     </div>
                   </div>
 
                   <div className="pt-4 flex items-center justify-between">
-                    <p className="text-sm text-emerald-400 font-medium h-5">
+                    <p className="text-sm text-primary font-medium h-5">
                       {saveMessage}
                     </p>
                     <Button
                       type="submit"
                       disabled={isSaving}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white min-w-[120px]"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground min-w-30"
                     >
                       {isSaving ? (
                         <>
@@ -161,73 +160,73 @@ export default function ProfileSettingsPage() {
                   </div>
                 </form>
               </CardContent>
-            </Card>
+            </GlassCard>
           </FadeIn>
 
           {/* Form 2: Security (Password) */}
           <FadeIn delay={0.4}>
-            <Card className="border-white/5 bg-white/5 backdrop-blur-sm">
+            <GlassCard>
               <CardHeader>
-                <CardTitle className="text-white">Security</CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardTitle className="text-foreground">Security</CardTitle>
+                <CardDescription className="text-muted-foreground">
                   Manage your Zero-Trust credentials.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">
+                  <label className="text-sm font-medium text-muted-foreground">
                     Current Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       type="password"
                       placeholder="••••••••"
-                      className="pl-10 bg-black/40 border-white/10 text-white"
+                      className="pl-10 bg-background/40 border-foreground/10 text-foreground"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">
+                  <label className="text-sm font-medium text-muted-foreground">
                     New Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       type="password"
                       placeholder="Leave blank to keep current"
-                      className="pl-10 bg-black/40 border-white/10 text-white"
+                      className="pl-10 bg-background/40 border-foreground/10 text-foreground"
                     />
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="bg-black/20 border-t border-white/5 mt-4 pt-6">
+              <CardFooter className="bg-background/20 border-t border-foreground/5 mt-4 pt-6">
                 <Button
                   variant="outline"
-                  className="border-white/10 text-slate-300 hover:text-white hover:bg-white/5 ml-auto"
+                  className="border-foreground/10 text-muted-foreground hover:text-foreground hover:bg-foreground/5 ml-auto"
                 >
                   Update Password
                 </Button>
               </CardFooter>
-            </Card>
+            </GlassCard>
           </FadeIn>
 
           {/* Form 3: Preferences (The Joke) */}
           <FadeIn delay={0.5}>
-            <Card className="border-white/5 bg-white/5 backdrop-blur-sm">
+            <GlassCard>
               <CardHeader>
-                <CardTitle className="text-white">Preferences</CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardTitle className="text-foreground">Preferences</CardTitle>
+                <CardDescription className="text-muted-foreground">
                   Customize your dashboard experience.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between p-4 border border-white/10 rounded-lg bg-black/20">
+                <div className="flex items-center justify-between p-4 border border-foreground/10 rounded-lg bg-background/20">
                   <div className="space-y-0.5">
-                    <div className="font-medium text-slate-200">
+                    <div className="font-medium text-foreground">
                       Theme Preference
                     </div>
-                    <div className="text-sm text-slate-500">
+                    <div className="text-sm text-muted-foreground">
                       Toggle between Dark and Light mode.
                     </div>
                   </div>
@@ -235,14 +234,14 @@ export default function ProfileSettingsPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="bg-emerald-500/20 text-emerald-400 cursor-default hover:bg-emerald-500/20 hover:text-emerald-400"
+                      className="bg-primary/20 text-primary cursor-default hover:bg-primary/20 hover:text-primary"
                     >
                       <Moon className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       onClick={handleLightModeRejection}
                     >
                       <Sun className="w-4 h-4" />
@@ -250,7 +249,7 @@ export default function ProfileSettingsPage() {
                   </div>
                 </div>
               </CardContent>
-            </Card>
+            </GlassCard>
           </FadeIn>
         </div>
       </div>

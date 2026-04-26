@@ -1,9 +1,9 @@
-// src/app/dashboard/page.tsx
 import Link from "next/link";
 import { getCategoryBreakdown } from "@/app/lib/mockData"; // Using your updated path!
 import { MonthlyChart } from "@/components/MonthlyChart";
+import { SummaryCard } from "@/components/SummaryCard";
+import { GlassCard } from "@/components/GlassCard";
 import {
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
@@ -37,52 +37,42 @@ export default function DashboardPage() {
         {/* 1. TOP SUMMARY CARDS */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <FadeIn delay={0.1}>
-            <Card className="h-full border-white/5 bg-white/5 backdrop-blur-sm transition-all hover:bg-white/10 hover:border-emerald-500/30">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-slate-400">
-                  Total Income
-                </CardDescription>
-                <CardTitle className="text-3xl text-emerald-400 font-mono tracking-tight">
-                  ${mockSummary.totalIncome.toFixed(2)}
-                </CardTitle>
-              </CardHeader>
-            </Card>
+            <SummaryCard
+              title="Total Income"
+              description="Total Income"
+              value={`$${mockSummary.totalIncome.toFixed(2)}`}
+              type="income"
+            />
           </FadeIn>
 
           <FadeIn delay={0.2}>
-            <Card className="h-full border-white/5 bg-white/5 backdrop-blur-sm transition-all hover:bg-white/10 hover:border-rose-500/30">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-slate-400">
-                  Total Expenses
-                </CardDescription>
-                <CardTitle className="text-3xl text-rose-400 font-mono tracking-tight">
-                  ${mockSummary.totalExpense.toFixed(2)}
-                </CardTitle>
-              </CardHeader>
-            </Card>
+            <SummaryCard
+              title="Total Expenses"
+              description="Total Expenses"
+              value={`$${mockSummary.totalExpense.toFixed(2)}`}
+              type="expense"
+            />
           </FadeIn>
 
           <FadeIn delay={0.3}>
-            <Card className="h-full border-white/5 bg-white/5 backdrop-blur-sm transition-all hover:bg-white/10 hover:border-white/30">
-              <CardHeader className="pb-2">
-                <CardDescription className="text-slate-400">
-                  Net Balance
-                </CardDescription>
-                <CardTitle className="text-3xl text-white font-mono tracking-tight">
-                  ${mockSummary.netBalance.toFixed(2)}
-                </CardTitle>
-              </CardHeader>
-            </Card>
+            <SummaryCard
+              title="Net Balance"
+              description="Net Balance"
+              value={`$${mockSummary.netBalance.toFixed(2)}`}
+              type="balance"
+            />
           </FadeIn>
         </div>
 
         {/* 2. CATEGORY BREAKDOWN (Bumped up!) */}
         <FadeIn delay={0.4}>
-          <Card className="border-white/5 bg-white/5 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-white/10 mb-4">
+          <GlassCard>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-foreground/10 mb-4">
               <div className="space-y-1">
-                <CardTitle className="text-white">Category Breakdown</CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardTitle className="text-foreground">
+                  Category Breakdown
+                </CardTitle>
+                <CardDescription className="text-muted-foreground">
                   Where your money is actually going this month.
                 </CardDescription>
               </div>
@@ -90,7 +80,7 @@ export default function DashboardPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-white/10 bg-black/20 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition-all"
+                  className="border-foreground/10 bg-background/20 text-muted-foreground hover:text-primary hover:border-primary/30 transition-all"
                 >
                   <Settings className="w-4 h-4 mr-2" /> Manage
                 </Button>
@@ -98,8 +88,8 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <Table>
-                <TableHeader className="border-white/10">
-                  <TableRow className="hover:bg-transparent border-white/10 text-slate-300">
+                <TableHeader className="border-foreground/10">
+                  <TableRow className="hover:bg-transparent border-foreground/10 text-muted-foreground">
                     <TableHead>Category</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
@@ -109,9 +99,9 @@ export default function DashboardPage() {
                   {getCategoryBreakdown().map((item) => (
                     <TableRow
                       key={item.id}
-                      className="relative border-white/5 hover:bg-emerald-500/10 transition-colors group"
+                      className="relative border-foreground/5 hover:bg-primary/10 transition-colors group"
                     >
-                      <TableCell className="font-medium text-slate-200 group-hover:text-emerald-400">
+                      <TableCell className="font-medium text-foreground group-hover:text-primary">
                         <Link
                           href={`/dashboard/category/${item.id}`}
                           className="absolute inset-0"
@@ -122,14 +112,14 @@ export default function DashboardPage() {
                         <Badge
                           className={
                             item.type === "income"
-                              ? "bg-emerald-500/20 text-emerald-400 border-none relative z-10"
-                              : "bg-rose-500/20 text-rose-400 border-none relative z-10"
+                              ? "bg-primary/20 text-primary border-none hover:bg-primary/30"
+                              : "bg-orange-500/20 text-orange-600 border-none hover:bg-orange-500/30"
                           }
                         >
                           {item.type}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono text-slate-300">
+                      <TableCell className="text-right font-mono text-muted-foreground">
                         ${item.amount.toFixed(2)}
                       </TableCell>
                     </TableRow>
@@ -137,7 +127,7 @@ export default function DashboardPage() {
                 </TableBody>
               </Table>
             </CardContent>
-          </Card>
+          </GlassCard>
         </FadeIn>
 
         {/* 3. MONTHLY CHART (Moved to the bottom) */}
@@ -149,10 +139,12 @@ export default function DashboardPage() {
       {/* RIGHT COLUMN */}
       <div className="md:col-span-4">
         <FadeIn delay={0.6}>
-          <Card className="border-white/5 bg-white/5 backdrop-blur-sm border-t-emerald-500/50 border-t-2 sticky top-24">
+          <GlassCard className="border-t-primary/50 border-t-2 sticky top-24">
             <CardHeader>
-              <CardTitle className="text-white">Upload Statement</CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardTitle className="text-foreground">
+                Upload Statement
+              </CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Drag and drop your CSV or PDF here.
               </CardDescription>
             </CardHeader>
@@ -161,16 +153,16 @@ export default function DashboardPage() {
                 action={uploadBankStatement}
                 className="flex flex-col gap-4"
               >
-                <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-600 rounded-xl cursor-pointer bg-black/20 hover:bg-black/40 hover:border-emerald-500/50 transition-all group">
+                <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-border rounded-xl cursor-pointer bg-background/20 hover:bg-background/40 hover:border-primary/50 transition-all group">
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <UploadCloud className="w-10 h-10 mb-3 text-slate-400 group-hover:text-emerald-400 transition-colors" />
-                    <p className="mb-2 text-sm text-slate-400">
-                      <span className="font-semibold text-slate-200">
+                    <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <p className="mb-2 text-sm text-muted-foreground">
+                      <span className="font-semibold text-foreground">
                         Click to upload
                       </span>{" "}
                       or drag and drop
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       CSV or PDF (MAX. 10MB)
                     </p>
                   </div>
@@ -185,13 +177,13 @@ export default function DashboardPage() {
 
                 <Button
                   type="submit"
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[0_0_15px_hsl(var(--primary)/0.4)]"
                 >
                   Upload & Parse
                 </Button>
               </form>
             </CardContent>
-          </Card>
+          </GlassCard>
         </FadeIn>
       </div>
     </div>

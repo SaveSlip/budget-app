@@ -1,11 +1,9 @@
-// src/app/dashboard/settings/categories/page.tsx
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import { categories as initialCategories, Category } from "@/app/lib/mockData";
 import {
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
@@ -15,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { FadeIn } from "@/components/FadeIn";
+import { GlassCard } from "@/components/GlassCard";
 import { ArrowLeft, Plus, Trash2, Edit2, Check, X } from "lucide-react";
 
 export default function CategorySettingsPage() {
@@ -63,7 +62,7 @@ export default function CategorySettingsPage() {
           <Link href="/dashboard">
             <Button
               variant="ghost"
-              className="text-slate-400 hover:text-white hover:bg-white/10"
+              className="text-muted-foreground hover:text-foreground hover:bg-foreground/10"
             >
               <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
             </Button>
@@ -75,10 +74,10 @@ export default function CategorySettingsPage() {
         {/* LEFT COLUMN: Add New Category */}
         <div className="md:col-span-4">
           <FadeIn delay={0.2}>
-            <Card className="border-white/5 bg-white/5 backdrop-blur-sm sticky top-24">
+            <GlassCard className="sticky top-24">
               <CardHeader>
-                <CardTitle className="text-white">New Category</CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardTitle className="text-foreground">New Category</CardTitle>
+                <CardDescription className="text-muted-foreground">
                   Add a rule for the auto-parser.
                 </CardDescription>
               </CardHeader>
@@ -91,7 +90,7 @@ export default function CategorySettingsPage() {
                     placeholder="e.g. Sushi Funds"
                     value={newCatName}
                     onChange={(e) => setNewCatName(e.target.value)}
-                    className="bg-black/40 border-white/10 text-white placeholder:text-slate-500"
+                    className="bg-background/40 border-foreground/10 text-foreground placeholder:text-muted-foreground"
                   />
 
                   {/* Super simple toggle for Income vs Expense */}
@@ -99,7 +98,7 @@ export default function CategorySettingsPage() {
                     <Button
                       type="button"
                       variant={newCatType === "expense" ? "default" : "outline"}
-                      className={`flex-1 ${newCatType === "expense" ? "bg-rose-600 hover:bg-rose-500 text-white" : "border-white/10 text-slate-400"}`}
+                      className={`flex-1 ${newCatType === "expense" ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : "border-foreground/10 text-muted-foreground"}`}
                       onClick={() => setNewCatType("expense")}
                     >
                       Expense
@@ -107,7 +106,7 @@ export default function CategorySettingsPage() {
                     <Button
                       type="button"
                       variant={newCatType === "income" ? "default" : "outline"}
-                      className={`flex-1 ${newCatType === "income" ? "bg-emerald-600 hover:bg-emerald-500 text-white" : "border-white/10 text-slate-400"}`}
+                      className={`flex-1 ${newCatType === "income" ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "border-foreground/10 text-muted-foreground"}`}
                       onClick={() => setNewCatType("income")}
                     >
                       Income
@@ -116,23 +115,25 @@ export default function CategorySettingsPage() {
 
                   <Button
                     type="submit"
-                    className="w-full bg-slate-100 text-slate-900 hover:bg-white"
+                    className="w-full bg-foreground text-background hover:bg-foreground/90"
                   >
                     <Plus className="w-4 h-4 mr-2" /> Add Category
                   </Button>
                 </form>
               </CardContent>
-            </Card>
+            </GlassCard>
           </FadeIn>
         </div>
 
         {/* RIGHT COLUMN: The Category List */}
         <div className="md:col-span-8">
           <FadeIn delay={0.3}>
-            <Card className="border-white/5 bg-white/5 backdrop-blur-sm">
+            <GlassCard>
               <CardHeader>
-                <CardTitle className="text-white">Active Categories</CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardTitle className="text-foreground">
+                  Active Categories
+                </CardTitle>
+                <CardDescription className="text-muted-foreground">
                   Manage how your transactions will be automatically labeled.
                 </CardDescription>
               </CardHeader>
@@ -141,15 +142,15 @@ export default function CategorySettingsPage() {
                   {cats.map((cat) => (
                     <li
                       key={cat.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-white/5 bg-black/20 hover:bg-black/40 transition-colors group"
+                      className="flex items-center justify-between p-3 rounded-lg border border-foreground/5 bg-background/20 hover:bg-background/40 transition-colors group"
                     >
                       {/* Left Side: Name and Badge */}
                       <div className="flex items-center gap-3 flex-1">
                         <Badge
                           className={
                             cat.type === "income"
-                              ? "bg-emerald-500/20 text-emerald-400 border-none w-20 justify-center"
-                              : "bg-rose-500/20 text-rose-400 border-none w-20 justify-center"
+                              ? "bg-primary/20 text-primary border-none w-20 justify-center hover:bg-primary/30"
+                              : "bg-orange-500/20 text-orange-600 border-none w-20 justify-center hover:bg-orange-500/30"
                           }
                         >
                           {cat.type}
@@ -160,11 +161,11 @@ export default function CategorySettingsPage() {
                           <Input
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="bg-slate-900 border-emerald-500/50 text-white h-8 max-w-[200px]"
+                            className="bg-background border-primary/50 text-foreground h-8 max-w-50"
                             autoFocus
                           />
                         ) : (
-                          <span className="font-medium text-slate-200">
+                          <span className="font-medium text-foreground">
                             {cat.name}
                           </span>
                         )}
@@ -177,7 +178,7 @@ export default function CategorySettingsPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                              className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10"
                               onClick={() => saveEdit(cat.id)}
                             >
                               <Check className="w-4 h-4" />
@@ -185,7 +186,7 @@ export default function CategorySettingsPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 text-slate-400 hover:text-slate-300 hover:bg-white/10"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-foreground/10"
                               onClick={() => setEditingId(null)}
                             >
                               <X className="w-4 h-4" />
@@ -196,7 +197,7 @@ export default function CategorySettingsPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 text-slate-400 hover:text-white hover:bg-white/10"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-foreground/10"
                               onClick={() => startEditing(cat)}
                             >
                               <Edit2 className="w-4 h-4" />
@@ -204,7 +205,7 @@ export default function CategorySettingsPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                               onClick={() => handleDelete(cat.id)}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -216,14 +217,14 @@ export default function CategorySettingsPage() {
                   ))}
 
                   {cats.length === 0 && (
-                    <div className="p-8 text-center text-slate-500">
+                    <div className="p-8 text-center text-muted-foreground">
                       No categories left. Your parser is going to be very
                       confused.
                     </div>
                   )}
                 </ul>
               </CardContent>
-            </Card>
+            </GlassCard>
           </FadeIn>
         </div>
       </div>

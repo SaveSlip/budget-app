@@ -13,5 +13,5 @@ export async function uploadBankStatement(formData: FormData) {
   // For now, we just pretend we did something highly secure and complex.
   console.log("File received, preparing to hand off to AWS...", file);
 
-  return { success: true, message: "File sent to the cloud void." };
+  // Server actions should not return values for form actions
 }
