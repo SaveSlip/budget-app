@@ -1,4 +1,3 @@
-// src/app/signup/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -6,10 +5,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Lock, Mail, Loader2, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { signupSchema, SignupInput } from "@/lib/validations/auth";
-import { registerUser } from "@/app/actions/auth";
+import Link from "next/link";
+import { signinSchema, SigninInput } from "@/lib/validations/auth";
 
 import {
   Card,
@@ -23,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FadeIn } from "@/components/FadeIn";
 
-export default function SignupPage() {
+export default function SigninPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -31,22 +29,13 @@ export default function SignupPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<SignupInput>({
-    resolver: zodResolver(signupSchema),
+  } = useForm<SigninInput>({
+    resolver: zodResolver(signinSchema),
   });
 
-  const onSubmit = async (data: SignupInput) => {
+  const onSubmit = async (data: SigninInput) => {
     setServerError(null);
 
-    // 1. Execute Backend Server Action
-    const response = await registerUser(data);
-
-    if (response.error) {
-      setServerError(response.error);
-      return;
-    }
-
-    // 2. If successful, sign in the user automatically
     const signInResult = await signIn("credentials", {
       email: data.email,
       password: data.password,
@@ -54,13 +43,11 @@ export default function SignupPage() {
     });
 
     if (signInResult?.error) {
-      setServerError(
-        "Account created but sign in failed. Please try signing in manually.",
-      );
+      setServerError("Invalid credentials. Please try again.");
       return;
     }
 
-    // 3. Redirect to dashboard
+    // Redirect to dashboard
     router.push("/");
   };
 
@@ -75,16 +62,18 @@ export default function SignupPage() {
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
               Budgify
             </h1>
-            <p className="text-muted-foreground mt-2">Provision New Identity</p>
+            <p className="text-muted-foreground mt-2">
+              Enterprise Financial Intelligence
+            </p>
           </div>
 
           <Card className="border-border bg-card shadow-lg">
             <CardHeader className="space-y-1 text-center">
               <CardTitle className="text-2xl text-foreground">
-                Registration
+                Sign In
               </CardTitle>
               <CardDescription className="text-muted-foreground">
-                Enter your details to generate a secure clearance.
+                Authenticate to access the dashboard.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -123,7 +112,7 @@ export default function SignupPage() {
                     <Input
                       {...register("password")}
                       type="password"
-                      placeholder="Password"
+                      placeholder="••••••••"
                       className={`pl-10 bg-input/50 border-border text-foreground focus:border-primary ${
                         errors.password
                           ? "border-destructive focus:border-destructive"
@@ -139,28 +128,6 @@ export default function SignupPage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      {...register("confirmPassword")}
-                      type="password"
-                      placeholder="Confirm Password"
-                      className={`pl-10 bg-input/50 border-border text-foreground focus:border-primary ${
-                        errors.confirmPassword
-                          ? "border-destructive focus:border-destructive"
-                          : ""
-                      }`}
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  {errors.confirmPassword && (
-                    <p className="text-xs text-destructive pl-1">
-                      {errors.confirmPassword.message}
-                    </p>
-                  )}
-                </div>
-
                 <Button
                   type="submit"
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
@@ -169,20 +136,19 @@ export default function SignupPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Provisioning...
+                      Authenticating...
                     </>
                   ) : (
-                    "Initialize Account"
+                    "Sign In"
                   )}
                 </Button>
               </form>
             </CardContent>
             <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground pb-6">
-              <p>All activities are monitored and logged.</p>
               <p>
-                Already have an account?{" "}
-                <Link href="/signin" className="text-primary hover:underline">
-                  Sign in
+                Don&apos;t have an account?{" "}
+                <Link href="/signup" className="text-primary hover:underline">
+                  Sign up
                 </Link>
               </p>
             </CardFooter>

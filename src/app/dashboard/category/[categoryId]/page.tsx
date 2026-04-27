@@ -2,7 +2,6 @@
 
 import { useParams, useRouter } from "next/navigation";
 import {
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
@@ -129,7 +128,9 @@ export default function CategoryDetailPage() {
                       key={t.id}
                       className="border-foreground/5 hover:bg-foreground/5"
                     >
-                      <TableCell className="text-muted-foreground">{t.date}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {t.date}
+                      </TableCell>
                       <TableCell className="font-medium text-foreground">
                         {t.description}
                       </TableCell>

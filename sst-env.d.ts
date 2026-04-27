@@ -6,8 +6,17 @@
 
 declare module "sst" {
   export interface Resource {
+    "UsersTable": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Web": {
+      "type": "sst.aws.Nextjs"
+      "url": string
+    }
   }
 }
+/// <reference path="sst-env.d.ts" />
 
 import "sst"
 export {}

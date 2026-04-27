@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="./.sst/platform/config.d.ts" />
 
 export default $config({
@@ -18,7 +19,7 @@ export default $config({
     const isProduction = $app.stage === "production";
 
     // Provision the Serverless DynamoDB Table
-    const table = new sst.aws.Dynamo("BudgifyUsersTable", {
+    const table = new sst.aws.Dynamo("UsersTable", {
       fields: {
         pk: "string",
         sk: "string",
@@ -34,8 +35,11 @@ export default $config({
     });
 
     // Provision Next.js and securely bind the DynamoDB resource
-    new sst.aws.Nextjs("BudgifyWeb", {
+    new sst.aws.Nextjs("Web", {
       link: [table],
+      environment: {
+        AUTH_SECRET: "supersecretkey", // In production, use a secure secrets manager
+      },
       // Future implementation: Custom domain routing via Cloudflare DNS
       // domain: isProduction ? "amanbrar.pro" : undefined,
     });

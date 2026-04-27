@@ -9,7 +9,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 export async function createUserRecord(email: string, passwordHash: string) {
   await docClient.send(
     new PutCommand({
-      TableName: (Resource as any).BudgifyUsersTable.name,
+      TableName: Resource.UsersTable.name,
       Item: {
         pk: `USER#${email}`,
         sk: `PROFILE#${email}`,

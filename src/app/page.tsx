@@ -1,127 +1,241 @@
 // src/app/page.tsx
-"use client";
-
-import { Lock, Mail, Loader2, Key, Wallet } from "lucide-react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { getCategoryBreakdown } from "@/app/lib/mockData"; // Using your updated path!
+import { MonthlyChart } from "@/components/MonthlyChart";
+import { SummaryCard } from "@/components/SummaryCard";
+import { GlassCard } from "@/components/GlassCard";
 import {
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { uploadBankStatement } from "@/app/dashboard/actions";
 import { FadeIn } from "@/components/FadeIn";
+import { UploadCloud, Settings, User, LogOut, Wallet } from "lucide-react";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+const mockSummary = {
+  totalIncome: 5240.0,
+  totalExpense: 3150.75,
+  netBalance: 2089.25,
+};
 
-  const handleAuthentication = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 1200);
-  };
-
+export default function DashboardPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
-      <div className="w-full max-w-md px-4 z-10">
-        <FadeIn delay={0.1}>
-          <div className="flex flex-col items-center mb-8">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-4 border border-primary/20">
-              <Wallet className="h-10 w-10 text-primary" />
+    <div className="flex min-h-screen flex-col relative">
+      {/* Semi-transparent blur header */}
+      <header className="sticky top-0 z-50 border-b border-foreground/10 bg-background/40 backdrop-blur-md p-4">
+        <div className="mx-auto max-w-6xl flex items-center justify-between gap-3">
+          {/* LEFT SIDE: Logo & Brand */}
+          <Link
+            href="/"
+            className="flex items-center gap-3 transition-opacity hover:opacity-80"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 shadow-[0_0_15px_hsl(var(--primary)/0.3)] border border-primary/30">
+              <Wallet className="h-6 w-6 text-primary" />
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+            <h1 className="text-xl font-bold tracking-tight text-foreground hidden sm:block">
               Budgify
             </h1>
-            <p className="text-muted-foreground mt-2">
-              Enterprise Financial Intelligence
-            </p>
+          </Link>
+
+          {/* RIGHT SIDE: Action Buttons */}
+          <div className="flex items-center gap-3">
+            {/* The Eject Seat (Log Out) */}
+            <Link href="/signin">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <LogOut className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Log Out</span>
+              </Button>
+            </Link>
+
+            {/* The BIGGER Profile Settings Link */}
+            <Link href="/dashboard/settings/profile">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full h-12 w-12 transition-colors"
+              >
+                <User className="h-6 w-6" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 p-4">
+        <div className="mx-auto max-w-6xl grid gap-6 md:grid-cols-12">
+          {/* LEFT COLUMN */}
+          <div className="md:col-span-8 flex flex-col gap-6">
+            {/* 1. TOP SUMMARY CARDS */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <FadeIn delay={0.1}>
+                <SummaryCard
+                  title="Total Income"
+                  description="Total Income"
+                  value={`$${mockSummary.totalIncome.toFixed(2)}`}
+                  type="income"
+                />
+              </FadeIn>
+
+              <FadeIn delay={0.2}>
+                <SummaryCard
+                  title="Total Expenses"
+                  description="Total Expenses"
+                  value={`$${mockSummary.totalExpense.toFixed(2)}`}
+                  type="expense"
+                />
+              </FadeIn>
+
+              <FadeIn delay={0.3}>
+                <SummaryCard
+                  title="Net Balance"
+                  description="Net Balance"
+                  value={`$${mockSummary.netBalance.toFixed(2)}`}
+                  type="balance"
+                />
+              </FadeIn>
+            </div>
+
+            {/* 2. CATEGORY BREAKDOWN (Bumped up!) */}
+            <FadeIn delay={0.4}>
+              <GlassCard>
+                <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-foreground/10 mb-4">
+                  <div className="space-y-1">
+                    <CardTitle className="text-foreground">
+                      Category Breakdown
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground">
+                      Where your money is actually going this month.
+                    </CardDescription>
+                  </div>
+                  <Link href="/dashboard/settings/categories">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-foreground/10 bg-background/20 text-muted-foreground hover:text-primary hover:border-primary/30 transition-all"
+                    >
+                      <Settings className="w-4 h-4 mr-2" /> Manage
+                    </Button>
+                  </Link>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader className="border-foreground/10">
+                      <TableRow className="hover:bg-transparent border-foreground/10 text-muted-foreground">
+                        <TableHead>Category</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getCategoryBreakdown().map((item) => (
+                        <TableRow
+                          key={item.id}
+                          className="relative border-foreground/5 hover:bg-primary/10 transition-colors group"
+                        >
+                          <TableCell className="font-medium text-foreground group-hover:text-primary">
+                            <Link
+                              href={`/dashboard/category/${item.id}`}
+                              className="absolute inset-0"
+                            />
+                            {item.name}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              className={
+                                item.type === "income"
+                                  ? "bg-primary/20 text-primary border-none hover:bg-primary/30"
+                                  : "bg-orange-500/20 text-orange-600 border-none hover:bg-orange-500/30"
+                              }
+                            >
+                              {item.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground">
+                            ${item.amount.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </GlassCard>
+            </FadeIn>
+
+            {/* 3. MONTHLY CHART (Moved to the bottom) */}
+            <FadeIn delay={0.5}>
+              <MonthlyChart />
+            </FadeIn>
           </div>
 
-          <Card className="border-border bg-card shadow-lg">
-            <CardHeader className="space-y-1 text-center">
-              <CardTitle className="text-2xl text-foreground">
-                Sign in
-              </CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Authenticate to access the dashboard.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAuthentication} className="space-y-4">
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      placeholder="user@enterprise.com"
-                      required
-                      className="pl-10 bg-input/50 border-border text-foreground focus:border-primary"
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
+          {/* RIGHT COLUMN */}
+          <div className="md:col-span-4">
+            <FadeIn delay={0.6}>
+              <GlassCard className="border-t-primary/50 border-t-2 sticky top-24">
+                <CardHeader>
+                  <CardTitle className="text-foreground">
+                    Upload Statement
+                  </CardTitle>
+                  <CardDescription className="text-muted-foreground">
+                    Drag and drop your CSV or PDF here.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form
+                    action={uploadBankStatement}
+                    className="flex flex-col gap-4"
+                  >
+                    <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-border rounded-xl cursor-pointer bg-background/20 hover:bg-background/40 hover:border-primary/50 transition-all group">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                        <p className="mb-2 text-sm text-muted-foreground">
+                          <span className="font-semibold text-foreground">
+                            Click to upload
+                          </span>{" "}
+                          or drag and drop
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          CSV or PDF (MAX. 10MB)
+                        </p>
+                      </div>
+                      <input
+                        type="file"
+                        name="statement"
+                        accept=".csv, .pdf"
+                        required
+                        className="hidden"
+                      />
+                    </label>
 
-                <div className="space-y-2">
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      placeholder="••••••••"
-                      required
-                      className="pl-10 bg-input/50 border-border text-foreground focus:border-primary"
-                      disabled={isLoading}
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Authenticating...
-                    </>
-                  ) : (
-                    "Sign In"
-                  )}
-                </Button>
-              </form>
-
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full border-border bg-transparent text-foreground hover:bg-muted"
-                onClick={handleAuthentication}
-                disabled={isLoading}
-              >
-                <Key className="mr-2 h-4 w-4" />
-                Single Sign-On (SSO)
-              </Button>
-            </CardContent>
-          </Card>
-        </FadeIn>
-      </div>
+                    <Button
+                      type="submit"
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[0_0_15px_hsl(var(--primary)/0.4)]"
+                    >
+                      Upload & Parse
+                    </Button>
+                  </form>
+                </CardContent>
+              </GlassCard>
+            </FadeIn>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

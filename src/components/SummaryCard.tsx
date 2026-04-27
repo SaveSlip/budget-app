@@ -15,7 +15,6 @@ interface SummaryCardProps {
 }
 
 export function SummaryCard({
-  title,
   description,
   value,
   type,

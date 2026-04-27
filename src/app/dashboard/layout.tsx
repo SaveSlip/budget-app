@@ -11,7 +11,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto max-w-6xl flex items-center justify-between gap-3">
           {/* LEFT SIDE: Logo & Brand */}
           <Link
-            href="/dashboard"
+            href="/"
             className="flex items-center gap-3 transition-opacity hover:opacity-80"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 shadow-[0_0_15px_hsl(var(--primary)/0.3)] border border-primary/30">
@@ -25,8 +25,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* RIGHT SIDE: Action Buttons */}
           <div className="flex items-center gap-3">
             {/* The Eject Seat (Log Out) */}
-            {/* Pointing to "/" violently drops them back at the root login page */}
-            <Link href="/">
+            {/* Pointing to "/signin" */}
+            <Link href="/signin">
               <Button
                 variant="ghost"
                 size="sm"

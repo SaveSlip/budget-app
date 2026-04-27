@@ -16,26 +16,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (typeof credentials.email !== "string" || typeof credentials.password !== "string") {
+        if (
+          typeof credentials.email !== "string" ||
+          typeof credentials.password !== "string"
+        ) {
           return null;
         }
 
         try {
           const { Item } = await docClient.send(
             new GetCommand({
-              TableName: (Resource as any).BudgifyUsersTable.name,
+              TableName: Resource.UsersTable.name,
               Key: {
                 pk: `USER#${credentials.email}`,
                 sk: `PROFILE#${credentials.email}`,
               },
-            })
+            }),
           );
 
           if (!Item) {
             return null;
           }
 
-          const passwordsMatch = await bcrypt.compare(credentials.password, Item.passwordHash);
+          const passwordsMatch = await bcrypt.compare(
+            credentials.password,
+            Item.passwordHash,
+          );
 
           if (passwordsMatch) {
             return {
