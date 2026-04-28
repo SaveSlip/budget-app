@@ -6,6 +6,11 @@
 
 declare module "sst" {
   export interface Resource {
+    "EmailIdentity": {
+      "configSet": string
+      "sender": string
+      "type": "sst.aws.Email"
+    }
     "UsersTable": {
       "name": string
       "type": "sst.aws.Dynamo"

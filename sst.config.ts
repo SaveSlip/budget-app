@@ -34,14 +34,23 @@ export default $config({
       },
     });
 
-    // Provision Next.js and securely bind the DynamoDB resource
-    new sst.aws.Nextjs("Web", {
-      link: [table],
+    // Provision SES for email functionality
+    const emailIdentity = new sst.aws.Email("EmailIdentity", {
+      sender: "amanbrarpro@gmail.com", // Replace with your verified domain
+    });
+
+    // Add SES permissions to the Next.js app
+    const web = new sst.aws.Nextjs("Web", {
+      link: [table, emailIdentity],
       environment: {
         AUTH_SECRET: "supersecretkey", // In production, use a secure secrets manager
       },
       // Future implementation: Custom domain routing via Cloudflare DNS
       // domain: isProduction ? "amanbrar.pro" : undefined,
     });
+
+    return {
+      web,
+    };
   },
 });

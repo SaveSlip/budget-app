@@ -1,9 +1,22 @@
-import { User, LogOut, Wallet } from "lucide-react";
+import { User, Wallet } from "lucide-react";
 import { ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { LogoutButton } from "@/components/LogoutButton";
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const session = await auth();
+
+  if (!session) {
+    redirect("/signin");
+  }
+
   return (
     <div className="flex min-h-screen flex-col relative">
       {/* Semi-transparent blur header */}
@@ -25,17 +38,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* RIGHT SIDE: Action Buttons */}
           <div className="flex items-center gap-3">
             {/* The Eject Seat (Log Out) */}
-            {/* Pointing to "/signin" */}
-            <Link href="/signin">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                <LogOut className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Log Out</span>
-              </Button>
-            </Link>
+            <LogoutButton />
 
             {/* The BIGGER Profile Settings Link */}
             <Link href="/dashboard/settings/profile">

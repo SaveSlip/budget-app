@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Lock, Mail, Loader2, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 import { signinSchema, SigninInput } from "@/lib/validations/auth";
 
@@ -23,7 +23,14 @@ import { FadeIn } from "@/components/FadeIn";
 
 export default function SigninPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [serverError, setServerError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.push("/dashboard");
+    }
+  }, [status, router]);
 
   const {
     register,
@@ -48,8 +55,20 @@ export default function SigninPage() {
     }
 
     // Redirect to dashboard
-    router.push("/");
+    router.push("/dashboard");
   };
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (status === "authenticated") {
+    return null; // Will redirect via useEffect
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
@@ -145,6 +164,11 @@ export default function SigninPage() {
               </form>
             </CardContent>
             <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground pb-6">
+              <p>
+                <Link href="/forgot-password" className="text-primary hover:underline">
+                  Forgot your password?
+                </Link>
+              </p>
               <p>
                 Don&apos;t have an account?{" "}
                 <Link href="/signup" className="text-primary hover:underline">

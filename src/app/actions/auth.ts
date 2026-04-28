@@ -3,6 +3,8 @@
 import bcrypt from "bcryptjs";
 import { signupSchema, SignupInput } from "@/lib/validations/auth";
 import { createUserRecord } from "@/lib/db";
+import { signOut } from "@/auth";
+import { redirect } from "next/navigation";
 
 export async function registerUser(data: SignupInput) {
   try {
@@ -19,4 +21,9 @@ export async function registerUser(data: SignupInput) {
     console.error("Failed to register user:", error);
     return { error: "Internal Server Error" };
   }
+}
+
+export async function logout() {
+  await signOut();
+  redirect("/signin");
 }
