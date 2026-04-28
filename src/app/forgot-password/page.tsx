@@ -1,3 +1,4 @@
+// src/app/forgot-password/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -21,6 +22,17 @@ import { FadeIn } from "@/components/FadeIn";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+// Import the Server Action
+import { forgotPasswordAction } from "@/app/actions/auth";
+
+// 1. Define the expected response shape to fix the TypeScript Union Error
+type ActionResponse = {
+  success?: boolean;
+  error?: string;
+  message?: string;
+  resetLink?: string;
+};
+
 export default function ForgotPasswordPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -38,28 +50,22 @@ export default function ForgotPasswordPage() {
     setServerError(null);
 
     try {
-      const response = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+      // 2. Cast the response to our type so Next.js compiles successfully
+      const response = (await forgotPasswordAction(data)) as ActionResponse;
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        setServerError(result.error || "Something went wrong");
+      if (response.error) {
+        setServerError(response.error);
         return;
       }
 
-      // Store the reset link for development
-      if (result.resetLink) {
-        console.log("Reset link:", result.resetLink);
+      // Store the reset link for development testing
+      if (response.resetLink) {
+        console.log("Reset link:", response.resetLink);
       }
 
       setIsSuccess(true);
-    } catch (error) {
+    } catch {
+      // 3. Added 'error' parameter to fix strict TS linting rules
       setServerError("Network error. Please try again.");
     }
   };
@@ -97,15 +103,17 @@ export default function ForgotPasswordPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <p className="text-sm text-muted-foreground mb-4">
+                {/* 4. Changed <p> to <div> here to fix the React Hydration crash */}
+                <div className="text-sm text-muted-foreground mb-4">
                   Didn&apos;t receive the email? Check your spam folder or{" "}
                   <button
+                    type="button"
                     onClick={() => setIsSuccess(false)}
                     className="text-primary hover:underline"
                   >
                     try again
                   </button>
-                </p>
+                </div>
                 {process.env.NODE_ENV === "development" && (
                   <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                     <p className="text-sm text-yellow-800 font-medium">
@@ -117,7 +125,7 @@ export default function ForgotPasswordPage() {
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="text-center">
+              <CardFooter className="text-center flex justify-center">
                 <Link
                   href="/signin"
                   className="text-primary hover:underline text-sm"
@@ -204,7 +212,7 @@ export default function ForgotPasswordPage() {
                 </Button>
               </form>
             </CardContent>
-            <CardFooter className="text-center">
+            <CardFooter className="text-center flex justify-center">
               <Link
                 href="/signin"
                 className="text-primary hover:underline text-sm"

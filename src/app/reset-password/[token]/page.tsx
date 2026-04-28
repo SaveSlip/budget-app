@@ -1,3 +1,4 @@
+// src/app/reset-password/[token]/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -22,6 +23,18 @@ import { FadeIn } from "@/components/FadeIn";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+// Import the Server Actions
+import {
+  validateResetTokenAction,
+  resetPasswordAction,
+} from "@/app/actions/auth";
+
+// Define the expected response shape to satisfy TypeScript
+type ActionResponse = {
+  success?: boolean;
+  error?: string;
+};
+
 export default function ResetPasswordPage() {
   const router = useRouter();
   const params = useParams();
@@ -41,16 +54,19 @@ export default function ResetPasswordPage() {
   });
 
   useEffect(() => {
-    // Validate token on page load
+    // Validate token on page load using Server Action
     const validateToken = async () => {
       try {
-        const response = await fetch(`/api/auth/validate-reset-token/${token}`);
-        if (response.ok) {
+        const response = (await validateResetTokenAction(
+          token,
+        )) as ActionResponse;
+
+        if (response.success) {
           setIsTokenValid(true);
         } else {
-          setServerError("Invalid or expired reset link");
+          setServerError(response.error || "Invalid or expired reset link");
         }
-      } catch (error) {
+      } catch {
         setServerError("Failed to validate reset link");
       } finally {
         setIsValidating(false);
@@ -66,21 +82,14 @@ export default function ResetPasswordPage() {
     setServerError(null);
 
     try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token,
-          password: data.password,
-        }),
-      });
+      // Execute Server Action instead of API fetch
+      const response = (await resetPasswordAction(
+        token,
+        data,
+      )) as ActionResponse;
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        setServerError(result.error || "Something went wrong");
+      if (response.error) {
+        setServerError(response.error);
         return;
       }
 
@@ -90,7 +99,7 @@ export default function ResetPasswordPage() {
       setTimeout(() => {
         router.push("/signin");
       }, 3000);
-    } catch (error) {
+    } catch {
       setServerError("Network error. Please try again.");
     }
   };
@@ -98,7 +107,7 @@ export default function ResetPasswordPage() {
   if (isValidating) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -123,7 +132,7 @@ export default function ResetPasswordPage() {
             <Card className="border-border bg-card shadow-lg">
               <CardHeader className="space-y-1 text-center">
                 <div className="flex justify-center mb-4">
-                  <AlertCircle className="h-12 w-12 text-red-500" />
+                  <AlertCircle className="h-12 w-12 text-destructive" />
                 </div>
                 <CardTitle className="text-2xl text-foreground">
                   Invalid Reset Link
@@ -134,10 +143,12 @@ export default function ResetPasswordPage() {
               </CardHeader>
               <CardContent className="text-center">
                 {serverError && (
-                  <p className="text-sm text-red-500 mb-4">{serverError}</p>
+                  <p className="text-sm text-destructive font-medium mb-4">
+                    {serverError}
+                  </p>
                 )}
               </CardContent>
-              <CardFooter className="text-center">
+              <CardFooter className="text-center flex justify-center">
                 <Link
                   href="/forgot-password"
                   className="text-primary hover:underline text-sm"
@@ -187,7 +198,7 @@ export default function ResetPasswordPage() {
                   Redirecting to sign in page...
                 </p>
               </CardContent>
-              <CardFooter className="text-center">
+              <CardFooter className="text-center flex justify-center">
                 <Link
                   href="/signin"
                   className="text-primary hover:underline text-sm"
@@ -295,7 +306,7 @@ export default function ResetPasswordPage() {
                 </Button>
               </form>
             </CardContent>
-            <CardFooter className="text-center">
+            <CardFooter className="text-center flex justify-center">
               <Link
                 href="/signin"
                 className="text-primary hover:underline text-sm"
