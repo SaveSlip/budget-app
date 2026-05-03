@@ -26,7 +26,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         try {
           const { Item } = await docClient.send(
             new GetCommand({
-              TableName: Resource.UsersTable.name,
+              TableName: Resource.BudgifyTable.name,
               Key: {
                 pk: `USER#${credentials.email}`,
                 sk: `PROFILE#${credentials.email}`,
@@ -45,7 +45,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           if (passwordsMatch) {
             return {
-              id: Item.pk,
+              id: Item.id,
               email: Item.email,
             };
           }
@@ -58,7 +58,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  callbacks: {
+    // 1. When the token is created, attach the user ID to it
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    // 2. When the session is checked, pass the ID from the token to the session
+    async session({ session, token }) {
+      if (token?.id && session.user) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    },
+  },
   pages: {
-    signIn: "/",
+    signIn: "/signin",
   },
 });

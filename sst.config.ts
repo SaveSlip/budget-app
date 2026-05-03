@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/triple-slash-reference
+// sst.config.ts
 /// <reference path="./.sst/platform/config.d.ts" />
 
 export default $config({
@@ -9,17 +9,14 @@ export default $config({
       home: "aws",
       providers: {
         aws: {
-          profile: "amanbrar-dev",
+          profile: "amanbrar-dev", // Required per your workflow standards
         },
       },
     };
   },
   async run() {
-    // Stage evaluation for strict cost control
-    const isProduction = $app.stage === "production";
-
-    // Provision the Serverless DynamoDB Table
-    const table = new sst.aws.Dynamo("UsersTable", {
+    // Enterprise Standard: Single-Table Design
+    const table = new sst.aws.Dynamo("BudgifyTable", {
       fields: {
         pk: "string",
         sk: "string",
@@ -27,30 +24,35 @@ export default $config({
       primaryIndex: { hashKey: "pk", rangeKey: "sk" },
       transform: {
         table: {
-          pointInTimeRecovery: {
-            enabled: isProduction, // Enable PII only in production for cost efficiency
-          },
+          pointInTimeRecovery: { enabled: $app.stage === "production" }, // Cost control mandate
         },
       },
     });
 
-    // Provision SES for email functionality
-    const emailIdentity = new sst.aws.Email("EmailIdentity", {
-      sender: "amanbrarpro@gmail.com", // Replace with your verified domain
+    // 1. Define the email resource (Added)
+    const email = new sst.aws.Email("EmailIdentity", {
+      sender: "noreply@amanbrar.pro",
     });
 
-    // Add SES permissions to the Next.js app
-    const web = new sst.aws.Nextjs("Web", {
-      link: [table, emailIdentity],
-      environment: {
-        AUTH_SECRET: "supersecretkey", // In production, use a secure secrets manager
+    // 2. Define the Next.js site and link BOTH resources (Added)
+    new sst.aws.Nextjs("BudgifyWeb", {
+      link: [table, email],
+      // Keep any other Next.js configuration you might already have in here
+    });
+
+    const web = new sst.aws.Nextjs("BudgifyWeb", {
+      link: [table], // This binds Resource.BudgifyTable
+      domain: {
+        name: "amanbrar.pro",
+        dns: sst.cloudflare.dns(),
       },
-      // Future implementation: Custom domain routing via Cloudflare DNS
-      // domain: isProduction ? "amanbrar.pro" : undefined,
+      environment: {
+        AUTH_SECRET: "supersecretkey", // In production, use AWS Secrets Manager or Parameter Store
+      },
     });
 
     return {
-      web,
+      url: web.url,
     };
   },
 });

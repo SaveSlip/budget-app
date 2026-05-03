@@ -1,0 +1,35 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "awsProfile",
+      "type": "promptString",
+      "description": "AWS profile to use",
+      "default": "amanbrar-dev"
+    },
+    {
+      "id": "awsRegion",
+      "type": "promptString",
+      "description": "AWS region to use",
+      "default": "us-west-2"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "dev",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "AWS_PROFILE=\"${input:awsProfile}\" AWS_REGION=\"${input:awsRegion}\"; (aws sts get-caller-identity --profile \"$AWS_PROFILE\" --output text >/dev/null 2>&1 || aws sso login --profile \"$AWS_PROFILE\") && AWS_PROFILE=\"$AWS_PROFILE\" AWS_REGION=\"${input:awsRegion}\" pnpm sst dev"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      }
+    }
+  ]
+}

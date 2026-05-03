@@ -5,11 +5,10 @@
     "esbenp.prettier-vscode",
     "GitHub.vscode-github-actions",
     "GitHub.vscode-pull-request-github",
-    "google.geminicodeassist",
-    "linear.linear-open-issue",
     "ms-playwright.playwright",
     "usernamehw.errorlens",
     "yoavbls.pretty-ts-errors",
-    "streetsidesoftware.code-spell-checker-cspell-bundled-dictionaries"
+    "streetsidesoftware.code-spell-checker-cspell-bundled-dictionaries",
+    "miguelsolorio.symbols"
   ]
 }

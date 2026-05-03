@@ -1,191 +1,89 @@
-import Link from "next/link";
-import { getCategoryBreakdown } from "@/app/lib/mockData"; // Using your updated path!
-import { MonthlyChart } from "@/components/MonthlyChart";
+// src/app/dashboard/page.tsx
+import { getMonthlyData, getCategories } from "@/lib/data/budget";
+import { Suspense } from "react";
 import { SummaryCard } from "@/components/SummaryCard";
+import { MonthlyChart } from "@/components/MonthlyChart";
+import TransactionForm from "@/components/TransactionForm";
+import { RecentTransactions } from "@/components/RecentTransactions";
 import { GlassCard } from "@/components/GlassCard";
-import {
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { uploadBankStatement } from "./actions";
 import { FadeIn } from "@/components/FadeIn";
-import { UploadCloud, Settings } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const mockSummary = {
-  totalIncome: 5240.0,
-  totalExpense: 3150.75,
-  netBalance: 2089.25,
-};
+export default async function DashboardPage() {
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-export default function DashboardPage() {
+  // Fetch live data from the Data Access Layer (DAL) concurrently for performance
+  const [rawData, categories] = await Promise.all([
+    getMonthlyData(currentMonth),
+    getCategories(),
+  ]);
+
+  // Transform DynamoDB items for UI consumption
+  const transactions = rawData.filter((item) => item.type === "TRANSACTION");
+  const totalSpent = transactions.reduce(
+    (sum, tx) => sum + (tx.amount || 0),
+    0,
+  );
+  const dailyAverage = transactions.length > 0 ? totalSpent / now.getDate() : 0;
+
   return (
-    <div className="mx-auto max-w-6xl grid gap-6 md:grid-cols-12">
-      {/* LEFT COLUMN */}
-      <div className="md:col-span-8 flex flex-col gap-6">
-        {/* 1. TOP SUMMARY CARDS */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <FadeIn delay={0.1}>
-            <SummaryCard
-              title="Total Income"
-              description="Total Income"
-              value={`$${mockSummary.totalIncome.toFixed(2)}`}
-              type="income"
-            />
-          </FadeIn>
+    <FadeIn>
+      <div className="space-y-8">
+        <header>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Financial Intelligence
+          </h1>
+          <p className="text-muted-foreground italic">
+            Institutional-grade oversight for {currentMonth}
+          </p>
+        </header>
 
-          <FadeIn delay={0.2}>
-            <SummaryCard
-              title="Total Expenses"
-              description="Total Expenses"
-              value={`$${mockSummary.totalExpense.toFixed(2)}`}
-              type="expense"
-            />
-          </FadeIn>
-
-          <FadeIn delay={0.3}>
-            <SummaryCard
-              title="Net Balance"
-              description="Net Balance"
-              value={`$${mockSummary.netBalance.toFixed(2)}`}
-              type="balance"
-            />
-          </FadeIn>
+        {/* High-Density Metric Grid */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <SummaryCard
+            title="Total Monthly Spending"
+            value={totalSpent}
+            type="currency"
+            description="Verified outflows"
+          />
+          <SummaryCard
+            title="Daily Burn Rate"
+            value={dailyAverage}
+            type="currency"
+            description="Average daily velocity"
+          />
+          <SummaryCard
+            title="Total Operations"
+            value={transactions.length}
+            type="number"
+            description="Transaction count"
+          />
         </div>
 
-        {/* 2. CATEGORY BREAKDOWN (Bumped up!) */}
-        <FadeIn delay={0.4}>
-          <GlassCard>
-            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-foreground/10 mb-4">
-              <div className="space-y-1">
-                <CardTitle className="text-foreground">
-                  Category Breakdown
-                </CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  Where your money is actually going this month.
-                </CardDescription>
-              </div>
-              <Link href="/dashboard/settings/categories">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-foreground/10 bg-background/20 text-muted-foreground hover:text-primary hover:border-primary/30 transition-all"
-                >
-                  <Settings className="w-4 h-4 mr-2" /> Manage
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader className="border-foreground/10">
-                  <TableRow className="hover:bg-transparent border-foreground/10 text-muted-foreground">
-                    <TableHead>Category</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {getCategoryBreakdown().map((item) => (
-                    <TableRow
-                      key={item.id}
-                      className="relative border-foreground/5 hover:bg-primary/10 transition-colors group"
-                    >
-                      <TableCell className="font-medium text-foreground group-hover:text-primary">
-                        <Link
-                          href={`/dashboard/category/${item.id}`}
-                          className="absolute inset-0"
-                        />
-                        {item.name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={
-                            item.type === "income"
-                              ? "bg-primary/20 text-primary border-none hover:bg-primary/30"
-                              : "bg-orange-500/20 text-orange-600 border-none hover:bg-orange-500/30"
-                          }
-                        >
-                          {item.type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        ${item.amount.toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </GlassCard>
-        </FadeIn>
+        {/* Primary Dashboard Content Grid */}
+        <div className="grid gap-6 md:grid-cols-12">
+          {/* Data Visualizations (Left Column) */}
+          <div className="md:col-span-8 space-y-6">
+            <GlassCard className="p-6">
+              <h3 className="mb-4 font-semibold">Spending Velocity</h3>
+              <Suspense fallback={<Skeleton className="h-[350px] w-full" />}>
+                <MonthlyChart data={transactions} />
+              </Suspense>
+            </GlassCard>
 
-        {/* 3. MONTHLY CHART (Moved to the bottom) */}
-        <FadeIn delay={0.5}>
-          <MonthlyChart />
-        </FadeIn>
+            <GlassCard className="p-6 overflow-hidden">
+              <h3 className="mb-4 font-semibold">Recent Operations</h3>
+              <RecentTransactions transactions={transactions} />
+            </GlassCard>
+          </div>
+
+          {/* Action Center (Right Column) */}
+          <div className="md:col-span-4">
+            <TransactionForm categories={categories} />
+          </div>
+        </div>
       </div>
-
-      {/* RIGHT COLUMN */}
-      <div className="md:col-span-4">
-        <FadeIn delay={0.6}>
-          <GlassCard className="border-t-primary/50 border-t-2 sticky top-24">
-            <CardHeader>
-              <CardTitle className="text-foreground">
-                Upload Statement
-              </CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Drag and drop your CSV or PDF here.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form
-                action={uploadBankStatement}
-                className="flex flex-col gap-4"
-              >
-                <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-border rounded-xl cursor-pointer bg-background/20 hover:bg-background/40 hover:border-primary/50 transition-all group">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground group-hover:text-primary transition-colors" />
-                    <p className="mb-2 text-sm text-muted-foreground">
-                      <span className="font-semibold text-foreground">
-                        Click to upload
-                      </span>{" "}
-                      or drag and drop
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      CSV or PDF (MAX. 10MB)
-                    </p>
-                  </div>
-                  <input
-                    type="file"
-                    name="statement"
-                    accept=".csv, .pdf"
-                    required
-                    className="hidden"
-                  />
-                </label>
-
-                <Button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-[0_0_15px_hsl(var(--primary)/0.4)]"
-                >
-                  Upload & Parse
-                </Button>
-              </form>
-            </CardContent>
-          </GlassCard>
-        </FadeIn>
-      </div>
-    </div>
+    </FadeIn>
   );
 }

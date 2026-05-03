@@ -42,7 +42,19 @@ export async function registerUser(data: SignupInput) {
     }
 
     const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
-    await createUserRecord(parsed.data.email, hashedPassword);
+    const userId = crypto.randomUUID();
+
+    // Capture the response from our updated database function
+    const dbResult = await createUserRecord({
+      id: userId,
+      email: parsed.data.email,
+      hashedPassword: hashedPassword,
+    });
+
+    // If the database rejected the creation (e.g., duplicate email), return that error to the form
+    if (dbResult.error) {
+      return { error: dbResult.error };
+    }
 
     return { success: true };
   } catch (error) {
@@ -70,7 +82,8 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
     // 1. Check if user exists (We don't return an error if they don't, for security)
     const { Item: user } = await docClient.send(
       new GetCommand({
-        TableName: Resource.UsersTable.name, // <-- FIXED THIS ONE
+        // Change this from Resource.UsersTable.name to your primary table
+        TableName: Resource.BudgifyTable.name,
         Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
       }),
     );
@@ -90,7 +103,7 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
     // 3. Store token in DynamoDB
     await docClient.send(
       new PutCommand({
-        TableName: Resource.UsersTable.name,
+        TableName: Resource.BudgifyTable.name,
         Item: {
           pk: `RESET#${resetToken}`,
           sk: `RESET#${resetToken}`,
@@ -159,7 +172,7 @@ export async function validateResetTokenAction(token: string) {
     for (const tokenToTry of tokensToTry) {
       const { Item: resetToken } = await docClient.send(
         new GetCommand({
-          TableName: Resource.UsersTable.name, // <-- FIXED SYNTAX ERROR HERE
+          TableName: Resource.BudgifyTable.name, // <-- FIXED SYNTAX ERROR HERE
           Key: { pk: `RESET#${tokenToTry}`, sk: `RESET#${tokenToTry}` },
         }),
       );
@@ -189,7 +202,7 @@ export async function resetPasswordAction(
 
     const { Item: resetToken } = await docClient.send(
       new GetCommand({
-        TableName: Resource.UsersTable.name,
+        TableName: Resource.BudgifyTable.name,
         Key: { pk: `RESET#${decodedToken}`, sk: `RESET#${decodedToken}` },
       }),
     );
@@ -203,7 +216,7 @@ export async function resetPasswordAction(
 
     await docClient.send(
       new UpdateCommand({
-        TableName: Resource.UsersTable.name,
+        TableName: Resource.BudgifyTable.name,
         Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
         UpdateExpression:
           "SET passwordHash = :password, updatedAt = :updatedAt",
@@ -216,7 +229,7 @@ export async function resetPasswordAction(
 
     await docClient.send(
       new DeleteCommand({
-        TableName: Resource.UsersTable.name,
+        TableName: Resource.BudgifyTable.name,
         Key: { pk: `RESET#${decodedToken}`, sk: `RESET#${decodedToken}` },
       }),
     );

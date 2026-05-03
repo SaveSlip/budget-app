@@ -6,22 +6,21 @@
 
 declare module "sst" {
   export interface Resource {
+    "BudgifyTable": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "BudgifyWeb": {
+      "type": "sst.aws.Nextjs"
+      "url": string
+    }
     "EmailIdentity": {
       "configSet": string
       "sender": string
       "type": "sst.aws.Email"
     }
-    "UsersTable": {
-      "name": string
-      "type": "sst.aws.Dynamo"
-    }
-    "Web": {
-      "type": "sst.aws.Nextjs"
-      "url": string
-    }
   }
 }
-/// <reference path="sst-env.d.ts" />
 
 import "sst"
 export {}
