@@ -1,5 +1,5 @@
 // src/lib/data/budget.ts
-import { db, TABLE_NAME } from "@/lib/db";
+import { docClient, TABLE_NAME } from "@/lib/db";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { auth } from "@/auth";
 
@@ -21,14 +21,13 @@ export async function getMonthlyData(yearMonth: string) {
   const userId = session.user.id;
 
   try {
-    const result = await db.send(
+    const result = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAME,
-        // Query pattern: Find all items for this user starting with the month prefix
         KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
         ExpressionAttributeValues: {
           ":pk": `USER#${userId}`,
-          ":sk": `BUDGET#${yearMonth}`,
+          ":sk": `TX#${yearMonth}`,
         },
       }),
     );
@@ -54,14 +53,13 @@ export async function getCategories() {
   }
 
   try {
-    const result = await db.send(
+    const result = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAME,
-        // Query pattern: Find all items for this user where the Sort Key begins with "CAT#"
         KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
         ExpressionAttributeValues: {
           ":pk": `USER#${session.user.id}`,
-          ":sk": "CAT#",
+          ":sk": "CATEGORY#",
         },
       }),
     );

@@ -1,142 +1,108 @@
 "use client";
 
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { CategorySchema, type CategoryInput } from "@/lib/validations/budget";
-import { addCategory } from "@/app/dashboard/actions";
+import { useState } from "react";
+import { z } from "zod";
+import { createCategory } from "@/app/actions/categories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { GlassCard } from "@/components/GlassCard";
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
+const categoryFormSchema = z.object({
+  name: z.string().min(1, "Category name is required").max(50),
+  limit: z.coerce.number().nonnegative("Budget limit must be 0 or greater"),
+});
+
+type FieldErrors = Partial<Record<keyof z.infer<typeof categoryFormSchema>, string>>;
+
 export function CategoryForm() {
-  const [isPending, setIsPending] = useState(false);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [name, setName] = useState("");
+  const [limit, setLimit] = useState("0");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<CategoryInput>({
-    resolver: zodResolver(CategorySchema),
-    defaultValues: {
-      name: "",
-      monthlyAllocated: 0,
-      type: "fixed",
-    },
-  });
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setFieldErrors({});
+    setServerError(null);
 
-  async function onSubmit(data: CategoryInput) {
-    setIsPending(true);
-    setMessage(null);
-
-    const result = await addCategory(data);
-
-    if (result.success) {
-      setMessage({
-        type: "success",
-        text: "Category established successfully.",
-      });
-      form.reset();
-    } else {
-      setMessage({
-        type: "error",
-        text: result.error || "An unexpected error occurred.",
-      });
+    const parsed = categoryFormSchema.safeParse({ name, limit });
+    if (!parsed.success) {
+      const errs: FieldErrors = {};
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0] as keyof FieldErrors;
+        if (!errs[key]) errs[key] = issue.message;
+      }
+      setFieldErrors(errs);
+      return;
     }
-    setIsPending(false);
+
+    setIsSubmitting(true);
+    const result = await createCategory({ name: parsed.data.name, limit: parsed.data.limit });
+    setIsSubmitting(false);
+
+    if (result.error) {
+      setServerError(result.error);
+    } else {
+      setName("");
+      setLimit("0");
+    }
   }
 
   return (
-    <GlassCard className="p-6">
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <header>
-          <h3 className="text-lg font-semibold">Define Category</h3>
-          <p className="text-sm text-muted-foreground">
-            Establish new allocation parameters.
-          </p>
-        </header>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Category Name</label>
-          <Input
-            {...form.register("name")}
-            placeholder="e.g., AWS Infrastructure"
-            className="bg-zinc-950/50"
-          />
-          {form.formState.errors.name && (
-            <p className="text-xs text-red-500">
-              {form.formState.errors.name.message}
-            </p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Monthly Allocation</label>
-            <Input
-              {...form.register("monthlyAllocated", { valueAsNumber: true })}
-              type="number"
-              step="0.01"
-              className="bg-zinc-950/50"
-            />
-            {form.formState.errors.monthlyAllocated && (
-              <p className="text-xs text-red-500">
-                {form.formState.errors.monthlyAllocated.message}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Expense Type</label>
-            <Controller
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <SelectTrigger className="bg-zinc-950/50">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fixed">Fixed (Predictable)</SelectItem>
-                    <SelectItem value="variable">
-                      Variable (Fluctuating)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {form.formState.errors.type && (
-              <p className="text-xs text-red-500">
-                {form.formState.errors.type.message}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <Button type="submit" className="w-full" disabled={isPending}>
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save Category
-        </Button>
-
-        {message && (
-          <p
-            className={`text-sm text-center ${message.type === "success" ? "text-emerald-500" : "text-red-500"}`}
-          >
-            {message.text}
-          </p>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Category Name
+        </label>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g., Groceries"
+          disabled={isSubmitting}
+          className="mt-1.5"
+        />
+        {fieldErrors.name && (
+          <p className="mt-1 text-xs text-red-500">{fieldErrors.name}</p>
         )}
-      </form>
-    </GlassCard>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Monthly Limit ($)
+        </label>
+        <Input
+          type="number"
+          step="0.01"
+          min="0"
+          value={limit}
+          onChange={(e) => setLimit(e.target.value)}
+          placeholder="0.00"
+          disabled={isSubmitting}
+          className="mt-1.5"
+        />
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Set to 0 if you do not want to track a budget limit.
+        </p>
+        {fieldErrors.limit && (
+          <p className="mt-1 text-xs text-red-500">{fieldErrors.limit}</p>
+        )}
+      </div>
+
+      {serverError && (
+        <p className="text-sm text-red-500">{serverError}</p>
+      )}
+
+      <Button type="submit" disabled={isSubmitting} className="w-full">
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          "Save Category"
+        )}
+      </Button>
+    </form>
   );
 }

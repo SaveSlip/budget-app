@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail, Loader2, Wallet, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import {
@@ -40,18 +39,26 @@ export default function ForgotPasswordPage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
     getValues,
   } = useForm<ForgotPasswordInput>({
-    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: { email: "" },
   });
 
   const onSubmit = async (data: ForgotPasswordInput) => {
     setServerError(null);
 
+    const parsed = forgotPasswordSchema.safeParse(data);
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        setError("email", { message: issue.message });
+      }
+      return;
+    }
+
     try {
-      // 2. Cast the response to our type so Next.js compiles successfully
-      const response = (await forgotPasswordAction(data)) as ActionResponse;
+      const response = (await forgotPasswordAction(parsed.data)) as ActionResponse;
 
       if (response.error) {
         setServerError(response.error);

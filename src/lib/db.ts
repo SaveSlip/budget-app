@@ -1,18 +1,17 @@
 // src/lib/db.ts
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { Resource } from "sst";
-import { PutCommand } from "@aws-sdk/lib-dynamodb";
 
-// Initialize the base client
+// Initialize the base raw client
 const client = new DynamoDBClient({});
 
 /**
- * Enhanced Document Client
+ * Enhanced Document Client (docClient)
  * - removeUndefinedValues: Essential for serverless functions to prevent DynamoDB validation errors.
  * - convertClassInstanceToMap: Ensures complex objects are correctly persisted.
  */
-export const db = DynamoDBDocumentClient.from(client, {
+export const docClient = DynamoDBDocumentClient.from(client, {
   marshallOptions: {
     removeUndefinedValues: true,
     convertClassInstanceToMap: true,
@@ -25,6 +24,7 @@ export const db = DynamoDBDocumentClient.from(client, {
  * Ensure the table name in sst.config.ts matches 'BudgifyTable'.
  */
 export const TABLE_NAME = Resource.BudgifyTable.name;
+
 export interface UserRecordParams {
   id: string;
   email: string;
@@ -39,9 +39,10 @@ export async function createUserRecord(params: UserRecordParams) {
   const { id, email, name, hashedPassword } = params;
 
   try {
-    await client.send(
+    // FIXED: Now correctly routing the PutCommand through the Document Client
+    await docClient.send(
       new PutCommand({
-        TableName: Resource.BudgifyTable.name,
+        TableName: TABLE_NAME,
         Item: {
           pk: `USER#${email}`,
           sk: `PROFILE#${email}`,
@@ -52,24 +53,21 @@ export async function createUserRecord(params: UserRecordParams) {
           passwordHash: hashedPassword || null,
           createdAt: new Date().toISOString(),
         },
-        // THE FIX: Prevent overwriting by strictly checking if the PK exists
+        // Prevent overwriting by strictly checking if the PK exists
         ConditionExpression: "attribute_not_exists(pk)",
       }),
     );
     return { success: true };
-  } catch (error: any) {
-    // Broaden the check to catch AWS SDK v3 conditional errors more reliably
+  } catch (error: unknown) {
     if (
-      error.name === "ConditionalCheckFailedException" ||
-      error.$metadata?.httpStatusCode === 400 ||
-      error.message?.includes("conditional")
+      error instanceof Error &&
+      error.name === "ConditionalCheckFailedException"
     ) {
       return {
         error: "An account with this email already exists. Please sign in.",
       };
     }
 
-    // The generic fallback using user-friendly language
     console.error("[DB] Failed to create user record:", error);
     return {
       error:

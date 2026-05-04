@@ -1,61 +1,50 @@
-import { User, Wallet } from "lucide-react";
-import { ReactNode } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/LogoutButton";
+import UserNav from "@/components/UserNav";
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
-  const session = await auth();
-
-  if (!session) {
-    redirect("/signin");
-  }
-
   return (
-    <div className="flex min-h-screen flex-col relative">
-      {/* Semi-transparent blur header */}
-      <header className="sticky top-0 z-50 border-b border-foreground/10 bg-background/40 backdrop-blur-md p-4">
-        <div className="mx-auto max-w-6xl flex items-center justify-between gap-3">
-          {/* LEFT SIDE: Logo & Brand */}
-          <Link
-            href="/"
-            className="flex items-center gap-3 transition-opacity hover:opacity-80"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 shadow-[0_0_15px_hsl(var(--primary)/0.3)] border border-primary/30">
-              <Wallet className="h-6 w-6 text-primary" />
+    <div className="min-h-screen bg-[#FDFBF7] dark:bg-neutral-950">
+      {/* Top Navigation Bar - Enlarged and Aligned */}
+      <nav className="border-b border-gray-200 dark:border-gray-800 bg-[#FDFBF7] dark:bg-neutral-950">
+        {/* We use the same 80% container logic here so the logo aligns exactly with the content below */}
+        <div className="mx-auto w-[95%] md:w-[90%] lg:w-[80%] max-w-7xl py-5 flex items-center justify-between">
+          {/* Left Aligned Logo (Increased Size) */}
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-6 h-6"
+              >
+                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+              </svg>
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground hidden sm:block">
-              Budgify
-            </h1>
+            <span className="text-2xl font-bold tracking-tight">Budgify</span>
           </Link>
 
-          {/* RIGHT SIDE: Action Buttons */}
-          <div className="flex items-center gap-3">
-            {/* The Eject Seat (Log Out) */}
-            <LogoutButton />
-
-            {/* The BIGGER Profile Settings Link */}
-            <Link href="/dashboard/settings/profile">
-              {/* Bumped from h-10 w-10 to h-12 w-12, and icon from h-5 to h-6 */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-full h-12 w-12 transition-colors"
-              >
-                <User className="h-6 w-6" />
-              </Button>
-            </Link>
+          {/* Right Aligned Actions */}
+          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+            {/* Log Out button removed from here, it now lives inside the UserNav popout */}
+            <UserNav />
           </div>
         </div>
-      </header>
+      </nav>
 
-      <main className="flex-1 p-6 z-10">{children}</main>
+      {/* Main Content Wrapper - Forces all dashboard pages to inherit the aligned 80% width */}
+      <main className="mx-auto w-[95%] md:w-[90%] lg:w-[80%] max-w-7xl py-8">
+        {children}
+      </main>
     </div>
   );
 }

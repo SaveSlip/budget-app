@@ -2,17 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Lock, Mail, Loader2, Wallet } from "lucide-react";
+import { Lock, Mail, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
-import { signinSchema, SigninInput } from "@/lib/validations/auth";
+import { signinSchema, type SigninInput } from "@/lib/validations/auth";
+import ThemeToggle from "@/components/ThemeToggle";
 
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
   CardFooter,
@@ -23,8 +22,17 @@ import { FadeIn } from "@/components/FadeIn";
 
 export default function SigninPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [serverError, setServerError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<SigninInput>({
+    defaultValues: { email: "", password: "" },
+  });
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -32,94 +40,101 @@ export default function SigninPage() {
     }
   }, [status, router]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<SigninInput>({
-    resolver: zodResolver(signinSchema),
-  });
-
   const onSubmit = async (data: SigninInput) => {
     setServerError(null);
 
-    const signInResult = await signIn("credentials", {
-      email: data.email,
-      password: data.password,
+    const parsed = signinSchema.safeParse(data);
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[0] as keyof SigninInput;
+        setError(field, { message: issue.message });
+      }
+      return;
+    }
+
+    const result = await signIn("credentials", {
+      email: parsed.data.email,
+      password: parsed.data.password,
       redirect: false,
     });
 
-    if (signInResult?.error) {
+    if (result?.error) {
       setServerError("Invalid credentials. Please try again.");
       return;
     }
 
-    // Redirect to dashboard
     router.push("/dashboard");
   };
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF7] dark:bg-neutral-950">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
       </div>
     );
   }
 
-  if (status === "authenticated") {
-    return null; // Will redirect via useEffect
-  }
+  if (status === "authenticated") return null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-[#FDFBF7] dark:bg-neutral-950 relative overflow-hidden">
+      <div className="absolute top-6 right-6 z-50">
+        <ThemeToggle />
+      </div>
+
       <div className="w-full max-w-md px-4 z-10">
         <FadeIn delay={0.1}>
           <div className="flex flex-col items-center mb-8">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-4 border border-primary/20">
-              <Wallet className="h-10 w-10 text-primary" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-500 mb-4 border border-orange-200 dark:border-orange-500/30">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-10 w-10"
+              >
+                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+                <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+              </svg>
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
               Budgify
             </h1>
-            <p className="text-muted-foreground mt-2">
-              Enterprise Financial Intelligence
-            </p>
           </div>
 
-          <Card className="border-border bg-card shadow-lg">
-            <CardHeader className="space-y-1 text-center">
-              <CardTitle className="text-2xl text-foreground">
+          <Card className="border-gray-200 dark:border-gray-800 bg-white dark:bg-neutral-900 shadow-xl">
+            <CardHeader className="space-y-1 text-center pt-8">
+              <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Sign In
               </CardTitle>
-              <CardDescription className="text-muted-foreground">
-                Authenticate to access the dashboard.
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {serverError && (
-                  <div className="p-3 text-sm text-destructive-foreground bg-destructive/90 rounded-md text-center font-medium">
+                  <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md text-center font-medium">
                     {serverError}
                   </div>
                 )}
 
                 <div className="space-y-2">
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
                       {...register("email")}
                       type="email"
                       placeholder="user@enterprise.com"
-                      className={`pl-10 bg-input/50 border-border text-foreground focus:border-primary ${
-                        errors.email
-                          ? "border-destructive focus:border-destructive"
-                          : ""
+                      className={`pl-10 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:ring-orange-500 focus:border-orange-500 ${
+                        errors.email ? "border-red-500" : ""
                       }`}
                       disabled={isSubmitting}
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-xs text-destructive pl-1">
+                    <p className="text-xs text-red-500 pl-1">
                       {errors.email.message}
                     </p>
                   )}
@@ -127,21 +142,19 @@ export default function SigninPage() {
 
                 <div className="space-y-2">
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
                       {...register("password")}
                       type="password"
                       placeholder="••••••••"
-                      className={`pl-10 bg-input/50 border-border text-foreground focus:border-primary ${
-                        errors.password
-                          ? "border-destructive focus:border-destructive"
-                          : ""
+                      className={`pl-10 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:ring-orange-500 focus:border-orange-500 ${
+                        errors.password ? "border-red-500" : ""
                       }`}
                       disabled={isSubmitting}
                     />
                   </div>
                   {errors.password && (
-                    <p className="text-xs text-destructive pl-1">
+                    <p className="text-xs text-red-500 pl-1">
                       {errors.password.message}
                     </p>
                   )}
@@ -149,12 +162,12 @@ export default function SigninPage() {
 
                 <Button
                   type="submit"
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium transition-colors"
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-6 text-lg transition-all shadow-md"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                       Authenticating...
                     </>
                   ) : (
@@ -163,15 +176,21 @@ export default function SigninPage() {
                 </Button>
               </form>
             </CardContent>
-            <CardFooter className="flex flex-col space-y-2 text-center text-sm text-muted-foreground pb-6">
+            <CardFooter className="flex flex-col space-y-3 text-center text-sm text-gray-500 dark:text-gray-400 pb-8">
               <p>
-                <Link href="/forgot-password" className="text-primary hover:underline">
+                <Link
+                  href="/forgot-password"
+                  className="text-orange-600 hover:text-orange-700 font-medium hover:underline"
+                >
                   Forgot your password?
                 </Link>
               </p>
               <p>
                 Don&apos;t have an account?{" "}
-                <Link href="/signup" className="text-primary hover:underline">
+                <Link
+                  href="/signup"
+                  className="text-orange-600 hover:text-orange-700 font-bold hover:underline"
+                >
                   Sign up
                 </Link>
               </p>

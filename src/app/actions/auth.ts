@@ -2,7 +2,6 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import {
   signupSchema,
   SignupInput,
@@ -11,12 +10,10 @@ import {
   forgotPasswordSchema,
   ForgotPasswordInput,
 } from "@/lib/validations/auth";
-import { createUserRecord } from "@/lib/db";
+import { createUserRecord, docClient, TABLE_NAME } from "@/lib/db";
 import { signOut } from "@/auth";
 import { redirect } from "next/navigation";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
-  DynamoDBDocumentClient,
   GetCommand,
   UpdateCommand,
   DeleteCommand,
@@ -25,14 +22,7 @@ import {
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { Resource } from "sst";
 
-// Initialize AWS Clients
-const client = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(client);
 const sesClient = new SESClient({});
-
-// ==========================================
-// REGISTRATION & AUTH ACTIONS
-// ==========================================
 
 export async function registerUser(data: SignupInput) {
   try {
@@ -44,14 +34,12 @@ export async function registerUser(data: SignupInput) {
     const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
     const userId = crypto.randomUUID();
 
-    // Capture the response from our updated database function
     const dbResult = await createUserRecord({
       id: userId,
       email: parsed.data.email,
       hashedPassword: hashedPassword,
     });
 
-    // If the database rejected the creation (e.g., duplicate email), return that error to the form
     if (dbResult.error) {
       return { error: dbResult.error };
     }
@@ -68,10 +56,6 @@ export async function logout() {
   redirect("/signin");
 }
 
-// ==========================================
-// PASSWORD RESET ACTIONS
-// ==========================================
-
 export async function forgotPasswordAction(data: ForgotPasswordInput) {
   try {
     const parsed = forgotPasswordSchema.safeParse(data);
@@ -79,11 +63,9 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
 
     const email = parsed.data.email;
 
-    // 1. Check if user exists (We don't return an error if they don't, for security)
     const { Item: user } = await docClient.send(
       new GetCommand({
-        // Change this from Resource.UsersTable.name to your primary table
-        TableName: Resource.BudgifyTable.name,
+        TableName: TABLE_NAME,
         Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
       }),
     );
@@ -96,14 +78,12 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
       };
     }
 
-    // 2. Generate secure token
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const resetToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    // 3. Store token in DynamoDB
     await docClient.send(
       new PutCommand({
-        TableName: Resource.BudgifyTable.name,
+        TableName: TABLE_NAME,
         Item: {
           pk: `RESET#${resetToken}`,
           sk: `RESET#${resetToken}`,
@@ -114,7 +94,6 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
       }),
     );
 
-    // 4. Send Email via AWS SES
     const resetLink = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/reset-password/${resetToken}`;
 
     try {
@@ -132,10 +111,10 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
                   <p>Hello,</p>
                   <p>You requested a password reset for your Budgify account. Click the link below to reset your password:</p>
                   <p style="margin: 30px 0;">
-                    <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a>
+                    <a href="${resetLink}" style="background-color: #ea580c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a>
                   </p>
                   <p><strong>Important:</strong> This link will expire in 15 minutes for security reasons.</p>
-                  <p>If you didn't request this password reset, please ignore this email.</p>
+                  <p>If you did not request this password reset, please ignore this email.</p>
                 </div>
               `,
                 Charset: "UTF-8",
@@ -146,9 +125,8 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
       );
     } catch (emailError) {
       console.error("Failed to send email:", emailError);
-      // In development, we still want to succeed so we can test the link
       if (process.env.NODE_ENV !== "production") {
-        return { success: true, resetLink }; // Return link to console for local testing
+        return { success: true, resetLink };
       }
       return { error: "Failed to dispatch email." };
     }
@@ -165,14 +143,12 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
 
 export async function validateResetTokenAction(token: string) {
   try {
-    const tokensToTry = [token, decodeURIComponent(token)].filter(
-      (t, i, arr) => arr.indexOf(t) === i,
-    );
+    const tokensToTry = [...new Set([token, decodeURIComponent(token)])];
 
     for (const tokenToTry of tokensToTry) {
       const { Item: resetToken } = await docClient.send(
         new GetCommand({
-          TableName: Resource.BudgifyTable.name, // <-- FIXED SYNTAX ERROR HERE
+          TableName: TABLE_NAME,
           Key: { pk: `RESET#${tokenToTry}`, sk: `RESET#${tokenToTry}` },
         }),
       );
@@ -202,7 +178,7 @@ export async function resetPasswordAction(
 
     const { Item: resetToken } = await docClient.send(
       new GetCommand({
-        TableName: Resource.BudgifyTable.name,
+        TableName: TABLE_NAME,
         Key: { pk: `RESET#${decodedToken}`, sk: `RESET#${decodedToken}` },
       }),
     );
@@ -216,7 +192,7 @@ export async function resetPasswordAction(
 
     await docClient.send(
       new UpdateCommand({
-        TableName: Resource.BudgifyTable.name,
+        TableName: TABLE_NAME,
         Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
         UpdateExpression:
           "SET passwordHash = :password, updatedAt = :updatedAt",
@@ -229,7 +205,7 @@ export async function resetPasswordAction(
 
     await docClient.send(
       new DeleteCommand({
-        TableName: Resource.BudgifyTable.name,
+        TableName: TABLE_NAME,
         Key: { pk: `RESET#${decodedToken}`, sk: `RESET#${decodedToken}` },
       }),
     );

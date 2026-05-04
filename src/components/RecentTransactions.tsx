@@ -9,13 +9,15 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
-interface Transaction {
+export interface Transaction {
   pk: string;
   sk: string;
+  id?: string;
   amount: number;
   description: string;
   date: string;
-  categoryId: string;
+  category: string;
+  createdAt?: string;
 }
 
 interface RecentTransactionsProps {
@@ -24,20 +26,20 @@ interface RecentTransactionsProps {
 
 export function RecentTransactions({ transactions }: RecentTransactionsProps) {
   return (
-    <div className="rounded-md border border-zinc-800 bg-zinc-950/50">
+    <div className="rounded-md border border-gray-200 dark:border-gray-800">
       <Table>
-        <TableHeader className="bg-zinc-900/50">
-          <TableRow className="hover:bg-transparent border-zinc-800">
-            <TableHead className="w-[120px] text-xs font-bold uppercase tracking-wider">
+        <TableHeader className="bg-gray-50/50 dark:bg-gray-800/50">
+          <TableRow className="hover:bg-transparent border-gray-200 dark:border-gray-800">
+            <TableHead className="w-30 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Date
             </TableHead>
-            <TableHead className="text-xs font-bold uppercase tracking-wider">
+            <TableHead className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Description
             </TableHead>
-            <TableHead className="text-xs font-bold uppercase tracking-wider">
+            <TableHead className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Category
             </TableHead>
-            <TableHead className="text-right text-xs font-bold uppercase tracking-wider">
+            <TableHead className="text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               Amount
             </TableHead>
           </TableRow>
@@ -47,7 +49,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
             <TableRow>
               <TableCell
                 colSpan={4}
-                className="h-24 text-center text-sm text-muted-foreground"
+                className="h-24 text-center text-sm text-gray-500 dark:text-gray-400"
               >
                 No verified transactions found for this period.
               </TableCell>
@@ -56,23 +58,23 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
             transactions.map((tx) => (
               <TableRow
                 key={tx.sk}
-                className="border-zinc-800/50 hover:bg-zinc-900/30 transition-colors"
+                className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
               >
-                <TableCell className="text-xs text-muted-foreground">
+                <TableCell className="text-xs text-gray-500 dark:text-gray-400">
                   {format(new Date(tx.date), "MMM dd, yyyy")}
                 </TableCell>
-                <TableCell className="text-sm font-medium leading-none">
+                <TableCell className="text-sm font-medium leading-none text-gray-900 dark:text-gray-100">
                   {tx.description}
                 </TableCell>
                 <TableCell>
-                  <span className="inline-flex items-center rounded-full bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-300">
-                    {tx.categoryId}
+                  <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                    {tx.category}
                   </span>
                 </TableCell>
                 <TableCell
                   className={cn(
                     "text-right font-mono text-sm font-semibold tracking-tighter",
-                    "text-zinc-100",
+                    "text-gray-900 dark:text-gray-100",
                   )}
                 >
                   $

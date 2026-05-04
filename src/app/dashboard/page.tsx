@@ -4,59 +4,60 @@ import { Suspense } from "react";
 import { SummaryCard } from "@/components/SummaryCard";
 import { MonthlyChart } from "@/components/MonthlyChart";
 import TransactionForm from "@/components/TransactionForm";
-import { RecentTransactions } from "@/components/RecentTransactions";
+import { RecentTransactions, type Transaction } from "@/components/RecentTransactions";
 import { GlassCard } from "@/components/GlassCard";
 import { FadeIn } from "@/components/FadeIn";
 import { Skeleton } from "@/components/ui/skeleton";
+import CsvUploader from "@/components/CsvUploader";
+import type { Category } from "@/components/TransactionForm";
 
 export default async function DashboardPage() {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  // Fetch live data from the Data Access Layer (DAL) concurrently for performance
-  const [rawData, categories] = await Promise.all([
+  const [rawData, rawCategories] = await Promise.all([
     getMonthlyData(currentMonth),
     getCategories(),
   ]);
 
-  // Transform DynamoDB items for UI consumption
-  const transactions = rawData.filter((item) => item.type === "TRANSACTION");
-  const totalSpent = transactions.reduce(
-    (sum, tx) => sum + (tx.amount || 0),
-    0,
+  const transactions = rawData.filter(
+    (item): item is Transaction => item.type === "TRANSACTION",
   );
+  const categories: Category[] = rawCategories.map((c) => ({
+    id: c.id as string,
+    name: c.name as string,
+  }));
+
+  const totalSpent = transactions.reduce((sum, tx) => sum + (tx.amount || 0), 0);
   const dailyAverage = transactions.length > 0 ? totalSpent / now.getDate() : 0;
 
   return (
     <FadeIn>
       <div className="space-y-8">
-        <header>
+        <header className="mb-2">
           <h1 className="text-3xl font-bold tracking-tight">
             Financial Intelligence
           </h1>
-          <p className="text-muted-foreground italic">
-            Institutional-grade oversight for {currentMonth}
-          </p>
         </header>
 
         {/* High-Density Metric Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <SummaryCard
             title="Total Monthly Spending"
-            value={totalSpent}
-            type="currency"
+            value={totalSpent.toString()}
+            type="expense"
             description="Verified outflows"
           />
           <SummaryCard
             title="Daily Burn Rate"
-            value={dailyAverage}
-            type="currency"
+            value={dailyAverage.toFixed(2)}
+            type="expense"
             description="Average daily velocity"
           />
           <SummaryCard
             title="Total Operations"
-            value={transactions.length}
-            type="number"
+            value={transactions.length.toString()}
+            type="balance"
             description="Transaction count"
           />
         </div>
@@ -67,8 +68,8 @@ export default async function DashboardPage() {
           <div className="md:col-span-8 space-y-6">
             <GlassCard className="p-6">
               <h3 className="mb-4 font-semibold">Spending Velocity</h3>
-              <Suspense fallback={<Skeleton className="h-[350px] w-full" />}>
-                <MonthlyChart data={transactions} />
+              <Suspense fallback={<Skeleton className="h-75 w-full" />}>
+                <MonthlyChart />
               </Suspense>
             </GlassCard>
 
@@ -80,7 +81,17 @@ export default async function DashboardPage() {
 
           {/* Action Center (Right Column) */}
           <div className="md:col-span-4">
-            <TransactionForm categories={categories} />
+            <GlassCard className="p-6">
+              <h3 className="mb-4 font-semibold">Log Operations</h3>
+
+              <TransactionForm categories={categories} />
+
+              <div className="my-6 flex items-center text-xs text-gray-400 uppercase before:flex-[1_1_0%] before:border-t before:border-gray-200 dark:before:border-gray-800 before:mr-4 after:flex-[1_1_0%] after:border-t after:border-gray-200 dark:after:border-gray-800 after:ml-4">
+                Or Bulk Import
+              </div>
+
+              <CsvUploader />
+            </GlassCard>
           </div>
         </div>
       </div>

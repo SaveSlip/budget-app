@@ -2,17 +2,6 @@
   "version": "0.2",
   "language": "en",
   "useGitignore": true,
-  "ignorePaths": [
-    "pnpm-lock.yaml",
-    "pnpm-workspace.yaml",
-    "public",
-    ".vscode"
-  ],
-  "words": [
-    "Aman",
-    "amanbrar",
-    "Brar",
-    "Budgify",
-    "NEXTAUTH"
-  ]
+  "ignorePaths": ["pnpm-lock.yaml", "pnpm-workspace.yaml", "public", ".vscode"],
+  "words": ["Aman", "amanbrar", "Brar", "Budgify", "NEXTAUTH", "papaparse"]
 }

@@ -13,13 +13,18 @@ export const TransactionSchema = z.object({
 
 /**
  * Category Schema
- * Defines the allocation and type for monthly budget tracking.
+ * Used for creating and updating budget categories with monthly limits.
  */
 export const CategorySchema = z.object({
-  name: z.string().min(1, "Name is required").max(50),
-  monthlyAllocated: z.number().nonnegative("Allocation cannot be negative"),
-  type: z.enum(["fixed", "variable"]),
+  id: z.string().optional(),
+  name: z.string().min(1, "Category name is required").max(50),
+  limit: z.coerce
+    .number()
+    .nonnegative("Budget limit must be 0 or greater")
+    .default(0),
 });
+
+export type Category = z.infer<typeof CategorySchema>;
 
 export type TransactionInput = z.infer<typeof TransactionSchema>;
 export type CategoryInput = z.infer<typeof CategorySchema>;

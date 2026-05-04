@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Lock, Loader2, Wallet, CheckCircle, AlertCircle } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -48,9 +47,10 @@ export default function ResetPasswordPage() {
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordInput>({
-    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { password: "", confirmPassword: "" },
   });
 
   useEffect(() => {
@@ -81,11 +81,19 @@ export default function ResetPasswordPage() {
   const onSubmit = async (data: ResetPasswordInput) => {
     setServerError(null);
 
+    const parsed = resetPasswordSchema.safeParse(data);
+    if (!parsed.success) {
+      for (const issue of parsed.error.issues) {
+        const field = issue.path[0] as keyof ResetPasswordInput;
+        setError(field, { message: issue.message });
+      }
+      return;
+    }
+
     try {
-      // Execute Server Action instead of API fetch
       const response = (await resetPasswordAction(
         token,
-        data,
+        parsed.data,
       )) as ActionResponse;
 
       if (response.error) {
