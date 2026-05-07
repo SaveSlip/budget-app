@@ -66,17 +66,17 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
           <CartesianGrid
             strokeDasharray="3 3"
             vertical={false}
-            stroke="rgba(255,255,255,0.1)"
+            stroke="var(--border)"
           />
           <XAxis
             dataKey="label"
-            stroke="#888888"
+            stroke="var(--muted-foreground)"
             fontSize={12}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            stroke="#888888"
+            stroke="var(--muted-foreground)"
             fontSize={12}
             tickLine={false}
             axisLine={false}
@@ -84,23 +84,24 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#1f2937",
-              border: "none",
+              backgroundColor: "var(--popover)",
+              border: "1px solid var(--border)",
               borderRadius: "8px",
+              color: "var(--popover-foreground)",
             }}
-            itemStyle={{ color: "#fff" }}
+            itemStyle={{ color: "var(--popover-foreground)" }}
           />
           <Legend />
           <Bar
             dataKey="income"
             name="Income"
-            fill="#10b981"
+            fill="var(--chart-3)"
             radius={[4, 4, 0, 0]}
           />
           <Bar
             dataKey="expense"
             name="Expense"
-            fill="#ef4444"
+            fill="var(--chart-1)"
             radius={[4, 4, 0, 0]}
           />
         </BarChart>

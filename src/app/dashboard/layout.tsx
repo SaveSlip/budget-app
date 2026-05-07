@@ -8,9 +8,9 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#FDFBF7] dark:bg-neutral-950">
+    <div className="min-h-screen bg-background">
       {/* Top Navigation Bar - Enlarged and Aligned */}
-      <nav className="border-b border-gray-200 dark:border-gray-800 bg-[#FDFBF7] dark:bg-neutral-950">
+      <nav className="border-b border-border bg-background">
         {/* We use the same 80% container logic here so the logo aligns exactly with the content below */}
         <div className="mx-auto w-[95%] md:w-[90%] lg:w-[80%] max-w-7xl py-5 flex items-center justify-between">
           {/* Left Aligned Logo (Increased Size) */}
@@ -35,7 +35,7 @@ export default function DashboardLayout({
           </Link>
 
           {/* Right Aligned Actions */}
-          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             {/* Log Out button removed from here, it now lives inside the UserNav popout */}
             <UserNav />
           </div>

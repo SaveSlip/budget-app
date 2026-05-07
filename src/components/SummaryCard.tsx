@@ -50,12 +50,12 @@ export function SummaryCard({
   return (
     <Card
       className={cn(
-        "h-full border-foreground/5 bg-foreground/5 backdrop-blur-sm transition-all",
+        "h-full border-border bg-card backdrop-blur-sm transition-all",
         getTypeStyles(),
         className,
       )}
     >
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-4">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {title}
         </p>

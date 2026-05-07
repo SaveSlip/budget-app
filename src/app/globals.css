@@ -223,6 +223,12 @@
 }
 
 @layer base {
+  /* ── Color Scheme Utilities ──────────────────────────────────────── */
+  /* Ensure native form elements (date pickers, selects) respect the
+     active color scheme so OS-level chrome renders in the correct mode */
+  .scheme-light { color-scheme: light; }
+  .scheme-dark  { color-scheme: dark;  }
+
   * {
     @apply border-border outline-ring/50;
   }

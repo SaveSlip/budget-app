@@ -57,7 +57,7 @@ export default function TransactionForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="text-sm font-medium leading-none text-gray-700 dark:text-gray-300">
+        <label className="text-sm font-medium leading-none text-muted-foreground">
           Description
         </label>
         <input
@@ -68,17 +68,17 @@ export default function TransactionForm({
           onChange={(e) =>
             setFormData({ ...formData, description: e.target.value })
           }
-          className="flex h-10 w-full mt-1.5 rounded-md border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-sm font-medium leading-none text-gray-700 dark:text-gray-300">
+          <label className="text-sm font-medium leading-none text-muted-foreground">
             Amount
           </label>
           <div className="relative mt-1.5">
-            <span className="absolute left-3 top-2.5 text-gray-500 text-sm">
+            <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">
               $
             </span>
             <input
@@ -90,13 +90,13 @@ export default function TransactionForm({
               onChange={(e) =>
                 setFormData({ ...formData, amount: e.target.value })
               }
-              className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-transparent pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+              className="flex h-10 w-full rounded-md border border-border bg-transparent pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-sm font-medium leading-none text-gray-700 dark:text-gray-300">
+          <label className="text-sm font-medium leading-none text-muted-foreground">
             Date
           </label>
           <input
@@ -104,19 +104,19 @@ export default function TransactionForm({
             required
             value={formData.date}
             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            className="flex h-10 w-full mt-1.5 rounded-md border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 scheme-light dark:scheme-dark"
+            className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary scheme-light dark:scheme-dark"
           />
         </div>
       </div>
 
       <div>
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium leading-none text-gray-700 dark:text-gray-300">
+          <label className="text-sm font-medium leading-none text-muted-foreground">
             Category
           </label>
           <Link
             href="/dashboard/settings/categories"
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-orange-500 transition-colors"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
           >
             <Settings2 className="w-3 h-3" />
             Manage Categories
@@ -128,7 +128,7 @@ export default function TransactionForm({
           onChange={(e) =>
             setFormData({ ...formData, category: e.target.value })
           }
-          className="flex h-10 w-full mt-1.5 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none"
+          className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
         >
           <option value="" disabled>
             Select a category...
@@ -155,7 +155,7 @@ export default function TransactionForm({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-orange-600 text-white hover:bg-orange-700 h-10 px-4 py-2 w-full mt-2"
+        className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full mt-2"
       >
         {isSubmitting ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />

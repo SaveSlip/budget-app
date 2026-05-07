@@ -43,7 +43,7 @@ export function DashboardFilters() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row items-center gap-4 w-full bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-md">
+    <div className="flex flex-col md:flex-row items-center gap-4 w-full bg-muted/50 p-4 rounded-xl border border-border backdrop-blur-md">
       <div className="w-full md:w-72">
         <Input
           placeholder="Search merchants..."
@@ -54,7 +54,7 @@ export function DashboardFilters() {
             }
           }}
           onBlur={(e) => updateFilters({ q: e.target.value })}
-          className="bg-black/20 border-white/10 text-white"
+          className="bg-background/50 border-border text-foreground"
         />
       </div>
 
@@ -63,10 +63,10 @@ export function DashboardFilters() {
           value={currentMonth}
           onValueChange={(val) => updateFilters({ month: val })}
         >
-          <SelectTrigger className="bg-black/20 border-white/10 text-white">
+          <SelectTrigger className="bg-background/50 border-border text-foreground">
             <SelectValue placeholder="Select Month" />
           </SelectTrigger>
-          <SelectContent className="bg-slate-900 border-white/10 text-white">
+          <SelectContent className="bg-popover border-border text-popover-foreground">
             {months.map((m) => (
               <SelectItem key={m.value} value={m.value}>
                 {m.label}
@@ -77,7 +77,7 @@ export function DashboardFilters() {
       </div>
 
       {isPending && (
-        <span className="text-xs text-orange-500 animate-pulse font-mono uppercase">
+        <span className="text-xs text-primary animate-pulse font-mono uppercase">
           Syncing...
         </span>
       )}

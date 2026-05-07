@@ -7,25 +7,25 @@ export default function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="flex items-center justify-center gap-1 bg-gray-100/50 dark:bg-gray-900/50 p-1 rounded-lg border border-gray-200 dark:border-gray-800 backdrop-blur-sm">
+    <div className="flex items-center justify-center gap-1 bg-muted/50 p-1 rounded-lg border border-border backdrop-blur-sm">
       <button
         onClick={() => setTheme("light")}
         aria-label="Light mode"
-        className={`p-1.5 rounded-md transition-all ${theme === "light" ? "bg-white dark:bg-gray-800 shadow-sm text-orange-600" : "text-gray-500 hover:text-gray-900"}`}
+        className={`p-1.5 rounded-md transition-all ${theme === "light" ? "bg-card shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
       >
         <Sun className="w-4 h-4" />
       </button>
       <button
         onClick={() => setTheme("system")}
         aria-label="System theme"
-        className={`p-1.5 rounded-md transition-all ${theme === "system" ? "bg-white dark:bg-gray-800 shadow-sm text-orange-600" : "text-gray-500 hover:text-gray-900"}`}
+        className={`p-1.5 rounded-md transition-all ${theme === "system" ? "bg-card shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
       >
         <Monitor className="w-4 h-4" />
       </button>
       <button
         onClick={() => setTheme("dark")}
         aria-label="Dark mode"
-        className={`p-1.5 rounded-md transition-all ${theme === "dark" ? "bg-white dark:bg-gray-800 shadow-sm text-orange-600" : "text-gray-500 hover:text-gray-900"}`}
+        className={`p-1.5 rounded-md transition-all ${theme === "dark" ? "bg-card shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
       >
         <Moon className="w-4 h-4" />
       </button>

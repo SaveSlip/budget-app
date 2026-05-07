@@ -1,17 +1,31 @@
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+
+interface GlassCardProps extends Omit<React.ComponentProps<typeof Card>, "title"> {
+  title?: string;
+  children?: React.ReactNode;
+}
 
 export function GlassCard({
   className,
+  title,
+  children,
   ...props
-}: React.ComponentProps<typeof Card>) {
+}: GlassCardProps) {
   return (
     <Card
       className={cn(
-        "border-foreground/5 bg-foreground/5 backdrop-blur-sm",
+        "border-border bg-card/80 backdrop-blur-sm",
         className,
       )}
       {...props}
-    />
+    >
+      {title && (
+        <CardHeader>
+          <CardTitle className="text-foreground">{title}</CardTitle>
+        </CardHeader>
+      )}
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }

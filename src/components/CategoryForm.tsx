@@ -56,13 +56,13 @@ export function CategoryForm() {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white">Category Name</FormLabel>
+              <FormLabel className="text-foreground">Category Name</FormLabel>
               <FormControl>
                 <Input
                   placeholder="e.g., Groceries"
                   disabled={isPending}
                   {...field}
-                  className="bg-black/20 border-white/10 text-white"
+                  className="bg-background/50 border-border text-foreground"
                 />
               </FormControl>
               <FormMessage />
@@ -75,7 +75,7 @@ export function CategoryForm() {
           name="limit"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white">Monthly Limit ($)</FormLabel>
+              <FormLabel className="text-foreground">Monthly Limit ($)</FormLabel>
               <FormControl>
                 <Input
                   type="number"
@@ -84,7 +84,7 @@ export function CategoryForm() {
                   disabled={isPending}
                   {...field}
                   onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
-                  className="bg-black/20 border-white/10 text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="bg-background/50 border-border text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </FormControl>
               <FormDescription className="text-muted-foreground/60">

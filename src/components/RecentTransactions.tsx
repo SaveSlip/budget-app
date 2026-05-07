@@ -16,20 +16,20 @@ interface RecentTransactionsProps {
 
 export function RecentTransactions({ transactions }: RecentTransactionsProps) {
   return (
-    <div className="rounded-md border border-gray-200 dark:border-gray-800">
+    <div className="rounded-md border border-border">
       <Table>
-        <TableHeader className="bg-gray-50/50 dark:bg-gray-800/50">
-          <TableRow className="hover:bg-transparent border-gray-200 dark:border-gray-800">
-            <TableHead className="w-30 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+        <TableHeader className="bg-muted/50">
+          <TableRow className="hover:bg-transparent border-border">
+            <TableHead className="w-30 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Date
             </TableHead>
-            <TableHead className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Description
             </TableHead>
-            <TableHead className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Category
             </TableHead>
-            <TableHead className="text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <TableHead className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Amount
             </TableHead>
           </TableRow>
@@ -39,7 +39,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
             <TableRow>
               <TableCell
                 colSpan={4}
-                className="h-24 text-center text-sm text-gray-500 dark:text-gray-400"
+                className="h-24 text-center text-sm text-muted-foreground"
               >
                 No verified transactions found for this period.
               </TableCell>
@@ -48,23 +48,23 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
             transactions.map((tx) => (
               <TableRow
                 key={tx.sk}
-                className="border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                className="border-border hover:bg-accent transition-colors"
               >
-                <TableCell className="text-xs text-gray-500 dark:text-gray-400">
+                <TableCell className="text-xs text-muted-foreground">
                   {format(new Date(tx.date), "MMM dd, yyyy")}
                 </TableCell>
-                <TableCell className="text-sm font-medium leading-none text-gray-900 dark:text-gray-100">
+                <TableCell className="text-sm font-medium leading-none text-foreground">
                   {tx.description}
                 </TableCell>
                 <TableCell>
-                  <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                  <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                     {tx.category}
                   </span>
                 </TableCell>
                 <TableCell
                   className={cn(
                     "text-right font-mono text-sm font-semibold tracking-tighter",
-                    "text-gray-900 dark:text-gray-100",
+                    "text-foreground",
                   )}
                 >
                   $

@@ -81,16 +81,11 @@ export async function getTransactionTrend(
     const result = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAME,
-        IndexName: "UserDateIndex",
-        KeyConditionExpression:
-          "userId = :uid AND #date BETWEEN :start AND :end",
-        ExpressionAttributeNames: {
-          "#date": "date",
-        },
+        KeyConditionExpression: "pk = :pk AND sk BETWEEN :startSk AND :endSk",
         ExpressionAttributeValues: {
-          ":uid": session.user.id,
-          ":start": startDate.toISOString().split("T")[0],
-          ":end": endDate.toISOString().split("T")[0],
+          ":pk": `USER#${session.user.id}`,
+          ":startSk": `TX#${startDate.toISOString().split("T")[0]}`,
+          ":endSk": `TX#${endDate.toISOString().split("T")[0]}#\uffff`,
         },
       }),
     );

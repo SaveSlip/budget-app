@@ -70,7 +70,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FDFBF7] dark:bg-neutral-950 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
       <div className="absolute top-6 right-6 z-50">
         <ThemeToggle />
       </div>
@@ -78,7 +78,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md px-4 z-10">
         <FadeIn delay={0.1}>
           <div className="flex flex-col items-center mb-8">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-500 mb-4 border border-orange-200 dark:border-orange-500/30 shadow-sm">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-4 border border-primary/20 shadow-sm">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -94,33 +94,33 @@ export default function SignupPage() {
                 <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
               </svg>
             </div>
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
               Budgify
             </h1>
           </div>
 
-          <Card className="border-gray-200 dark:border-gray-800 bg-white dark:bg-neutral-900 shadow-xl">
+          <Card className="border-border bg-card shadow-xl">
             <CardHeader className="space-y-1 text-center pt-8">
-              <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              <CardTitle className="text-2xl font-bold text-foreground">
                 Create Account
               </CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {serverError && (
-                  <div className="p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md text-center font-medium">
+                  <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md text-center font-medium">
                     {serverError}
                   </div>
                 )}
 
                 <div className="space-y-2">
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       {...register("email")}
                       type="email"
                       placeholder="user@enterprise.com"
-                      className={`pl-10 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:ring-orange-500 focus:border-orange-500 ${
+                      className={`pl-10 bg-muted border-border text-foreground focus:ring-primary focus:border-primary ${
                         errors.email ? "border-red-500" : ""
                       }`}
                       disabled={isSubmitting}
@@ -135,12 +135,12 @@ export default function SignupPage() {
 
                 <div className="space-y-2">
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       {...register("password")}
                       type="password"
                       placeholder="Password"
-                      className={`pl-10 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:ring-orange-500 focus:border-orange-500 ${
+                      className={`pl-10 bg-muted border-border text-foreground focus:ring-primary focus:border-primary ${
                         errors.password ? "border-red-500" : ""
                       }`}
                       disabled={isSubmitting}
@@ -155,12 +155,12 @@ export default function SignupPage() {
 
                 <div className="space-y-2">
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       {...register("confirmPassword")}
                       type="password"
                       placeholder="Confirm Password"
-                      className={`pl-10 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:ring-orange-500 focus:border-orange-500 ${
+                      className={`pl-10 bg-muted border-border text-foreground focus:ring-primary focus:border-primary ${
                         errors.confirmPassword ? "border-red-500" : ""
                       }`}
                       disabled={isSubmitting}
@@ -175,7 +175,7 @@ export default function SignupPage() {
 
                 <Button
                   type="submit"
-                  className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-6 text-lg transition-all shadow-md"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 text-lg transition-all shadow-md"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
@@ -189,12 +189,12 @@ export default function SignupPage() {
                 </Button>
               </form>
             </CardContent>
-            <CardFooter className="flex flex-col space-y-3 text-center text-sm text-gray-500 dark:text-gray-400 pb-8">
+            <CardFooter className="flex flex-col space-y-3 text-center text-sm text-muted-foreground pb-8">
               <p>
                 Already have an account?{" "}
                 <Link
                   href="/signin"
-                  className="text-orange-600 hover:text-orange-700 font-bold hover:underline"
+                  className="text-primary hover:text-primary/80 font-bold hover:underline"
                 >
                   Sign in
                 </Link>

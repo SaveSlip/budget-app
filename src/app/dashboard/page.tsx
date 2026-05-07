@@ -59,20 +59,20 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     <div className="flex-1 w-full max-w-[1600px] mx-auto space-y-8">
       {/* Header & Global Filters */}
       <AnimateSection delay={0}>
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight text-white">
-              Financial Command Center
-            </h2>
-            <p className="text-muted-foreground font-mono uppercase text-xs tracking-tighter">
-              Period: {activeMonth} {q ? `• Search: "${q}"` : ""}
-            </p>
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight text-foreground">
+                Financial Command Center
+              </h2>
+              <p className="text-muted-foreground font-mono uppercase text-xs tracking-tighter">
+                Period: {activeMonth} {q ? `• Search: "${q}"` : ""}
+              </p>
+            </div>
           </div>
-        </div>
 
-        <DashboardFilters />
-      </div>
+          <DashboardFilters />
+        </div>
       </AnimateSection>
 
       {/* Row 1: Stats */}
@@ -109,15 +109,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <AnimateSection delay={0.16}>
         <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
           <GlassCard title="6-Month Spending Trend" className="lg:col-span-4">
-            <div className="h-[350px] w-full pt-4">
+            <div className="h-[350px] w-full">
               <MonthlyChart transactions={trendItems} />
             </div>
           </GlassCard>
 
           <GlassCard title="Log Transaction" className="lg:col-span-3">
-            <div className="pt-4">
-              <TransactionForm categories={categories} />
-            </div>
+            <TransactionForm categories={categories} />
           </GlassCard>
         </div>
       </AnimateSection>
@@ -126,7 +124,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <AnimateSection delay={0.24}>
         <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
           <div className="lg:col-span-4 space-y-6">
-            <h3 className="text-xl font-semibold text-white px-1">
+            <h3 className="text-xl font-semibold text-foreground px-1">
               Budget Benchmarking
             </h3>
             <div className="grid gap-4 md:grid-cols-2">
@@ -141,15 +139,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             </div>
 
             <GlassCard title="Add New Budget Category">
-              <div className="pt-2">
-                <CategoryForm />
-              </div>
+              <CategoryForm />
             </GlassCard>
           </div>
 
           <GlassCard title="Recent Activity" className="lg:col-span-3">
-            <div className="mt-2 h-full">
-              <RecentTransactions transactions={filteredTransactions.slice(0, 10)} />
+            <div className="h-full">
+              <RecentTransactions
+                transactions={filteredTransactions.slice(0, 10)}
+              />
             </div>
           </GlassCard>
         </div>
