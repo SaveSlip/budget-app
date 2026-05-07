@@ -5,6 +5,7 @@ import {
   getMonthlyData,
   getCategories,
   getTransactionTrend,
+  getAccounts,
   type Transaction,
 } from "@/lib/data/budget";
 import { SummaryCard } from "@/components/SummaryCard";
@@ -17,6 +18,8 @@ import { CategoryForm } from "@/components/CategoryForm";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import TransactionForm from "@/components/TransactionForm";
 import CsvUploader from "@/components/CsvUploader";
+import { AccountForm } from "@/components/AccountForm";
+import { AccountBalances } from "@/components/AccountBalances";
 import { format } from "date-fns";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -33,10 +36,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const q = resolvedParams.q || "";
   const activeMonth = resolvedParams.month || format(new Date(), "yyyy-MM");
 
-  const [currentItems, categories, trendItems] = await Promise.all([
+  const [currentItems, categories, trendItems, accounts] = await Promise.all([
     getMonthlyData(activeMonth),
     getCategories(),
     getTransactionTrend(6),
+    getAccounts(),
   ]);
 
   const filteredTransactions: Transaction[] = currentItems.filter((tx) => {
@@ -140,7 +144,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </div>
 
           <GlassCard title="Log Transaction" className="lg:col-span-3">
-            <TransactionForm categories={categories} />
+            <TransactionForm categories={categories} accounts={accounts} />
             <div className="mt-4 pt-4 border-t border-border">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Bulk Import
@@ -151,8 +155,21 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </div>
       </AnimateSection>
 
-      {/* Row 3: 6-Month Spending Trend & Activity */}
-      <AnimateSection delay={0.24}>
+      {/* Row 3: Account Balances */}
+      <AnimateSection delay={0.20}>
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
+          <GlassCard title="Account Balances" className="lg:col-span-4">
+            <AccountBalances accounts={accounts} transactions={trendItems} />
+          </GlassCard>
+
+          <GlassCard title="Add Account" className="lg:col-span-3">
+            <AccountForm />
+          </GlassCard>
+        </div>
+      </AnimateSection>
+
+      {/* Row 4: 6-Month Spending Trend & Activity */}
+      <AnimateSection delay={0.28}>
         <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
           <GlassCard title="6-Month Spending Trend" className="lg:col-span-4">
             <div className="h-87.5 w-full">

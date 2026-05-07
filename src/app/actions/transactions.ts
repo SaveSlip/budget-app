@@ -22,7 +22,8 @@ export async function createTransaction(data: TransactionInput) {
   const parsed = transactionSchema.safeParse(data);
   if (!parsed.success) return { error: "Invalid transaction data." };
 
-  const { description, amount, date, category, transactionType } = parsed.data;
+  const { description, amount, date, category, transactionType, accountId } =
+    parsed.data;
   const userId = session.user.id;
   const txId = crypto.randomUUID();
 
@@ -40,6 +41,7 @@ export async function createTransaction(data: TransactionInput) {
           date,
           category,
           transactionType,
+          accountId: accountId ?? null,
           createdAt: new Date().toISOString(),
         },
       }),
@@ -80,6 +82,7 @@ export async function batchCreateTransactions(
           date: tx.date,
           category: tx.category,
           transactionType: tx.transactionType ?? "EXPENSE",
+          accountId: tx.accountId ?? null,
           createdAt: new Date().toISOString(),
         },
       },
@@ -205,7 +208,8 @@ export async function updateTransaction(
   const parsed = transactionSchema.safeParse(data);
   if (!parsed.success) return { error: "Invalid transaction data." };
 
-  const { description, amount, date, category, transactionType } = parsed.data;
+  const { description, amount, date, category, transactionType, accountId } =
+    parsed.data;
   const userId = session.user.id;
 
   try {
@@ -236,6 +240,7 @@ export async function updateTransaction(
                   date,
                   category,
                   transactionType,
+                  accountId: accountId ?? null,
                   createdAt: new Date().toISOString(),
                 },
               },
@@ -257,6 +262,7 @@ export async function updateTransaction(
             date,
             category,
             transactionType,
+            accountId: accountId ?? null,
             createdAt: new Date().toISOString(),
           },
         }),

@@ -4,14 +4,16 @@ import { useState } from "react";
 import { createTransaction } from "@/app/actions/transactions";
 import Link from "next/link";
 import { Settings2, Loader2 } from "lucide-react";
-import type { Category } from "@/lib/data/budget";
+import type { Account, Category } from "@/lib/data/budget";
 
 interface TransactionFormProps {
   categories: Category[];
+  accounts: Account[];
 }
 
 export default function TransactionForm({
   categories = [],
+  accounts = [],
 }: TransactionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +27,7 @@ export default function TransactionForm({
     date: today,
     category: "",
     transactionType: "EXPENSE" as "INCOME" | "EXPENSE",
+    accountId: "",
   });
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -40,13 +43,14 @@ export default function TransactionForm({
         date: formData.date,
         category: formData.category,
         transactionType: formData.transactionType,
+        accountId: formData.accountId || undefined,
       });
 
       if (result.error) {
         setError(result.error);
       } else {
         setSuccess(true);
-        setFormData({ description: "", amount: "", date: today, category: "", transactionType: "EXPENSE" });
+        setFormData({ description: "", amount: "", date: today, category: "", transactionType: "EXPENSE", accountId: "" });
         setTimeout(() => setSuccess(false), 3000);
       }
     } catch {
@@ -170,6 +174,26 @@ export default function TransactionForm({
               </option>
             ))
           )}
+        </select>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium leading-none text-muted-foreground">
+          Account <span className="text-muted-foreground/60">(optional)</span>
+        </label>
+        <select
+          value={formData.accountId}
+          onChange={(e) =>
+            setFormData({ ...formData, accountId: e.target.value })
+          }
+          className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+        >
+          <option value="">No account</option>
+          {accounts.map((acc) => (
+            <option key={acc.id} value={acc.id}>
+              {acc.name}
+            </option>
+          ))}
         </select>
       </div>
 
