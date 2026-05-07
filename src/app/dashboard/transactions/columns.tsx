@@ -1,20 +1,21 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown } from "lucide-react"
+import * as React from "react";
+import { ColumnDef } from "@tanstack/react-table";
+import { ArrowUpDown } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { TransactionActions } from "@/components/TransactionActions";
 
 export type Transaction = {
-  id: string
-  description: string
-  amount: number
-  date: string
-  category: string
-  createdAt: string
-}
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  category: string;
+  createdAt: string;
+};
 
 /** Shared header label style matching the RecentTransactions component. */
 function HeaderLabel({ children }: { children: React.ReactNode }) {
@@ -22,7 +23,7 @@ function HeaderLabel({ children }: { children: React.ReactNode }) {
     <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
       {children}
     </span>
-  )
+  );
 }
 
 export const columns: ColumnDef<Transaction>[] = [
@@ -39,12 +40,12 @@ export const columns: ColumnDef<Transaction>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const date = new Date(row.getValue("date"))
+      const date = new Date(row.getValue("date"));
       return (
         <span className="pl-3 text-sm text-foreground font-medium">
           {date.toLocaleDateString("en-US", { timeZone: "UTC" })}
         </span>
-      )
+      );
     },
   },
   {
@@ -78,17 +79,28 @@ export const columns: ColumnDef<Transaction>[] = [
       </div>
     ),
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"))
+      const amount = parseFloat(row.getValue("amount"));
       const formatted = new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: "USD",
-      }).format(amount)
+      }).format(amount);
 
       return (
         <span className="flex justify-end pr-3 font-mono text-sm font-semibold text-foreground tracking-tighter">
           {formatted}
         </span>
-      )
+      );
     },
   },
-]
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      const transaction = row.original;
+      return (
+        <div className="flex justify-end">
+          <TransactionActions transaction={transaction} />
+        </div>
+      );
+    },
+  },
+];

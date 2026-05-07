@@ -1,7 +1,12 @@
 "use server";
 
 import { docClient, TABLE_NAME } from "@/lib/db";
-import { PutCommand, UpdateCommand, DeleteCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  PutCommand,
+  UpdateCommand,
+  DeleteCommand,
+  QueryCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { z } from "zod";
@@ -114,5 +119,41 @@ export async function updateCategoryLimit(id: string, limit: number) {
   } catch (error) {
     console.error("[DB] Failed to update category limit:", error);
     return { error: "Failed to update limit" };
+  }
+}
+
+export async function updateCategory(
+  id: string,
+  data: { name: string; limit: number },
+) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+
+  try {
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          pk: `USER#${session.user.id}`,
+          sk: `CATEGORY#${id}`,
+        },
+        UpdateExpression: "SET #name = :name, #limit = :limit",
+        ExpressionAttributeNames: {
+          "#name": "name",
+          "#limit": "limit",
+        },
+        ExpressionAttributeValues: {
+          ":name": data.name,
+          ":limit": data.limit ?? 0,
+        },
+      }),
+    );
+
+    revalidatePath("/dashboard/settings/categories");
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("[DB] Failed to update category:", error);
+    return { error: "Failed to update category" };
   }
 }

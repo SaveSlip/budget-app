@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { CategoryActions } from "@/components/CategoryActions";
 
 export default async function CategoriesSettingsPage() {
   const session = await auth();
@@ -52,6 +53,7 @@ export default async function CategoriesSettingsPage() {
                   <TableHead className="text-foreground text-right">
                     Status
                   </TableHead>
+                  <TableHead className="text-right"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -76,12 +78,15 @@ export default async function CategoriesSettingsPage() {
                         {category.limit > 0 ? "Benchmarked" : "Tracking Only"}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <CategoryActions category={category} />
+                    </TableCell>
                   </TableRow>
                 ))}
                 {categories.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={3}
+                      colSpan={4}
                       className="text-center py-8 text-muted-foreground italic"
                     >
                       No categories found. Use the form to get started.

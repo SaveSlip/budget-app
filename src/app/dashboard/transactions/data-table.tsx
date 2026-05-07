@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Download } from "lucide-react"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -56,8 +57,18 @@ export function DataTable<TData, TValue>({
 
   return (
     <Card className="border-border bg-card">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-foreground">Transactions</CardTitle>
+        <Button
+          variant="outline"
+          size="sm"
+          asChild
+        >
+          <a href="/api/export/transactions" download>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </a>
+        </Button>
       </CardHeader>
       <CardContent>
         <div className="flex items-center pb-4">
