@@ -33,7 +33,8 @@ import {
   deleteTransaction,
 } from "@/app/actions/transactions";
 import { listCategories } from "@/app/actions/categories";
-import type { Category } from "@/lib/data/budget";
+import { listAccounts } from "@/app/actions/accounts";
+import type { Account, Category } from "@/lib/data/budget";
 
 type Transaction = {
   id: string;
@@ -43,6 +44,7 @@ type Transaction = {
   category: string;
   createdAt: string;
   transactionType?: "INCOME" | "EXPENSE";
+  accountId?: string;
 };
 
 interface TransactionActionsProps {
@@ -55,6 +57,7 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -63,19 +66,23 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
     date: transaction.date,
     category: transaction.category,
     transactionType: (transaction.transactionType ?? "EXPENSE") as "INCOME" | "EXPENSE",
+    accountId: transaction.accountId ?? "",
   });
 
   useEffect(() => {
     if (isEditOpen && categories.length === 0) {
-      const fetchCategories = async () => {
+      const fetchData = async () => {
         setIsLoadingCategories(true);
-        const res = await listCategories();
-        if (res.success && res.categories) {
-          setCategories(res.categories as Category[]);
+        const [catRes, accRes] = await Promise.all([listCategories(), listAccounts()]);
+        if (catRes.success && catRes.categories) {
+          setCategories(catRes.categories as Category[]);
+        }
+        if (accRes.success && accRes.accounts) {
+          setAccounts(accRes.accounts as Account[]);
         }
         setIsLoadingCategories(false);
       };
-      fetchCategories();
+      fetchData();
     }
   }, [isEditOpen, categories.length]);
 
@@ -90,6 +97,7 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
       date: formData.date,
       category: formData.category,
       transactionType: formData.transactionType,
+      accountId: formData.accountId || undefined,
     });
 
     setIsSubmitting(false);
@@ -242,6 +250,25 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
                       {formData.category} (Current)
                     </option>
                   )}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium leading-none text-muted-foreground">
+                Account <span className="text-muted-foreground/60">(optional)</span>
+              </label>
+              <select
+                value={formData.accountId}
+                onChange={(e) =>
+                  setFormData({ ...formData, accountId: e.target.value })
+                }
+                className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+              >
+                <option value="">No account</option>
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </option>
+                ))}
               </select>
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}

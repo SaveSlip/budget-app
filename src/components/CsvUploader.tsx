@@ -68,6 +68,7 @@ export default function CsvUploader() {
                 new Date().toISOString().split("T")[0],
               category:
                 normalizedRow.category || normalizedRow.type || "Uncategorized",
+              transactionType: "EXPENSE" as const,
             };
           })
           .filter((tx) => tx.amount !== 0); // Drop empty rows
