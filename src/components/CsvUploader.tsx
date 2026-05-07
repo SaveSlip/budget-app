@@ -107,6 +107,46 @@ export default function CsvUploader() {
     }
   };
 
+  const borderClass = {
+    idle: "border-border hover:border-primary/50 hover:bg-accent",
+    dragging: "border-primary bg-primary/10 scale-[1.02]",
+    processing: "border-info bg-info/5 cursor-wait",
+    success: "border-success bg-success/10",
+    error: "border-destructive bg-destructive/10",
+  }[uploadState];
+
+  const iconClass = {
+    idle: "text-muted-foreground",
+    dragging: "text-primary",
+    processing: "text-info animate-spin",
+    success: "text-success",
+    error: "text-destructive",
+  }[uploadState];
+
+  const Icon =
+    uploadState === "processing"
+      ? Loader2
+      : uploadState === "success"
+        ? CheckCircle
+        : uploadState === "error"
+          ? AlertCircle
+          : UploadCloud;
+
+  const label = {
+    idle: "Drag & drop your bank CSV",
+    dragging: "Drop it here!",
+    processing: "Processing Data...",
+    success: "Import Complete",
+    error: "Import Failed",
+  }[uploadState];
+
+  const messageColorClass =
+    uploadState === "error"
+      ? "text-destructive"
+      : uploadState === "success"
+        ? "text-success"
+        : "text-muted-foreground";
+
   return (
     <div className="w-full">
       <input
@@ -124,52 +164,22 @@ export default function CsvUploader() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer
-          ${uploadState === "idle" ? "border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50" : ""}
-          ${uploadState === "dragging" ? "border-orange-500 bg-orange-500/10 scale-[1.02]" : ""}
-          ${uploadState === "processing" ? "border-blue-500 bg-blue-500/5 cursor-wait" : ""}
-          ${uploadState === "success" ? "border-green-500 bg-green-500/10" : ""}
-          ${uploadState === "error" ? "border-red-500 bg-red-500/10" : ""}
-        `}
+        className={`relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer ${borderClass}`}
       >
-        {uploadState === "idle" || uploadState === "dragging" ? (
-          <UploadCloud
-            className={`w-10 h-10 mb-3 transition-colors ${uploadState === "dragging" ? "text-orange-500" : "text-gray-400"}`}
-          />
-        ) : uploadState === "processing" ? (
-          <Loader2 className="w-10 h-10 mb-3 text-blue-500 animate-spin" />
-        ) : uploadState === "success" ? (
-          <CheckCircle className="w-10 h-10 mb-3 text-green-500" />
-        ) : (
-          <AlertCircle className="w-10 h-10 mb-3 text-red-500" />
-        )}
+        <Icon className={`w-10 h-10 mb-3 transition-colors ${iconClass}`} />
 
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 text-center">
-          {uploadState === "dragging"
-            ? "Drop it here!"
-            : uploadState === "processing"
-              ? "Processing Data..."
-              : uploadState === "success"
-                ? "Upload Complete"
-                : uploadState === "error"
-                  ? "Upload Failed"
-                  : "Drag & drop your bank CSV"}
+        <p className="text-sm font-medium text-foreground text-center">
+          {label}
         </p>
 
         {message ? (
           <p
-            className={`text-xs mt-2 text-center max-w-62.5 truncate ${
-              uploadState === "error"
-                ? "text-red-600 dark:text-red-400"
-                : uploadState === "success"
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-gray-500"
-            }`}
+            className={`text-xs mt-2 text-center max-w-xs truncate ${messageColorClass}`}
           >
             {message}
           </p>
         ) : (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             or click to browse files
           </p>
         )}

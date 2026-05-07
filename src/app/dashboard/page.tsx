@@ -15,7 +15,10 @@ import { RecentTransactions } from "@/components/RecentTransactions";
 import { CategoryForm } from "@/components/CategoryForm";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import TransactionForm from "@/components/TransactionForm";
+import CsvUploader from "@/components/CsvUploader";
 import { format } from "date-fns";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 interface PageProps {
   searchParams: Promise<{ month?: string; q?: string }>;
@@ -116,6 +119,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
           <GlassCard title="Log Transaction" className="lg:col-span-3">
             <TransactionForm categories={categories} />
+            <div className="mt-4 pt-4 border-t border-border">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                Bulk Import
+              </p>
+              <CsvUploader />
+            </div>
           </GlassCard>
         </div>
       </AnimateSection>
@@ -148,6 +157,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               <RecentTransactions
                 transactions={filteredTransactions.slice(0, 10)}
               />
+              <div className="mt-4 flex justify-end">
+                <Link
+                  href="/dashboard/transactions"
+                  className="text-xs font-medium text-orange-500 hover:text-orange-600 flex items-center gap-1 transition-colors"
+                >
+                  View All Transactions
+                  <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
             </div>
           </GlassCard>
         </div>

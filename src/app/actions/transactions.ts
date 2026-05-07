@@ -122,3 +122,38 @@ export async function getTransactions(month?: string) {
     return { error: "Failed to retrieve financial data." };
   }
 }
+
+export async function getAllTransactions() {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const userId = session.user.id;
+  const transactions: any[] = [];
+  let lastEvaluatedKey: Record<string, any> | undefined = undefined;
+
+  try {
+    do {
+      const response = (await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+          ExpressionAttributeValues: {
+            ":pk": `USER#${userId}`,
+            ":skPrefix": "TX#",
+          },
+          ScanIndexForward: false,
+          ExclusiveStartKey: lastEvaluatedKey,
+        }),
+      )) as any;
+      if (response.Items) {
+        transactions.push(...response.Items);
+      }
+      lastEvaluatedKey = response.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return { success: true, transactions };
+  } catch (error) {
+    console.error("Failed to fetch all transactions:", error);
+    return { error: "Failed to retrieve financial data." };
+  }
+}

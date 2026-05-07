@@ -7,6 +7,7 @@ const PATH_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   settings: "Settings",
   categories: "Category Configuration",
+  transactions: "Transactions",
 };
 
 /**
