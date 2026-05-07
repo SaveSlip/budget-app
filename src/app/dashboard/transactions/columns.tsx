@@ -15,6 +15,7 @@ export type Transaction = {
   date: string;
   category: string;
   createdAt: string;
+  transactionType?: "INCOME" | "EXPENSE";
 };
 
 /** Shared header label style matching the RecentTransactions component. */
@@ -80,14 +81,15 @@ export const columns: ColumnDef<Transaction>[] = [
     ),
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("amount"));
+      const isIncome = row.original.transactionType === "INCOME";
       const formatted = new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: "USD",
       }).format(amount);
 
       return (
-        <span className="flex justify-end pr-3 font-mono text-sm font-semibold text-foreground tracking-tighter">
-          {formatted}
+        <span className={`flex justify-end pr-3 font-mono text-sm font-semibold tracking-tighter ${isIncome ? "text-green-500" : "text-red-500"}`}>
+          {isIncome ? "+" : "-"}{formatted}
         </span>
       );
     },

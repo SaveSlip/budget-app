@@ -42,13 +42,13 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
 
     transactions.forEach((tx) => {
       const txDate = new Date(tx.date);
-      const amount = Number(tx.amount) || 0;
+      const amount = Math.abs(Number(tx.amount) || 0);
+      const isIncome = tx.transactionType === "INCOME";
 
       months.forEach((month) => {
         if (isWithinInterval(txDate, { start: month.start, end: month.end })) {
-          // Assuming negative/positive logic or a 'type' field
-          if (amount < 0) month.expense += Math.abs(amount);
-          else month.income += amount;
+          if (isIncome) month.income += amount;
+          else month.expense += amount;
         }
       });
     });

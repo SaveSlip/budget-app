@@ -35,7 +35,6 @@ import {
 import { listCategories } from "@/app/actions/categories";
 import type { Category } from "@/lib/data/budget";
 
-// Use same Transaction type as columns.tsx
 type Transaction = {
   id: string;
   description: string;
@@ -43,6 +42,7 @@ type Transaction = {
   date: string;
   category: string;
   createdAt: string;
+  transactionType?: "INCOME" | "EXPENSE";
 };
 
 interface TransactionActionsProps {
@@ -62,6 +62,7 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
     amount: transaction.amount.toString(),
     date: transaction.date,
     category: transaction.category,
+    transactionType: (transaction.transactionType ?? "EXPENSE") as "INCOME" | "EXPENSE",
   });
 
   useEffect(() => {
@@ -88,6 +89,7 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
       amount: Number(formData.amount),
       date: formData.date,
       category: formData.category,
+      transactionType: formData.transactionType,
     });
 
     setIsSubmitting(false);
@@ -138,6 +140,30 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
             <DialogTitle>Edit Transaction</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
+            <div className="flex rounded-md border border-border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, transactionType: "EXPENSE" })}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                  formData.transactionType === "EXPENSE"
+                    ? "bg-red-500/15 text-red-500"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Expense
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, transactionType: "INCOME" })}
+                className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                  formData.transactionType === "INCOME"
+                    ? "bg-green-500/15 text-green-500"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Income
+              </button>
+            </div>
             <div>
               <label className="text-sm font-medium leading-none text-muted-foreground">
                 Description

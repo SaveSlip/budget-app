@@ -11,6 +11,7 @@ import { SummaryCard } from "@/components/SummaryCard";
 import { BudgetProgress } from "@/components/BudgetProgress";
 import { GlassCard } from "@/components/GlassCard";
 import { MonthlyChart } from "@/components/MonthlyChart";
+import { CashFlowChart } from "@/components/CashFlowChart";
 import { RecentTransactions } from "@/components/RecentTransactions";
 import { CategoryForm } from "@/components/CategoryForm";
 import { DashboardFilters } from "@/components/DashboardFilters";
@@ -48,15 +49,22 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   });
 
   const spendingMap: Record<string, number> = {};
-  let totalSpent = 0;
+  let totalIncome = 0;
+  let totalExpenses = 0;
 
   filteredTransactions.forEach((item) => {
-    const amount = Number(item.amount) || 0;
-    totalSpent += amount;
-    if (item.category) {
-      spendingMap[item.category] = (spendingMap[item.category] || 0) + amount;
+    const amount = Math.abs(Number(item.amount) || 0);
+    if (item.transactionType === "INCOME") {
+      totalIncome += amount;
+    } else {
+      totalExpenses += amount;
+      if (item.category) {
+        spendingMap[item.category] = (spendingMap[item.category] || 0) + amount;
+      }
     }
   });
+
+  const netCashFlow = totalIncome - totalExpenses;
 
   return (
     <div className="flex-1 w-full max-w-[1600px] mx-auto space-y-8">
@@ -82,28 +90,28 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <AnimateSection delay={0.08}>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <SummaryCard
-            title="Filtered Spending"
-            value={`$${totalSpent.toLocaleString()}`}
-            description={q ? `Results for "${q}"` : "Total for this period"}
+            title="Total Income"
+            value={`$${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            description={q ? `Results for "${q}"` : "Income this period"}
+            type="income"
+          />
+          <SummaryCard
+            title="Total Expenses"
+            value={`$${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            description={q ? `Results for "${q}"` : "Expenses this period"}
             type="expense"
           />
           <SummaryCard
-            title="Active Budgets"
-            value={categories.length.toString()}
-            description="Managed expense categories"
-            type="balance"
-          />
-          <SummaryCard
-            title="Monthly Goal"
-            value="Progressive"
-            description="Target tracking"
-            type="balance"
+            title="Net Cash Flow"
+            value={`${netCashFlow >= 0 ? "+" : ""}$${Math.abs(netCashFlow).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            description={netCashFlow >= 0 ? "Positive cash flow" : "Negative cash flow"}
+            type={netCashFlow >= 0 ? "income" : "expense"}
           />
           <SummaryCard
             title="Transaction Count"
             value={filteredTransactions.length.toString()}
             description="Matches found"
-            type="expense"
+            type="balance"
           />
         </div>
       </AnimateSection>
