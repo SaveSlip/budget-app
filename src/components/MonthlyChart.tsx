@@ -1,6 +1,6 @@
-// src/components/MonthlyChart.tsx
 "use client";
 
+import { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -12,83 +12,99 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  format,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  isWithinInterval,
+} from "date-fns";
+import type { Transaction } from "@/lib/data/budget";
 
-const mockChartData = [
-  { month: "Nov", income: 4200, expense: 3800 },
-  { month: "Dec", income: 4800, expense: 4100 },
-  { month: "Jan", income: 5100, expense: 3200 },
-  { month: "Feb", income: 4900, expense: 2900 },
-  { month: "Mar", income: 5300, expense: 3400 },
-  { month: "Apr", income: 5240, expense: 3150 },
-];
+interface MonthlyChartProps {
+  transactions: Transaction[];
+}
 
-export function MonthlyChart() {
+export function MonthlyChart({ transactions }: MonthlyChartProps) {
+  // Process raw transactions into a 6-month trend format
+  const chartData = useMemo(() => {
+    const months = Array.from({ length: 6 })
+      .map((_, i) => {
+        const date = subMonths(new Date(), i);
+        return {
+          label: format(date, "MMM"),
+          start: startOfMonth(date),
+          end: endOfMonth(date),
+          expense: 0,
+          income: 0,
+        };
+      })
+      .reverse();
+
+    transactions.forEach((tx) => {
+      const txDate = new Date(tx.date);
+      const amount = Number(tx.amount) || 0;
+
+      months.forEach((month) => {
+        if (isWithinInterval(txDate, { start: month.start, end: month.end })) {
+          // Assuming negative/positive logic or a 'type' field
+          if (amount < 0) month.expense += Math.abs(amount);
+          else month.income += amount;
+        }
+      });
+    });
+
+    return months;
+  }, [transactions]);
+
   return (
-    <Card className="border-border bg-foreground/5 backdrop-blur-sm shadow-sm">
-      <CardHeader>
-        <CardTitle className="text-foreground">6-Month Trend</CardTitle>
-        <CardDescription className="text-muted-foreground">
-          Historical analysis of income versus expenses.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="h-75 w-full mt-4">
-          <ResponsiveContainer width="100%" height={300} aspect={2.3}>
-            <BarChart
-              data={mockChartData}
-              margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="var(--color-border)"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="month"
-                stroke="var(--color-muted-foreground)"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="var(--color-muted-foreground)"
-                fontSize={12}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `$${value}`}
-              />
-              <Tooltip
-                cursor={{ fill: "var(--color-muted)", opacity: 0.2 }}
-                contentStyle={{
-                  backgroundColor: "var(--color-card)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "8px",
-                  color: "var(--color-foreground)",
-                }}
-              />
-              <Legend wrapperStyle={{ paddingTop: "20px" }} />
-              <Bar
-                dataKey="income"
-                name="Income"
-                fill="var(--chart-1)"
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar
-                dataKey="expense"
-                name="Expense"
-                fill="var(--chart-2)"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="h-75 w-full">
+      <ResponsiveContainer width="100%" height={300} aspect={2.3}>
+        <BarChart
+          data={chartData}
+          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+        >
+          <CartesianGrid
+            strokeDasharray="3 3"
+            vertical={false}
+            stroke="rgba(255,255,255,0.1)"
+          />
+          <XAxis
+            dataKey="label"
+            stroke="#888888"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            stroke="#888888"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v) => `$${v}`}
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "#1f2937",
+              border: "none",
+              borderRadius: "8px",
+            }}
+            itemStyle={{ color: "#fff" }}
+          />
+          <Legend />
+          <Bar
+            dataKey="income"
+            name="Income"
+            fill="#10b981"
+            radius={[4, 4, 0, 0]}
+          />
+          <Bar
+            dataKey="expense"
+            name="Expense"
+            fill="#ef4444"
+            radius={[4, 4, 0, 0]}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

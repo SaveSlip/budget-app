@@ -4,17 +4,15 @@ import { useState } from "react";
 import { createTransaction } from "@/app/actions/transactions";
 import Link from "next/link";
 import { Settings2, Loader2 } from "lucide-react";
-
-export interface Category {
-  id: string;
-  name: string;
-}
+import type { Category } from "@/lib/data/budget";
 
 interface TransactionFormProps {
   categories: Category[];
 }
 
-export default function TransactionForm({ categories }: TransactionFormProps) {
+export default function TransactionForm({
+  categories = [],
+}: TransactionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -34,23 +32,26 @@ export default function TransactionForm({ categories }: TransactionFormProps) {
     setError(null);
     setSuccess(false);
 
-    const result = await createTransaction({
-      description: formData.description,
-      amount: Number(formData.amount),
-      date: formData.date,
-      category: formData.category,
-    });
+    try {
+      const result = await createTransaction({
+        description: formData.description,
+        amount: Number(formData.amount),
+        date: formData.date,
+        category: formData.category,
+      });
 
-    if (result.error) {
-      setError(result.error);
-    } else {
-      setSuccess(true);
-      setFormData({ description: "", amount: "", date: today, category: "" });
-      const timer = setTimeout(() => setSuccess(false), 3000);
-      return () => clearTimeout(timer);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setSuccess(true);
+        setFormData({ description: "", amount: "", date: today, category: "" });
+        setTimeout(() => setSuccess(false), 3000);
+      }
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   return (

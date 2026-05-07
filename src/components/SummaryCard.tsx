@@ -15,6 +15,7 @@ interface SummaryCardProps {
 }
 
 export function SummaryCard({
+  title,
   description,
   value,
   type,
@@ -55,14 +56,17 @@ export function SummaryCard({
       )}
     >
       <CardHeader className="pb-2">
-        <CardDescription className="text-muted-foreground">
-          {description}
-        </CardDescription>
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {title}
+        </p>
         <CardTitle
           className={cn("text-3xl font-mono tracking-tight", getTitleColor())}
         >
           {value}
         </CardTitle>
+        <CardDescription className="text-muted-foreground">
+          {description}
+        </CardDescription>
       </CardHeader>
     </Card>
   );

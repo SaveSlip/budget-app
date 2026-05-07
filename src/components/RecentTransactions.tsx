@@ -8,17 +8,7 @@ import {
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-
-export interface Transaction {
-  pk: string;
-  sk: string;
-  id?: string;
-  amount: number;
-  description: string;
-  date: string;
-  category: string;
-  createdAt?: string;
-}
+import type { Transaction } from "@/lib/data/budget";
 
 interface RecentTransactionsProps {
   transactions: Transaction[];

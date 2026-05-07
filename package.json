@@ -13,6 +13,8 @@
     "@aws-sdk/client-ses": "^3.1041.0",
     "@aws-sdk/lib-dynamodb": "^3.1041.0",
     "@hookform/resolvers": "^5.2.2",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

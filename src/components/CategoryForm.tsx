@@ -1,108 +1,112 @@
 "use client";
 
-import { useState } from "react";
-import { z } from "zod";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { CategorySchema, type CategoryInput } from "@/lib/validations/budget";
 import { createCategory } from "@/app/actions/categories";
 import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
-
-const categoryFormSchema = z.object({
-  name: z.string().min(1, "Category name is required").max(50),
-  limit: z.coerce.number().nonnegative("Budget limit must be 0 or greater"),
-});
-
-type FieldErrors = Partial<Record<keyof z.infer<typeof categoryFormSchema>, string>>;
 
 export function CategoryForm() {
-  const [name, setName] = useState("");
-  const [limit, setLimit] = useState("0");
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
-  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setFieldErrors({});
-    setServerError(null);
+  const form = useForm<CategoryInput>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(CategorySchema as any),
+    defaultValues: {
+      name: "",
+      limit: 0,
+    },
+  });
 
-    const parsed = categoryFormSchema.safeParse({ name, limit });
-    if (!parsed.success) {
-      const errs: FieldErrors = {};
-      for (const issue of parsed.error.issues) {
-        const key = issue.path[0] as keyof FieldErrors;
-        if (!errs[key]) errs[key] = issue.message;
+  async function onSubmit(data: CategoryInput) {
+    startTransition(async () => {
+      try {
+        const result = await createCategory(data);
+
+        if (result.error) {
+          form.setError("root", { message: result.error });
+        } else {
+          form.reset();
+          router.refresh();
+        }
+      } catch {
+        form.setError("root", { message: "Something went wrong. Please try again." });
       }
-      setFieldErrors(errs);
-      return;
-    }
-
-    setIsSubmitting(true);
-    const result = await createCategory({ name: parsed.data.name, limit: parsed.data.limit });
-    setIsSubmitting(false);
-
-    if (result.error) {
-      setServerError(result.error);
-    } else {
-      setName("");
-      setLimit("0");
-    }
+    });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Category Name
-        </label>
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g., Groceries"
-          disabled={isSubmitting}
-          className="mt-1.5"
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-white">Category Name</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g., Groceries"
+                  disabled={isPending}
+                  {...field}
+                  className="bg-black/20 border-white/10 text-white"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        {fieldErrors.name && (
-          <p className="mt-1 text-xs text-red-500">{fieldErrors.name}</p>
-        )}
-      </div>
 
-      <div>
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Monthly Limit ($)
-        </label>
-        <Input
-          type="number"
-          step="0.01"
-          min="0"
-          value={limit}
-          onChange={(e) => setLimit(e.target.value)}
-          placeholder="0.00"
-          disabled={isSubmitting}
-          className="mt-1.5"
+        <FormField
+          control={form.control}
+          name="limit"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-white">Monthly Limit ($)</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="any"
+                  placeholder="0"
+                  disabled={isPending}
+                  {...field}
+                  onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+                  className="bg-black/20 border-white/10 text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+              </FormControl>
+              <FormDescription className="text-muted-foreground/60">
+                Set a benchmark to track your spending progress.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Set to 0 if you do not want to track a budget limit.
-        </p>
-        {fieldErrors.limit && (
-          <p className="mt-1 text-xs text-red-500">{fieldErrors.limit}</p>
-        )}
-      </div>
 
-      {serverError && (
-        <p className="text-sm text-red-500">{serverError}</p>
-      )}
-
-      <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Saving...
-          </>
-        ) : (
-          "Save Category"
+        {form.formState.errors.root && (
+          <p className="text-sm text-red-500">{form.formState.errors.root.message}</p>
         )}
-      </Button>
-    </form>
+
+        <Button
+          type="submit"
+          disabled={isPending}
+          className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+        >
+          {isPending ? "Creating..." : "Add Category"}
+        </Button>
+      </form>
+    </Form>
   );
 }

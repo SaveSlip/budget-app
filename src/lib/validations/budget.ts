@@ -1,30 +1,15 @@
 import { z } from "zod";
 
 /**
- * Transaction Schema
- * Enforces strict data types for enterprise-grade financial reporting.
- */
-export const TransactionSchema = z.object({
-  amount: z.number().positive("Amount must be greater than zero"),
-  categoryId: z.string().min(1, "Category is required"),
-  description: z.string().min(1, "Description is required").max(100),
-  date: z.string().datetime({ message: "Invalid ISO 8601 date string" }),
-});
-
-/**
- * Category Schema
- * Used for creating and updating budget categories with monthly limits.
+ * Schema for Budget Categories
+ * Uses z.coerce.number() to ensure HTML form strings are converted to
+ * valid numbers before validation.
  */
 export const CategorySchema = z.object({
   id: z.string().optional(),
-  name: z.string().min(1, "Category name is required").max(50),
-  limit: z.coerce
-    .number()
-    .nonnegative("Budget limit must be 0 or greater")
-    .default(0),
+  name: z.string().min(1, "Name is required"),
+  limit: z.number().min(0, "Limit must be at least 0"),
 });
 
-export type Category = z.infer<typeof CategorySchema>;
-
-export type TransactionInput = z.infer<typeof TransactionSchema>;
+// Infer the TypeScript type directly from the schema
 export type CategoryInput = z.infer<typeof CategorySchema>;

@@ -1,72 +1,102 @@
-// src/lib/data/budget.ts
+import { auth } from "@/auth";
 import { docClient, TABLE_NAME } from "@/lib/db";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { auth } from "@/auth";
 
-/**
- * Retrieves all budget-related items for a specific month.
- * Utilizes the Single-Table Design pattern to fetch summaries and
- * transactions in a single round-trip where possible.
- */
-export async function getMonthlyData(yearMonth: string) {
-  const session = await auth();
-
-  // Zero-Trust: Ensure the user is authenticated before querying
-  if (!session?.user?.id) {
-    throw new Error(
-      "Unauthorized: Access to financial data requires a valid session.",
-    );
-  }
-
-  const userId = session.user.id;
-
-  try {
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
-        ExpressionAttributeValues: {
-          ":pk": `USER#${userId}`,
-          ":sk": `TX#${yearMonth}`,
-        },
-      }),
-    );
-
-    return result.Items || [];
-  } catch (error) {
-    // Institutional Logging: Maintain clear error boundaries for debugging
-    console.error(
-      `[DAL] Failed to fetch monthly data for ${yearMonth}:`,
-      error,
-    );
-    throw new Error("Internal Server Error: Data retrieval failed.");
-  }
+export interface Category {
+  id: string;
+  name: string;
+  limit: number;
+  type: string;
+  createdAt: string;
 }
-/**
- * Retrieves all defined budget categories for the authenticated user.
- */
-export async function getCategories() {
-  const session = await auth();
 
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized: Access requires a valid session.");
-  }
+export interface Transaction {
+  pk: string;
+  sk: string;
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  category: string;
+  type: string;
+  createdAt: string;
+}
+
+export async function getMonthlyData(month: string): Promise<Transaction[]> {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
 
   try {
     const result = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAME,
-        KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
+        KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
         ExpressionAttributeValues: {
           ":pk": `USER#${session.user.id}`,
-          ":sk": "CATEGORY#",
+          ":skPrefix": `TX#${month}`,
+        },
+        ScanIndexForward: false,
+      }),
+    );
+    return (result.Items ?? []) as Transaction[];
+  } catch (error) {
+    console.error("[DAL] Monthly data fetch failed:", error);
+    return [];
+  }
+}
+
+export async function getCategories(): Promise<Category[]> {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+        ExpressionAttributeValues: {
+          ":pk": `USER#${session.user.id}`,
+          ":skPrefix": "CATEGORY#",
         },
       }),
     );
-
-    return result.Items || [];
+    return (result.Items ?? []) as Category[];
   } catch (error) {
-    console.error("[DAL] Failed to fetch categories:", error);
-    throw new Error("Internal Server Error: Category retrieval failed.");
+    console.error("[DAL] Categories fetch failed:", error);
+    return [];
+  }
+}
+
+export async function getTransactionTrend(
+  monthsBack: number = 6,
+): Promise<Transaction[]> {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - monthsBack);
+
+  try {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: "UserDateIndex",
+        KeyConditionExpression:
+          "userId = :uid AND #date BETWEEN :start AND :end",
+        ExpressionAttributeNames: {
+          "#date": "date",
+        },
+        ExpressionAttributeValues: {
+          ":uid": session.user.id,
+          ":start": startDate.toISOString().split("T")[0],
+          ":end": endDate.toISOString().split("T")[0],
+        },
+      }),
+    );
+    return (result.Items ?? []) as Transaction[];
+  } catch (error) {
+    console.error("[DAL] Trend fetch failed:", error);
+    return [];
   }
 }

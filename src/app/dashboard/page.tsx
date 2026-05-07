@@ -1,100 +1,159 @@
-// src/app/dashboard/page.tsx
-import { getMonthlyData, getCategories } from "@/lib/data/budget";
-import { Suspense } from "react";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { AnimateSection } from "@/components/AnimateSection";
+import {
+  getMonthlyData,
+  getCategories,
+  getTransactionTrend,
+  type Transaction,
+} from "@/lib/data/budget";
 import { SummaryCard } from "@/components/SummaryCard";
-import { MonthlyChart } from "@/components/MonthlyChart";
-import TransactionForm from "@/components/TransactionForm";
-import { RecentTransactions, type Transaction } from "@/components/RecentTransactions";
+import { BudgetProgress } from "@/components/BudgetProgress";
 import { GlassCard } from "@/components/GlassCard";
-import { FadeIn } from "@/components/FadeIn";
-import { Skeleton } from "@/components/ui/skeleton";
-import CsvUploader from "@/components/CsvUploader";
-import type { Category } from "@/components/TransactionForm";
+import { MonthlyChart } from "@/components/MonthlyChart";
+import { RecentTransactions } from "@/components/RecentTransactions";
+import { CategoryForm } from "@/components/CategoryForm";
+import { DashboardFilters } from "@/components/DashboardFilters";
+import TransactionForm from "@/components/TransactionForm";
+import { format } from "date-fns";
 
-export default async function DashboardPage() {
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+interface PageProps {
+  searchParams: Promise<{ month?: string; q?: string }>;
+}
 
-  const [rawData, rawCategories] = await Promise.all([
-    getMonthlyData(currentMonth),
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const session = await auth();
+  if (!session?.user) redirect("/signin");
+
+  const resolvedParams = await searchParams;
+  const q = resolvedParams.q || "";
+  const activeMonth = resolvedParams.month || format(new Date(), "yyyy-MM");
+
+  const [currentItems, categories, trendItems] = await Promise.all([
+    getMonthlyData(activeMonth),
     getCategories(),
+    getTransactionTrend(6),
   ]);
 
-  const transactions = rawData.filter(
-    (item): item is Transaction => item.type === "TRANSACTION",
-  );
-  const categories: Category[] = rawCategories.map((c) => ({
-    id: c.id as string,
-    name: c.name as string,
-  }));
+  const filteredTransactions: Transaction[] = currentItems.filter((tx) => {
+    if (!q) return true;
+    const searchStr = q.toLowerCase();
+    return (
+      tx.description?.toLowerCase().includes(searchStr) ||
+      tx.category?.toLowerCase().includes(searchStr)
+    );
+  });
 
-  const totalSpent = transactions.reduce((sum, tx) => sum + (tx.amount || 0), 0);
-  const dailyAverage = transactions.length > 0 ? totalSpent / now.getDate() : 0;
+  const spendingMap: Record<string, number> = {};
+  let totalSpent = 0;
+
+  filteredTransactions.forEach((item) => {
+    const amount = Number(item.amount) || 0;
+    totalSpent += amount;
+    if (item.category) {
+      spendingMap[item.category] = (spendingMap[item.category] || 0) + amount;
+    }
+  });
 
   return (
-    <FadeIn>
-      <div className="space-y-8">
-        <header className="mb-2">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Financial Intelligence
-          </h1>
-        </header>
-
-        {/* High-Density Metric Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <SummaryCard
-            title="Total Monthly Spending"
-            value={totalSpent.toString()}
-            type="expense"
-            description="Verified outflows"
-          />
-          <SummaryCard
-            title="Daily Burn Rate"
-            value={dailyAverage.toFixed(2)}
-            type="expense"
-            description="Average daily velocity"
-          />
-          <SummaryCard
-            title="Total Operations"
-            value={transactions.length.toString()}
-            type="balance"
-            description="Transaction count"
-          />
-        </div>
-
-        {/* Primary Dashboard Content Grid */}
-        <div className="grid gap-6 md:grid-cols-12">
-          {/* Data Visualizations (Left Column) */}
-          <div className="md:col-span-8 space-y-6">
-            <GlassCard className="p-6">
-              <h3 className="mb-4 font-semibold">Spending Velocity</h3>
-              <Suspense fallback={<Skeleton className="h-75 w-full" />}>
-                <MonthlyChart />
-              </Suspense>
-            </GlassCard>
-
-            <GlassCard className="p-6 overflow-hidden">
-              <h3 className="mb-4 font-semibold">Recent Operations</h3>
-              <RecentTransactions transactions={transactions} />
-            </GlassCard>
-          </div>
-
-          {/* Action Center (Right Column) */}
-          <div className="md:col-span-4">
-            <GlassCard className="p-6">
-              <h3 className="mb-4 font-semibold">Log Operations</h3>
-
-              <TransactionForm categories={categories} />
-
-              <div className="my-6 flex items-center text-xs text-gray-400 uppercase before:flex-[1_1_0%] before:border-t before:border-gray-200 dark:before:border-gray-800 before:mr-4 after:flex-[1_1_0%] after:border-t after:border-gray-200 dark:after:border-gray-800 after:ml-4">
-                Or Bulk Import
-              </div>
-
-              <CsvUploader />
-            </GlassCard>
+    <div className="flex-1 w-full max-w-[1600px] mx-auto space-y-8">
+      {/* Header & Global Filters */}
+      <AnimateSection delay={0}>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight text-white">
+              Financial Command Center
+            </h2>
+            <p className="text-muted-foreground font-mono uppercase text-xs tracking-tighter">
+              Period: {activeMonth} {q ? `• Search: "${q}"` : ""}
+            </p>
           </div>
         </div>
+
+        <DashboardFilters />
       </div>
-    </FadeIn>
+      </AnimateSection>
+
+      {/* Row 1: Stats */}
+      <AnimateSection delay={0.08}>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <SummaryCard
+            title="Filtered Spending"
+            value={`$${totalSpent.toLocaleString()}`}
+            description={q ? `Results for "${q}"` : "Total for this period"}
+            type="expense"
+          />
+          <SummaryCard
+            title="Active Budgets"
+            value={categories.length.toString()}
+            description="Managed expense categories"
+            type="balance"
+          />
+          <SummaryCard
+            title="Monthly Goal"
+            value="Progressive"
+            description="Target tracking"
+            type="balance"
+          />
+          <SummaryCard
+            title="Transaction Count"
+            value={filteredTransactions.length.toString()}
+            description="Matches found"
+            type="expense"
+          />
+        </div>
+      </AnimateSection>
+
+      {/* Row 2: Analytics & Quick Log */}
+      <AnimateSection delay={0.16}>
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
+          <GlassCard title="6-Month Spending Trend" className="lg:col-span-4">
+            <div className="h-[350px] w-full pt-4">
+              <MonthlyChart transactions={trendItems} />
+            </div>
+          </GlassCard>
+
+          <GlassCard title="Log Transaction" className="lg:col-span-3">
+            <div className="pt-4">
+              <TransactionForm categories={categories} />
+            </div>
+          </GlassCard>
+        </div>
+      </AnimateSection>
+
+      {/* Row 3: Budget Benchmarking & Activity */}
+      <AnimateSection delay={0.24}>
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
+          <div className="lg:col-span-4 space-y-6">
+            <h3 className="text-xl font-semibold text-white px-1">
+              Budget Benchmarking
+            </h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              {categories.map((category) => (
+                <BudgetProgress
+                  key={category.id}
+                  categoryName={category.name}
+                  limit={category.limit || 0}
+                  spent={spendingMap[category.name] || 0}
+                />
+              ))}
+            </div>
+
+            <GlassCard title="Add New Budget Category">
+              <div className="pt-2">
+                <CategoryForm />
+              </div>
+            </GlassCard>
+          </div>
+
+          <GlassCard title="Recent Activity" className="lg:col-span-3">
+            <div className="mt-2 h-full">
+              <RecentTransactions transactions={filteredTransactions.slice(0, 10)} />
+            </div>
+          </GlassCard>
+        </div>
+      </AnimateSection>
+    </div>
   );
 }

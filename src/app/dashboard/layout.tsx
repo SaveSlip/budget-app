@@ -1,5 +1,6 @@
 import Link from "next/link";
 import UserNav from "@/components/UserNav";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export default function DashboardLayout({
   children,
@@ -41,8 +42,8 @@ export default function DashboardLayout({
         </div>
       </nav>
 
-      {/* Main Content Wrapper - Forces all dashboard pages to inherit the aligned 80% width */}
       <main className="mx-auto w-[95%] md:w-[90%] lg:w-[80%] max-w-7xl py-8">
+        <Breadcrumbs />
         {children}
       </main>
     </div>

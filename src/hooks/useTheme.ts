@@ -12,10 +12,14 @@ export function useTheme() {
     root.classList.remove("light", "dark");
 
     if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-      root.classList.add(systemTheme);
+      const mql = window.matchMedia("(prefers-color-scheme: dark)");
+      const apply = (e: MediaQueryListEvent | MediaQueryList) => {
+        root.classList.remove("light", "dark");
+        root.classList.add(e.matches ? "dark" : "light");
+      };
+      apply(mql);
+      mql.addEventListener("change", apply);
+      return () => mql.removeEventListener("change", apply);
     } else {
       root.classList.add(theme);
     }

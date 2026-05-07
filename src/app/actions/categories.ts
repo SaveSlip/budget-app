@@ -10,7 +10,7 @@ const limitSchema = z.coerce.number().nonnegative("Limit must be 0 or greater");
 
 export async function createCategory(data: { name: string; limit: number }) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) return { error: "Unauthorized" };
 
   const categoryId = crypto.randomUUID();
 
@@ -41,7 +41,7 @@ export async function createCategory(data: { name: string; limit: number }) {
 
 export async function deleteCategory(id: string) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) return { error: "Unauthorized" };
 
   try {
     await docClient.send(
@@ -64,7 +64,7 @@ export async function deleteCategory(id: string) {
 
 export async function listCategories() {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) return { error: "Unauthorized" };
 
   try {
     const { Items } = await docClient.send(
@@ -86,7 +86,7 @@ export async function listCategories() {
 
 export async function updateCategoryLimit(id: string, limit: number) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) return { error: "Unauthorized" };
 
   const parsed = limitSchema.safeParse(limit);
   if (!parsed.success) return { error: "Invalid limit value" };
