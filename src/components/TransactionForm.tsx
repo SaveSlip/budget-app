@@ -24,6 +24,7 @@ export default function TransactionForm({
     amount: "",
     date: today,
     category: "",
+    transactionType: "EXPENSE" as "INCOME" | "EXPENSE",
   });
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -38,13 +39,14 @@ export default function TransactionForm({
         amount: Number(formData.amount),
         date: formData.date,
         category: formData.category,
+        transactionType: formData.transactionType,
       });
 
       if (result.error) {
         setError(result.error);
       } else {
         setSuccess(true);
-        setFormData({ description: "", amount: "", date: today, category: "" });
+        setFormData({ description: "", amount: "", date: today, category: "", transactionType: "EXPENSE" });
         setTimeout(() => setSuccess(false), 3000);
       }
     } catch {
@@ -56,6 +58,32 @@ export default function TransactionForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Income / Expense toggle */}
+      <div className="flex rounded-md border border-border overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setFormData({ ...formData, transactionType: "EXPENSE" })}
+          className={`flex-1 py-2 text-sm font-medium transition-colors ${
+            formData.transactionType === "EXPENSE"
+              ? "bg-red-500/15 text-red-500"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Expense
+        </button>
+        <button
+          type="button"
+          onClick={() => setFormData({ ...formData, transactionType: "INCOME" })}
+          className={`flex-1 py-2 text-sm font-medium transition-colors ${
+            formData.transactionType === "INCOME"
+              ? "bg-green-500/15 text-green-500"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Income
+        </button>
+      </div>
+
       <div>
         <label className="text-sm font-medium leading-none text-muted-foreground">
           Description

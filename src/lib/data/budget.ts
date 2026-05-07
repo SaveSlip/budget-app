@@ -19,6 +19,7 @@ export interface Transaction {
   date: string;
   category: string;
   type: string;
+  transactionType?: "INCOME" | "EXPENSE";
   createdAt: string;
 }
 

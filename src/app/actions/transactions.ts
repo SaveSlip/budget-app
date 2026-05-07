@@ -22,7 +22,7 @@ export async function createTransaction(data: TransactionInput) {
   const parsed = transactionSchema.safeParse(data);
   if (!parsed.success) return { error: "Invalid transaction data." };
 
-  const { description, amount, date, category } = parsed.data;
+  const { description, amount, date, category, transactionType } = parsed.data;
   const userId = session.user.id;
   const txId = crypto.randomUUID();
 
@@ -39,6 +39,7 @@ export async function createTransaction(data: TransactionInput) {
           amount: Number(amount),
           date,
           category,
+          transactionType,
           createdAt: new Date().toISOString(),
         },
       }),
@@ -78,6 +79,7 @@ export async function batchCreateTransactions(
           amount: Number(tx.amount),
           date: tx.date,
           category: tx.category,
+          transactionType: tx.transactionType ?? "EXPENSE",
           createdAt: new Date().toISOString(),
         },
       },
@@ -203,7 +205,7 @@ export async function updateTransaction(
   const parsed = transactionSchema.safeParse(data);
   if (!parsed.success) return { error: "Invalid transaction data." };
 
-  const { description, amount, date, category } = parsed.data;
+  const { description, amount, date, category, transactionType } = parsed.data;
   const userId = session.user.id;
 
   try {
@@ -233,7 +235,8 @@ export async function updateTransaction(
                   amount: Number(amount),
                   date,
                   category,
-                  createdAt: new Date().toISOString(), // Or keep original if we fetch it first, but this is simple enough
+                  transactionType,
+                  createdAt: new Date().toISOString(),
                 },
               },
             },
@@ -241,7 +244,6 @@ export async function updateTransaction(
         }),
       );
     } else {
-      // Just put over the existing item (it will replace entirely, which is fine)
       await docClient.send(
         new PutCommand({
           TableName: TABLE_NAME,
@@ -254,6 +256,7 @@ export async function updateTransaction(
             amount: Number(amount),
             date,
             category,
+            transactionType,
             createdAt: new Date().toISOString(),
           },
         }),
