@@ -83,6 +83,7 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
             tickFormatter={(v) => `$${v}`}
           />
           <Tooltip
+            cursor={{ fill: "var(--muted)" }}
             contentStyle={{
               backgroundColor: "var(--popover)",
               border: "1px solid var(--border)",

@@ -9,6 +9,7 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Transaction } from "@/lib/data/budget";
+import { TransactionActions } from "@/components/TransactionActions";
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
@@ -32,13 +33,14 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
             <TableHead className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Amount
             </TableHead>
+            <TableHead className="w-10"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {transactions.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={4}
+                colSpan={5}
                 className="h-24 text-center text-sm text-muted-foreground"
               >
                 No verified transactions found for this period.
@@ -71,6 +73,9 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                   {tx.amount.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                   })}
+                </TableCell>
+                <TableCell className="text-right">
+                  <TransactionActions transaction={tx as any} />
                 </TableCell>
               </TableRow>
             ))

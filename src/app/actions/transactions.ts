@@ -1,9 +1,18 @@
 "use server";
 
-import { QueryCommand, PutCommand, BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  QueryCommand,
+  PutCommand,
+  BatchWriteCommand,
+  DeleteCommand,
+  TransactWriteCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { auth } from "@/auth";
 import { docClient, TABLE_NAME } from "@/lib/db";
-import { transactionSchema, TransactionInput } from "@/lib/validations/transaction";
+import {
+  transactionSchema,
+  TransactionInput,
+} from "@/lib/validations/transaction";
 import { revalidatePath } from "next/cache";
 
 export async function createTransaction(data: TransactionInput) {
@@ -42,7 +51,9 @@ export async function createTransaction(data: TransactionInput) {
   }
 }
 
-export async function batchCreateTransactions(transactions: TransactionInput[]) {
+export async function batchCreateTransactions(
+  transactions: TransactionInput[],
+) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
@@ -155,5 +166,105 @@ export async function getAllTransactions() {
   } catch (error) {
     console.error("Failed to fetch all transactions:", error);
     return { error: "Failed to retrieve financial data." };
+  }
+}
+
+export async function deleteTransaction(date: string, txId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+
+  try {
+    await docClient.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          pk: `USER#${session.user.id}`,
+          sk: `TX#${date}#${txId}`,
+        },
+      }),
+    );
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/transactions");
+    return { success: true };
+  } catch (error) {
+    console.error("[DB] Failed to delete transaction:", error);
+    return { error: "Failed to delete transaction" };
+  }
+}
+
+export async function updateTransaction(
+  originalDate: string,
+  txId: string,
+  data: TransactionInput,
+) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+
+  const parsed = transactionSchema.safeParse(data);
+  if (!parsed.success) return { error: "Invalid transaction data." };
+
+  const { description, amount, date, category } = parsed.data;
+  const userId = session.user.id;
+
+  try {
+    // If date changed, we must replace the item since SK changes
+    if (originalDate !== date) {
+      await docClient.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            {
+              Delete: {
+                TableName: TABLE_NAME,
+                Key: {
+                  pk: `USER#${userId}`,
+                  sk: `TX#${originalDate}#${txId}`,
+                },
+              },
+            },
+            {
+              Put: {
+                TableName: TABLE_NAME,
+                Item: {
+                  pk: `USER#${userId}`,
+                  sk: `TX#${date}#${txId}`,
+                  id: txId,
+                  type: "TRANSACTION",
+                  description,
+                  amount: Number(amount),
+                  date,
+                  category,
+                  createdAt: new Date().toISOString(), // Or keep original if we fetch it first, but this is simple enough
+                },
+              },
+            },
+          ],
+        }),
+      );
+    } else {
+      // Just put over the existing item (it will replace entirely, which is fine)
+      await docClient.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            pk: `USER#${userId}`,
+            sk: `TX#${date}#${txId}`,
+            id: txId,
+            type: "TRANSACTION",
+            description,
+            amount: Number(amount),
+            date,
+            category,
+            createdAt: new Date().toISOString(),
+          },
+        }),
+      );
+    }
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/transactions");
+    return { success: true };
+  } catch (error) {
+    console.error("[DB] Failed to update transaction:", error);
+    return { error: "Failed to update transaction" };
   }
 }

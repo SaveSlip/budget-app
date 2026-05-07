@@ -108,29 +108,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </div>
       </AnimateSection>
 
-      {/* Row 2: Analytics & Quick Log */}
+      {/* Row 2: Budget Benchmarking & Quick Log */}
       <AnimateSection delay={0.16}>
-        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
-          <GlassCard title="6-Month Spending Trend" className="lg:col-span-4">
-            <div className="h-[350px] w-full">
-              <MonthlyChart transactions={trendItems} />
-            </div>
-          </GlassCard>
-
-          <GlassCard title="Log Transaction" className="lg:col-span-3">
-            <TransactionForm categories={categories} />
-            <div className="mt-4 pt-4 border-t border-border">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Bulk Import
-              </p>
-              <CsvUploader />
-            </div>
-          </GlassCard>
-        </div>
-      </AnimateSection>
-
-      {/* Row 3: Budget Benchmarking & Activity */}
-      <AnimateSection delay={0.24}>
         <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
           <div className="lg:col-span-4 space-y-6">
             <h3 className="text-xl font-semibold text-foreground px-1">
@@ -151,6 +130,27 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               <CategoryForm />
             </GlassCard>
           </div>
+
+          <GlassCard title="Log Transaction" className="lg:col-span-3">
+            <TransactionForm categories={categories} />
+            <div className="mt-4 pt-4 border-t border-border">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                Bulk Import
+              </p>
+              <CsvUploader />
+            </div>
+          </GlassCard>
+        </div>
+      </AnimateSection>
+
+      {/* Row 3: 6-Month Spending Trend & Activity */}
+      <AnimateSection delay={0.24}>
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
+          <GlassCard title="6-Month Spending Trend" className="lg:col-span-4">
+            <div className="h-87.5 w-full">
+              <MonthlyChart transactions={trendItems} />
+            </div>
+          </GlassCard>
 
           <GlassCard title="Recent Activity" className="lg:col-span-3">
             <div className="h-full">
