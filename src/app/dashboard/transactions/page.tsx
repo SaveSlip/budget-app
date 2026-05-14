@@ -1,19 +1,27 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getAllTransactions } from "@/app/actions/transactions";
+import { listRecurringTransactions } from "@/app/actions/recurring";
+import { getCategories, getAccounts } from "@/lib/data/budget";
 import { columns, type Transaction } from "./columns";
 import { DataTable } from "./data-table";
 import { GlassCard } from "@/components/GlassCard";
-import { Button } from "@/components/ui/button";
-import { CreditCard, RefreshCw, ArrowRight } from "lucide-react";
+import { RecurringTransactionForm } from "@/components/RecurringTransactionForm";
+import { RecurringList } from "@/components/RecurringList";
+import { FadeIn } from "@/components/FadeIn";
 
 export default async function TransactionsPage() {
   const session = await auth();
   if (!session?.user) redirect("/signin");
 
-  const response = await getAllTransactions();
-  const transactions = (response.transactions || []) as Transaction[];
+  const [transactionsResponse, categories, accounts, recurring] = await Promise.all([
+    getAllTransactions(),
+    getCategories(),
+    getAccounts(),
+    listRecurringTransactions(),
+  ]);
+
+  const transactions = (transactionsResponse.transactions || []) as Transaction[];
 
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 pt-4">
@@ -28,46 +36,28 @@ export default async function TransactionsPage() {
 
       <DataTable columns={columns} data={transactions} />
 
-      {/* Quick links to related settings */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <GlassCard>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                <CreditCard className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Accounts</p>
-                <p className="text-xs text-muted-foreground">Manage your bank accounts</p>
-              </div>
-            </div>
-            <Link href="/dashboard/settings/accounts">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
-        </GlassCard>
+      <FadeIn delay={0.1}>
+        <div>
+          <h3 className="text-2xl font-bold tracking-tight text-foreground">
+            Recurring Transactions
+          </h3>
+          <p className="text-muted-foreground text-sm mt-1">
+            Fixed expenses and income that repeat automatically each period.
+          </p>
+        </div>
+      </FadeIn>
 
-        <GlassCard>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                <RefreshCw className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Recurring</p>
-                <p className="text-xs text-muted-foreground">Manage recurring transactions</p>
-              </div>
-            </div>
-            <Link href="/dashboard/settings/recurring">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
+      {recurring.length > 0 && (
+        <FadeIn delay={0.15}>
+          <RecurringList recurring={recurring} categories={categories} accounts={accounts} />
+        </FadeIn>
+      )}
+
+      <FadeIn delay={0.2}>
+        <GlassCard title="Add Recurring Transaction">
+          <RecurringTransactionForm categories={categories} accounts={accounts} />
         </GlassCard>
-      </div>
+      </FadeIn>
     </div>
   );
 }

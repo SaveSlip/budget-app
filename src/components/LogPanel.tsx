@@ -23,7 +23,7 @@ export function LogPanel({ categories, accounts }: LogPanelProps) {
           onClick={() => setActiveTab("EXPENSE")}
           className={`flex-1 py-2 text-sm font-medium transition-colors ${
             activeTab === "EXPENSE"
-              ? "bg-orange-500/15 text-orange-500"
+              ? "bg-primary/15 text-primary"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -34,7 +34,7 @@ export function LogPanel({ categories, accounts }: LogPanelProps) {
           onClick={() => setActiveTab("INCOME")}
           className={`flex-1 py-2 text-sm font-medium transition-colors ${
             activeTab === "INCOME"
-              ? "bg-green-500/15 text-green-500"
+              ? "bg-success/15 text-success"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >

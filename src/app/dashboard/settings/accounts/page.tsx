@@ -7,7 +7,7 @@ import { AccountBalances } from "@/components/AccountBalances";
 import { AccountForm } from "@/components/AccountForm";
 import { FadeIn } from "@/components/FadeIn";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CreditCard, User, RefreshCw, Users } from "lucide-react";
+import { ArrowLeft, CreditCard, User, Users } from "lucide-react";
 
 export default async function AccountSettingsPage() {
   const session = await auth();
@@ -52,14 +52,6 @@ export default async function AccountSettingsPage() {
                   className="w-full justify-start bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
                 >
                   <CreditCard className="w-4 h-4 mr-2" /> Accounts
-                </Button>
-              </Link>
-              <Link href="/dashboard/settings/recurring">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" /> Recurring
                 </Button>
               </Link>
               <Link href="/dashboard/settings/household">

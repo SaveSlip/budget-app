@@ -21,18 +21,19 @@ import {
   Loader2,
   Moon,
   Sun,
+  Monitor,
   Save,
   CreditCard,
-  RefreshCw,
   Users,
 } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function ProfileSettingsPage() {
-  // Hardcoded fake data because our database is currently just vibes
   const [name, setName] = useState("Aman Brar");
   const [email, setEmail] = useState("admin@amanbrar.pro");
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const { theme, setTheme } = useTheme();
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,12 +48,6 @@ export default function ProfileSettingsPage() {
       // Clear the success message after 3 seconds
       setTimeout(() => setSaveMessage(""), 3000);
     }, 1500);
-  };
-
-  const handleLightModeRejection = () => {
-    alert(
-      "Access Denied: Light mode is for spreadsheets. We are building a platform.",
-    );
   };
 
   return (
@@ -92,28 +87,12 @@ export default function ProfileSettingsPage() {
                   <CreditCard className="w-4 h-4 mr-2" /> Accounts
                 </Button>
               </Link>
-              <Link href="/dashboard/settings/recurring">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" /> Recurring
-                </Button>
-              </Link>
               <Link href="/dashboard/settings/household">
                 <Button
                   variant="ghost"
                   className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                 >
                   <Users className="w-4 h-4 mr-2" /> Household
-                </Button>
-              </Link>
-              <Link href="/dashboard/settings/categories">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                >
-                  Category Rules
                 </Button>
               </Link>
             </div>
@@ -256,22 +235,28 @@ export default function ProfileSettingsPage() {
                       Toggle between Dark and Light mode.
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="bg-primary/20 text-primary cursor-default hover:bg-primary/20 hover:text-primary"
-                    >
-                      <Moon className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      onClick={handleLightModeRejection}
+                  <div className="flex items-center gap-1 bg-muted p-1 rounded-md border border-border">
+                    <button
+                      onClick={() => setTheme("light")}
+                      aria-label="Light mode"
+                      className={`flex-1 flex justify-center p-1.5 rounded text-muted-foreground hover:text-foreground ${theme === "light" ? "bg-card shadow-sm text-foreground" : ""}`}
                     >
                       <Sun className="w-4 h-4" />
-                    </Button>
+                    </button>
+                    <button
+                      onClick={() => setTheme("system")}
+                      aria-label="System theme"
+                      className={`flex-1 flex justify-center p-1.5 rounded text-muted-foreground hover:text-foreground ${theme === "system" ? "bg-card shadow-sm text-foreground" : ""}`}
+                    >
+                      <Monitor className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setTheme("dark")}
+                      aria-label="Dark mode"
+                      className={`flex-1 flex justify-center p-1.5 rounded text-muted-foreground hover:text-foreground ${theme === "dark" ? "bg-card shadow-sm text-foreground" : ""}`}
+                    >
+                      <Moon className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </CardContent>

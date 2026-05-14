@@ -98,7 +98,7 @@ export function RecurringTransactionForm({
           onClick={() => setFormData({ ...formData, transactionType: "EXPENSE" })}
           className={`flex-1 py-2 text-sm font-medium transition-colors ${
             formData.transactionType === "EXPENSE"
-              ? "bg-orange-500/15 text-orange-500"
+              ? "bg-primary/15 text-primary"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -109,7 +109,7 @@ export function RecurringTransactionForm({
           onClick={() => setFormData({ ...formData, transactionType: "INCOME" })}
           className={`flex-1 py-2 text-sm font-medium transition-colors ${
             formData.transactionType === "INCOME"
-              ? "bg-green-500/15 text-green-500"
+              ? "bg-success/15 text-success"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -231,9 +231,9 @@ export function RecurringTransactionForm({
         </select>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       {success && (
-        <p className="text-sm text-green-500">
+        <p className="text-sm text-success">
           {existing ? "Updated successfully." : "Recurring transaction added."}
         </p>
       )}

@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 const NAV_LINKS = [
   { href: "/dashboard", label: "Overview", exact: true },
   { href: "/dashboard/transactions", label: "Transactions", exact: false },
-  { href: "/dashboard/settings", label: "Settings", exact: false },
 ];
 
 export function DashboardNav() {

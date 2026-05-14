@@ -5,7 +5,7 @@ import { getHousehold } from "@/app/actions/household";
 import { GlassCard } from "@/components/GlassCard";
 import { FadeIn } from "@/components/FadeIn";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, CreditCard, RefreshCw, Users } from "lucide-react";
+import { ArrowLeft, User, CreditCard, Users } from "lucide-react";
 import { CreateHouseholdForm } from "@/components/CreateHouseholdForm";
 import { HouseholdMembersList } from "@/components/HouseholdMembersList";
 
@@ -44,11 +44,6 @@ export default async function HouseholdSettingsPage() {
               <Link href="/dashboard/settings/accounts">
                 <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5">
                   <CreditCard className="w-4 h-4 mr-2" /> Accounts
-                </Button>
-              </Link>
-              <Link href="/dashboard/settings/recurring">
-                <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5">
-                  <RefreshCw className="w-4 h-4 mr-2" /> Recurring
                 </Button>
               </Link>
               <Link href="/dashboard/settings/household">
