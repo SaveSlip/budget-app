@@ -22,6 +22,9 @@ import {
   Moon,
   Sun,
   Save,
+  CreditCard,
+  RefreshCw,
+  Users,
 } from "lucide-react";
 
 export default function ProfileSettingsPage() {
@@ -81,12 +84,35 @@ export default function ProfileSettingsPage() {
                   <User className="w-4 h-4 mr-2" /> Profile
                 </Button>
               </Link>
+              <Link href="/dashboard/settings/accounts">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                >
+                  <CreditCard className="w-4 h-4 mr-2" /> Accounts
+                </Button>
+              </Link>
+              <Link href="/dashboard/settings/recurring">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" /> Recurring
+                </Button>
+              </Link>
+              <Link href="/dashboard/settings/household">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                >
+                  <Users className="w-4 h-4 mr-2" /> Household
+                </Button>
+              </Link>
               <Link href="/dashboard/settings/categories">
                 <Button
                   variant="ghost"
                   className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                 >
-                  {/* Re-using the layout logic to make it look like a real app */}
                   Category Rules
                 </Button>
               </Link>

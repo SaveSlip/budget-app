@@ -1,22 +1,18 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getAllTransactions } from "@/app/actions/transactions";
-import { getAccounts, getTransactionTrend } from "@/lib/data/budget";
 import { columns, type Transaction } from "./columns";
 import { DataTable } from "./data-table";
 import { GlassCard } from "@/components/GlassCard";
-import { AccountBalances } from "@/components/AccountBalances";
-import { AccountForm } from "@/components/AccountForm";
+import { Button } from "@/components/ui/button";
+import { CreditCard, RefreshCw, ArrowRight } from "lucide-react";
 
 export default async function TransactionsPage() {
   const session = await auth();
   if (!session?.user) redirect("/signin");
 
-  const [response, accounts, allTrendItems] = await Promise.all([
-    getAllTransactions(),
-    getAccounts(),
-    getTransactionTrend(24),
-  ]);
+  const response = await getAllTransactions();
   const transactions = (response.transactions || []) as Transaction[];
 
   return (
@@ -32,19 +28,45 @@ export default async function TransactionsPage() {
 
       <DataTable columns={columns} data={transactions} />
 
-      {/* Account Overview */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-foreground mb-6">
-          Account Overview
-        </h2>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <GlassCard title="Account Balances">
-            <AccountBalances accounts={accounts} transactions={allTrendItems} />
-          </GlassCard>
-          <GlassCard title="Add Account">
-            <AccountForm />
-          </GlassCard>
-        </div>
+      {/* Quick links to related settings */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <GlassCard>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <CreditCard className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Accounts</p>
+                <p className="text-xs text-muted-foreground">Manage your bank accounts</p>
+              </div>
+            </div>
+            <Link href="/dashboard/settings/accounts">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+        </GlassCard>
+
+        <GlassCard>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                <RefreshCw className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Recurring</p>
+                <p className="text-xs text-muted-foreground">Manage recurring transactions</p>
+              </div>
+            </div>
+            <Link href="/dashboard/settings/recurring">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
+        </GlassCard>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
-import { auth } from "@/auth";
 import { docClient, TABLE_NAME } from "@/lib/db";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { getActiveUserId } from "@/lib/activeUser";
 
 export interface Account {
   id: string;
@@ -33,8 +33,8 @@ export interface Transaction {
 }
 
 export async function getMonthlyData(month: string): Promise<Transaction[]> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await getActiveUserId();
+  if (!userId) throw new Error("Unauthorized");
 
   try {
     const result = await docClient.send(
@@ -42,7 +42,7 @@ export async function getMonthlyData(month: string): Promise<Transaction[]> {
         TableName: TABLE_NAME,
         KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
         ExpressionAttributeValues: {
-          ":pk": `USER#${session.user.id}`,
+          ":pk": `USER#${userId}`,
           ":skPrefix": `TX#${month}`,
         },
         ScanIndexForward: false,
@@ -56,8 +56,8 @@ export async function getMonthlyData(month: string): Promise<Transaction[]> {
 }
 
 export async function getCategories(): Promise<Category[]> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await getActiveUserId();
+  if (!userId) throw new Error("Unauthorized");
 
   try {
     const result = await docClient.send(
@@ -65,7 +65,7 @@ export async function getCategories(): Promise<Category[]> {
         TableName: TABLE_NAME,
         KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
         ExpressionAttributeValues: {
-          ":pk": `USER#${session.user.id}`,
+          ":pk": `USER#${userId}`,
           ":skPrefix": "CATEGORY#",
         },
       }),
@@ -78,8 +78,8 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 export async function getAccounts(): Promise<Account[]> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await getActiveUserId();
+  if (!userId) throw new Error("Unauthorized");
 
   try {
     const result = await docClient.send(
@@ -87,7 +87,7 @@ export async function getAccounts(): Promise<Account[]> {
         TableName: TABLE_NAME,
         KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
         ExpressionAttributeValues: {
-          ":pk": `USER#${session.user.id}`,
+          ":pk": `USER#${userId}`,
           ":skPrefix": "ACCOUNT#",
         },
       }),
@@ -97,6 +97,38 @@ export async function getAccounts(): Promise<Account[]> {
     console.error("[DAL] Accounts fetch failed:", error);
     return [];
   }
+}
+
+export interface HouseholdMember {
+  id: string;
+  name: string;
+  email?: string;
+  role: "MASTER" | "MEMBER";
+  createdAt: string;
+}
+
+export interface Household {
+  id: string;
+  name: string;
+  masterUserId: string;
+  createdAt: string;
+}
+
+export interface RecurringTransaction {
+  pk: string;
+  sk: string;
+  id: string;
+  type: "RECURRING";
+  description: string;
+  amount: number;
+  category: string;
+  transactionType: "INCOME" | "EXPENSE";
+  accountId?: string;
+  frequency: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
+  dayOfMonth?: number;
+  nextRunDate: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface MonthlyBalance {
@@ -241,8 +273,8 @@ export async function getQuarterlyReview(
 export async function getTransactionTrend(
   monthsBack: number = 6,
 ): Promise<Transaction[]> {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await getActiveUserId();
+  if (!userId) throw new Error("Unauthorized");
 
   const endDate = new Date();
   const startDate = new Date();
@@ -254,7 +286,7 @@ export async function getTransactionTrend(
         TableName: TABLE_NAME,
         KeyConditionExpression: "pk = :pk AND sk BETWEEN :startSk AND :endSk",
         ExpressionAttributeValues: {
-          ":pk": `USER#${session.user.id}`,
+          ":pk": `USER#${userId}`,
           ":startSk": `TX#${startDate.toISOString().split("T")[0]}`,
           ":endSk": `TX#${endDate.toISOString().split("T")[0]}#\uffff`,
         },

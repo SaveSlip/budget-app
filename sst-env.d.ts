@@ -19,6 +19,10 @@ declare module "sst" {
       "sender": string
       "type": "sst.aws.Email"
     }
+    "ProcessRecurring": {
+      "name": string
+      "type": "sst.aws.Function"
+    }
   }
 }
 

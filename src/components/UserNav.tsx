@@ -1,11 +1,19 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { User, LogOut, Sun, Moon, Monitor } from "lucide-react";
+import { User, LogOut, Sun, Moon, Monitor, Settings } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
+import Link from "next/link";
 import { useTheme } from "@/hooks/useTheme";
+import { UserSwitcher } from "@/components/UserSwitcher";
+import type { HouseholdMember } from "@/lib/data/budget";
 
-export default function UserNav() {
+interface UserNavProps {
+  householdName?: string;
+  householdMembers?: HouseholdMember[];
+}
+
+export default function UserNav({ householdName, householdMembers = [] }: UserNavProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { data: session } = useSession();
@@ -53,6 +61,10 @@ export default function UserNav() {
             </p>
           </div>
 
+          {householdName && householdMembers.length > 0 && (
+            <UserSwitcher members={householdMembers} householdName={householdName} />
+          )}
+
           <div className="px-4 py-2 border-b border-border">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Theme
@@ -81,6 +93,15 @@ export default function UserNav() {
               </button>
             </div>
           </div>
+
+          <Link
+            href="/dashboard/settings/profile"
+            onClick={() => setIsOpen(false)}
+            className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-accent flex items-center gap-2 transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            Settings
+          </Link>
 
           <button
             onClick={() => signOut({ callbackUrl: "/signin" })}

@@ -66,7 +66,7 @@ export default function SignupPage() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push("/dashboard/settings/recurring?onboarding=true");
   };
 
   return (

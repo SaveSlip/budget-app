@@ -7,8 +7,8 @@ import {
   DeleteCommand,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { auth } from "@/auth";
 import { docClient, TABLE_NAME } from "@/lib/db";
+import { getActiveUserId } from "@/lib/activeUser";
 import {
   transactionSchema,
   TransactionInput,
@@ -16,15 +16,14 @@ import {
 import { revalidatePath } from "next/cache";
 
 export async function createTransaction(data: TransactionInput) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const userId = await getActiveUserId();
+  if (!userId) throw new Error("Unauthorized");
 
   const parsed = transactionSchema.safeParse(data);
   if (!parsed.success) return { error: "Invalid transaction data." };
 
   const { description, amount, date, category, transactionType, accountId } =
     parsed.data;
-  const userId = session.user.id;
   const txId = crypto.randomUUID();
 
   try {
@@ -57,10 +56,8 @@ export async function createTransaction(data: TransactionInput) {
 export async function batchCreateTransactions(
   transactions: TransactionInput[],
 ) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-
-  const userId = session.user.id;
+  const userId = await getActiveUserId();
+  if (!userId) throw new Error("Unauthorized");
 
   const validTransactions = transactions.filter(
     (tx) => transactionSchema.safeParse(tx).success,
@@ -114,10 +111,8 @@ export async function batchCreateTransactions(
 }
 
 export async function getTransactions(month?: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-
-  const userId = session.user.id;
+  const userId = await getActiveUserId();
+  if (!userId) throw new Error("Unauthorized");
   const skPrefix = month ? `TX#${month}` : "TX#";
 
   try {
@@ -140,10 +135,8 @@ export async function getTransactions(month?: string) {
 }
 
 export async function getAllTransactions() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-
-  const userId = session.user.id;
+  const userId = await getActiveUserId();
+  if (!userId) throw new Error("Unauthorized");
   const transactions: any[] = [];
   let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
@@ -175,15 +168,15 @@ export async function getAllTransactions() {
 }
 
 export async function deleteTransaction(date: string, txId: string) {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "Unauthorized" };
+  const userId = await getActiveUserId();
+  if (!userId) return { error: "Unauthorized" };
 
   try {
     await docClient.send(
       new DeleteCommand({
         TableName: TABLE_NAME,
         Key: {
-          pk: `USER#${session.user.id}`,
+          pk: `USER#${userId}`,
           sk: `TX#${date}#${txId}`,
         },
       }),
@@ -202,15 +195,14 @@ export async function updateTransaction(
   txId: string,
   data: TransactionInput,
 ) {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "Unauthorized" };
+  const userId = await getActiveUserId();
+  if (!userId) return { error: "Unauthorized" };
 
   const parsed = transactionSchema.safeParse(data);
   if (!parsed.success) return { error: "Invalid transaction data." };
 
   const { description, amount, date, category, transactionType, accountId } =
     parsed.data;
-  const userId = session.user.id;
 
   try {
     // If date changed, we must replace the item since SK changes

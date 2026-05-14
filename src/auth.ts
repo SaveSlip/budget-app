@@ -59,17 +59,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    // 1. When the token is created, attach the user ID to it
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session: sessionUpdate }) {
       if (user) {
         token.id = user.id;
+        token.activeUserId = user.id;
+      }
+      // Allow client-side update() calls to set activeUserId
+      if (trigger === "update" && sessionUpdate?.activeUserId !== undefined) {
+        token.activeUserId = sessionUpdate.activeUserId;
       }
       return token;
     },
-    // 2. When the session is checked, pass the ID from the token to the session
     async session({ session, token }) {
       if (token?.id && session.user) {
         session.user.id = token.id as string;
+        session.user.activeUserId = (token.activeUserId ?? token.id) as string;
       }
       return session;
     },

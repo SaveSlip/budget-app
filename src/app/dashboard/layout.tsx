@@ -1,12 +1,14 @@
 import Link from "next/link";
 import UserNav from "@/components/UserNav";
 import { DashboardNav } from "@/components/DashboardNav";
+import { getHousehold } from "@/app/actions/household";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { household, members } = await getHousehold();
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation Bar - Enlarged and Aligned */}
@@ -40,7 +42,10 @@ export default function DashboardLayout({
           {/* Right Aligned Actions */}
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             {/* Log Out button removed from here, it now lives inside the UserNav popout */}
-            <UserNav />
+            <UserNav
+              householdName={household?.name}
+              householdMembers={members}
+            />
           </div>
         </div>
       </nav>

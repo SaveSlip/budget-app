@@ -1,0 +1,130 @@
+"use client";
+
+import { useState } from "react";
+import { Trash, Loader2, RefreshCw, Pencil } from "lucide-react";
+import {
+  deleteRecurringTransaction,
+  toggleRecurringTransaction,
+} from "@/app/actions/recurring";
+import type { RecurringTransaction, Category, Account } from "@/lib/data/budget";
+import { GlassCard } from "@/components/GlassCard";
+import { RecurringTransactionForm } from "@/components/RecurringTransactionForm";
+
+const FREQUENCY_LABELS: Record<string, string> = {
+  DAILY: "Daily",
+  WEEKLY: "Weekly",
+  MONTHLY: "Monthly",
+  YEARLY: "Yearly",
+};
+
+interface RecurringListProps {
+  recurring: RecurringTransaction[];
+  categories?: Category[];
+  accounts?: Account[];
+}
+
+export function RecurringList({ recurring, categories = [], accounts = [] }: RecurringListProps) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    await deleteRecurringTransaction(id);
+    setDeletingId(null);
+  };
+
+  const handleToggle = async (id: string, current: boolean) => {
+    setTogglingId(id);
+    await toggleRecurringTransaction(id, !current);
+    setTogglingId(null);
+  };
+
+  if (recurring.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+        Active Recurring ({recurring.length})
+      </h3>
+      {recurring.map((item) => (
+        <div key={item.id}>
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card/50">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`p-1.5 rounded-md bg-muted ${item.isActive ? "text-primary" : "text-muted-foreground"}`}>
+                <RefreshCw className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className={`text-sm font-medium leading-none truncate ${item.isActive ? "text-foreground" : "text-muted-foreground line-through"}`}>
+                  {item.description}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {FREQUENCY_LABELS[item.frequency]} · {item.category} · next: {item.nextRunDate}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 ml-3 shrink-0">
+              <span className={`font-mono text-sm font-semibold ${item.transactionType === "INCOME" ? "text-success" : "text-foreground"}`}>
+                {item.transactionType === "INCOME" ? "+" : "-"}$
+                {Number(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+
+              <button
+                onClick={() => handleToggle(item.id, item.isActive)}
+                disabled={togglingId === item.id}
+                title={item.isActive ? "Pause" : "Resume"}
+                className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                  item.isActive
+                    ? "border-warning/40 text-warning hover:bg-warning/10"
+                    : "border-success/40 text-success hover:bg-success/10"
+                } disabled:opacity-50`}
+              >
+                {togglingId === item.id ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : item.isActive ? (
+                  "Pause"
+                ) : (
+                  "Resume"
+                )}
+              </button>
+
+              <button
+                onClick={() => setEditingId(editingId === item.id ? null : item.id)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Edit recurring transaction"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => handleDelete(item.id)}
+                disabled={deletingId === item.id}
+                className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                aria-label="Delete recurring transaction"
+              >
+                {deletingId === item.id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {editingId === item.id && (
+            <div className="mt-2 ml-4 pl-4 border-l-2 border-primary/20">
+              <GlassCard>
+                <RecurringTransactionForm
+                  categories={categories}
+                  accounts={accounts}
+                  existing={item}
+                  onSuccess={() => setEditingId(null)}
+                />
+              </GlassCard>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -32,6 +32,16 @@ export default $config({
       sender: "noreply@amanbrar.pro",
     });
 
+    const processRecurring = new sst.aws.Function("ProcessRecurring", {
+      handler: "functions/processRecurring.handler",
+      link: [table],
+    });
+
+    new sst.aws.Cron("RecurringCron", {
+      schedule: "cron(0 0 * * ? *)",
+      job: processRecurring,
+    });
+
     const web = new sst.aws.Nextjs("BudgifyWeb", {
       link: [table, email],
       domain: {
