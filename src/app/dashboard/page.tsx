@@ -6,6 +6,7 @@ import {
   getCategories,
   getTransactionTrend,
   getAccounts,
+  getQuarterlyReview,
 } from "@/lib/data/budget";
 import { SummaryCard } from "@/components/SummaryCard";
 import { BudgetProgress } from "@/components/BudgetProgress";
@@ -13,6 +14,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { MonthlyChart } from "@/components/MonthlyChart";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { LogPanel } from "@/components/LogPanel";
+import { QuarterlyReview } from "@/components/QuarterlyReview";
 import { format } from "date-fns";
 
 interface PageProps {
@@ -27,14 +29,22 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const q = resolvedParams.q || "";
   const activeMonth = resolvedParams.month || format(new Date(), "yyyy-MM");
 
-  const [categories, monthlyBalance, trendItems, accounts] = await Promise.all([
+  const [categories, monthlyBalance, trendItems, accounts, quarterlyReview] = await Promise.all([
     getCategories(),
     getMonthlyBalance(activeMonth),
     getTransactionTrend(12),
     getAccounts(),
+    getQuarterlyReview(activeMonth),
   ]);
 
-  const { totalIncome, totalExpenses, balance: netCashFlow, categorySpending: spendingMap } = monthlyBalance;
+  const {
+    totalIncome,
+    totalExpenses,
+    balance: netCashFlow,
+    categorySpending: spendingMap,
+    adjustedCategoryLimits,
+    rolloverDeltas,
+  } = monthlyBalance;
 
   return (
     <div className="flex-1 w-full max-w-[1600px] mx-auto space-y-8">
@@ -80,6 +90,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </div>
       </AnimateSection>
 
+      {/* Quarterly Budget Review */}
+      {quarterlyReview.length > 0 && (
+        <AnimateSection delay={0.12}>
+          <QuarterlyReview suggestions={quarterlyReview} />
+        </AnimateSection>
+      )}
+
       {/* Row 2: Budget Benchmarking (left) & Log Transaction (right) */}
       <AnimateSection delay={0.16}>
         <div className="grid gap-6 lg:grid-cols-2">
@@ -93,6 +110,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   key={category.id}
                   categoryName={category.name}
                   limit={category.limit || 0}
+                  adjustedLimit={adjustedCategoryLimits[category.name] ?? category.limit ?? 0}
+                  rolloverDelta={rolloverDeltas[category.name] ?? 0}
                   spent={spendingMap[category.name] || 0}
                 />
               ))}
