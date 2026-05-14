@@ -37,8 +37,8 @@ export default $config({
       link: [table],
     });
 
-    new sst.aws.Cron("RecurringCron", {
-      schedule: "cron(0 0 * * ? *)",
+    new sst.aws.CronV2("RecurringCron", {
+      schedule: "rate(1 day)",
       job: processRecurring,
     });
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { assertAuthorized, ForbiddenError } from "@/lib/auth-guard";
 import { docClient, TABLE_NAME } from "@/lib/db";
 import {
   PutCommand,
@@ -68,6 +69,10 @@ export async function createRecurringTransaction(
 ): Promise<{ error?: string; id?: string }> {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   const parsed = recurringTransactionSchema.safeParse(data);
   if (!parsed.success) {
@@ -119,6 +124,7 @@ export async function listRecurringTransactions(): Promise<
 > {
   const session = await auth();
   if (!session?.user?.id) return [];
+  try { assertAuthorized(session, session.user.id); } catch { return []; }
 
   const result = await docClient.send(
     new QueryCommand({
@@ -140,6 +146,10 @@ export async function updateRecurringTransaction(
 ): Promise<{ error?: string }> {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   const parsed = recurringTransactionSchema.safeParse(data);
   if (!parsed.success) {
@@ -190,6 +200,10 @@ export async function deleteRecurringTransaction(
 ): Promise<{ error?: string }> {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   await docClient.send(
     new DeleteCommand({
@@ -211,6 +225,10 @@ export async function toggleRecurringTransaction(
 ): Promise<{ error?: string }> {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   await docClient.send(
     new UpdateCommand({

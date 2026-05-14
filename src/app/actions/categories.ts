@@ -9,6 +9,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { assertAuthorized, ForbiddenError } from "@/lib/auth-guard";
 import { z } from "zod";
 import { UNIVERSAL_CATEGORIES, findUniversalCategory } from "@/lib/constants/categories";
 
@@ -17,6 +18,10 @@ const limitSchema = z.coerce.number().nonnegative("Limit must be 0 or greater");
 export async function createCategory(data: { name: string; limit: number }) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   const match = findUniversalCategory(data.name);
   if (match) {
@@ -61,6 +66,10 @@ export async function createCategory(data: { name: string; limit: number }) {
 export async function deleteCategory(id: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   if (UNIVERSAL_CATEGORIES.some((uc) => uc.id === id)) {
     return { error: "Cannot delete a universal category" };
@@ -88,6 +97,10 @@ export async function deleteCategory(id: string) {
 export async function listCategories() {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   try {
     const { Items } = await docClient.send(
@@ -134,6 +147,10 @@ export async function listCategories() {
 export async function updateCategoryLimit(id: string, limit: number) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   const parsed = limitSchema.safeParse(limit);
   if (!parsed.success) return { error: "Invalid limit value" };
@@ -170,6 +187,10 @@ export async function updateCategory(
 ) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   try {
     await docClient.send(

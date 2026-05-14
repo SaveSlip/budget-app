@@ -7,7 +7,9 @@ import {
   GetCommand,
   QueryCommand,
   DeleteCommand,
+  UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { assertAuthorized, ForbiddenError } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import {
@@ -135,6 +137,10 @@ export async function addHouseholdMember(
 ): Promise<{ error?: string; memberId?: string }> {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   const parsed = addMemberSchema.safeParse(data);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
@@ -158,6 +164,7 @@ export async function addHouseholdMember(
         name: parsed.data.name,
         email: parsed.data.email || undefined,
         role: "MEMBER",
+        canViewHousehold: false,
         createdAt: new Date().toISOString(),
       },
     }),
@@ -172,6 +179,10 @@ export async function removeHouseholdMember(
 ): Promise<{ error?: string }> {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   const { household } = await getHousehold();
   if (!household) return { error: "No household found." };
@@ -186,6 +197,70 @@ export async function removeHouseholdMember(
         pk: `HOUSEHOLD#${household.id}`,
         sk: `MEMBER#${memberId}`,
       },
+    }),
+  );
+
+  revalidatePath("/dashboard/settings/household");
+  return {};
+}
+
+export async function grantHouseholdAccess(
+  memberId: string,
+): Promise<{ error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
+
+  const { household } = await getHousehold();
+  if (!household) return { error: "No household found." };
+  if (household.masterUserId !== session.user.id) {
+    return { error: "Only the household master can grant access." };
+  }
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        pk: `HOUSEHOLD#${household.id}`,
+        sk: `MEMBER#${memberId}`,
+      },
+      UpdateExpression: "SET canViewHousehold = :val",
+      ExpressionAttributeValues: { ":val": true },
+    }),
+  );
+
+  revalidatePath("/dashboard/settings/household");
+  return {};
+}
+
+export async function revokeHouseholdAccess(
+  memberId: string,
+): Promise<{ error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
+
+  const { household } = await getHousehold();
+  if (!household) return { error: "No household found." };
+  if (household.masterUserId !== session.user.id) {
+    return { error: "Only the household master can revoke access." };
+  }
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        pk: `HOUSEHOLD#${household.id}`,
+        sk: `MEMBER#${memberId}`,
+      },
+      UpdateExpression: "SET canViewHousehold = :val",
+      ExpressionAttributeValues: { ":val": false },
     }),
   );
 

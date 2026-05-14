@@ -2,13 +2,18 @@ import Link from "next/link";
 import UserNav from "@/components/UserNav";
 import { DashboardNav } from "@/components/DashboardNav";
 import { getHousehold } from "@/app/actions/household";
+import { auth } from "@/auth";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { household, members } = await getHousehold();
+  const [{ household, members }, session] = await Promise.all([
+    getHousehold(),
+    auth(),
+  ]);
+  const isMaster = session?.user?.role === "MASTER";
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation Bar - Enlarged and Aligned */}
@@ -44,7 +49,7 @@ export default async function DashboardLayout({
             {/* Log Out button removed from here, it now lives inside the UserNav popout */}
             <UserNav
               householdName={household?.name}
-              householdMembers={members}
+              householdMembers={isMaster ? members : []}
             />
           </div>
         </div>

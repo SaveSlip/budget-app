@@ -122,6 +122,7 @@ export interface HouseholdMember {
   name: string;
   email?: string;
   role: "MASTER" | "MEMBER";
+  canViewHousehold: boolean;
   createdAt: string;
 }
 

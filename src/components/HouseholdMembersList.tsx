@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Trash, Loader2, UserPlus } from "lucide-react";
-import { addHouseholdMember, removeHouseholdMember } from "@/app/actions/household";
+import { Trash, Loader2, UserPlus, ShieldCheck, ShieldOff } from "lucide-react";
+import {
+  addHouseholdMember,
+  removeHouseholdMember,
+  grantHouseholdAccess,
+  revokeHouseholdAccess,
+} from "@/app/actions/household";
 import type { HouseholdMember } from "@/lib/data/budget";
 
 interface HouseholdMembersListProps {
@@ -13,6 +18,7 @@ interface HouseholdMembersListProps {
 
 export function HouseholdMembersList({ members, isMaster }: HouseholdMembersListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [accessLoadingId, setAccessLoadingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -25,7 +31,17 @@ export function HouseholdMembersList({ members, isMaster }: HouseholdMembersList
     setDeletingId(null);
   };
 
-  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleToggleAccess = async (member: HouseholdMember) => {
+    setAccessLoadingId(member.id);
+    if (member.canViewHousehold) {
+      await revokeHouseholdAccess(member.id);
+    } else {
+      await grantHouseholdAccess(member.id);
+    }
+    setAccessLoadingId(null);
+  };
+
+  const handleAdd = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsAdding(true);
     setAddError(null);
@@ -57,20 +73,44 @@ export function HouseholdMembersList({ members, isMaster }: HouseholdMembersList
               {member.email && (
                 <p className="text-xs text-muted-foreground">{member.email}</p>
               )}
+              {member.canViewHousehold && (
+                <p className="text-xs text-primary mt-0.5">Household view access</p>
+              )}
             </div>
             {isMaster && (
-              <button
-                onClick={() => handleDelete(member.id)}
-                disabled={deletingId === member.id}
-                className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
-                aria-label="Remove member"
-              >
-                {deletingId === member.id ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Trash className="w-3.5 h-3.5" />
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleToggleAccess(member)}
+                  disabled={accessLoadingId === member.id}
+                  title={member.canViewHousehold ? "Revoke household access" : "Grant household access"}
+                  className={`transition-colors disabled:opacity-50 ${
+                    member.canViewHousehold
+                      ? "text-primary hover:text-destructive"
+                      : "text-muted-foreground hover:text-primary"
+                  }`}
+                  aria-label={member.canViewHousehold ? "Revoke household access" : "Grant household access"}
+                >
+                  {accessLoadingId === member.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : member.canViewHousehold ? (
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                  ) : (
+                    <ShieldOff className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                <button
+                  onClick={() => handleDelete(member.id)}
+                  disabled={deletingId === member.id}
+                  className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                  aria-label="Remove member"
+                >
+                  {deletingId === member.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
             )}
           </div>
         ))

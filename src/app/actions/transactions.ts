@@ -9,6 +9,8 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { docClient, TABLE_NAME } from "@/lib/db";
 import { getActiveUserId } from "@/lib/activeUser";
+import { auth } from "@/auth";
+import { assertAuthorized, ForbiddenError } from "@/lib/auth-guard";
 import {
   transactionSchema,
   TransactionInput,
@@ -16,8 +18,13 @@ import {
 import { revalidatePath } from "next/cache";
 
 export async function createTransaction(data: TransactionInput) {
+  const session = await auth();
   const userId = await getActiveUserId();
   if (!userId) throw new Error("Unauthorized");
+  try { assertAuthorized(session, userId); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   const parsed = transactionSchema.safeParse(data);
   if (!parsed.success) return { error: "Invalid transaction data." };
@@ -56,8 +63,13 @@ export async function createTransaction(data: TransactionInput) {
 export async function batchCreateTransactions(
   transactions: TransactionInput[],
 ) {
+  const session = await auth();
   const userId = await getActiveUserId();
   if (!userId) throw new Error("Unauthorized");
+  try { assertAuthorized(session, userId); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   const validTransactions = transactions.filter(
     (tx) => transactionSchema.safeParse(tx).success,
@@ -111,8 +123,13 @@ export async function batchCreateTransactions(
 }
 
 export async function getTransactions(month?: string) {
+  const session = await auth();
   const userId = await getActiveUserId();
   if (!userId) throw new Error("Unauthorized");
+  try { assertAuthorized(session, userId); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
   const skPrefix = month ? `TX#${month}` : "TX#";
 
   try {
@@ -135,8 +152,13 @@ export async function getTransactions(month?: string) {
 }
 
 export async function getAllTransactions() {
+  const session = await auth();
   const userId = await getActiveUserId();
   if (!userId) throw new Error("Unauthorized");
+  try { assertAuthorized(session, userId); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
   const transactions: any[] = [];
   let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
@@ -168,8 +190,13 @@ export async function getAllTransactions() {
 }
 
 export async function deleteTransaction(date: string, txId: string) {
+  const session = await auth();
   const userId = await getActiveUserId();
   if (!userId) return { error: "Unauthorized" };
+  try { assertAuthorized(session, userId); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   try {
     await docClient.send(
@@ -195,8 +222,13 @@ export async function updateTransaction(
   txId: string,
   data: TransactionInput,
 ) {
+  const session = await auth();
   const userId = await getActiveUserId();
   if (!userId) return { error: "Unauthorized" };
+  try { assertAuthorized(session, userId); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
 
   const parsed = transactionSchema.safeParse(data);
   if (!parsed.success) return { error: "Invalid transaction data." };
