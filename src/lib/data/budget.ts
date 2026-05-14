@@ -99,6 +99,51 @@ export async function getAccounts(): Promise<Account[]> {
   }
 }
 
+export interface MonthlyBalance {
+  month: string;
+  totalIncome: number;
+  totalExpenses: number;
+  balance: number;
+  categorySpending: Record<string, number>;
+  totalAllocated: number;
+  unallocated: number;
+}
+
+export async function getMonthlyBalance(month: string): Promise<MonthlyBalance> {
+  const [transactions, categories] = await Promise.all([
+    getMonthlyData(month),
+    getCategories(),
+  ]);
+
+  const categorySpending: Record<string, number> = {};
+  let totalIncome = 0;
+  let totalExpenses = 0;
+
+  for (const tx of transactions) {
+    const amount = Math.abs(Number(tx.amount) || 0);
+    if (tx.transactionType === "INCOME") {
+      totalIncome += amount;
+    } else {
+      totalExpenses += amount;
+      if (tx.category) {
+        categorySpending[tx.category] = (categorySpending[tx.category] || 0) + amount;
+      }
+    }
+  }
+
+  const totalAllocated = categories.reduce((sum, c) => sum + (c.limit || 0), 0);
+
+  return {
+    month,
+    totalIncome,
+    totalExpenses,
+    balance: totalIncome - totalExpenses,
+    categorySpending,
+    totalAllocated,
+    unallocated: totalIncome - totalAllocated,
+  };
+}
+
 export async function getTransactionTrend(
   monthsBack: number = 6,
 ): Promise<Transaction[]> {

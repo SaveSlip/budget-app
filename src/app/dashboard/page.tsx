@@ -2,11 +2,10 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { AnimateSection } from "@/components/AnimateSection";
 import {
-  getMonthlyData,
+  getMonthlyBalance,
   getCategories,
   getTransactionTrend,
   getAccounts,
-  type Transaction,
 } from "@/lib/data/budget";
 import { SummaryCard } from "@/components/SummaryCard";
 import { BudgetProgress } from "@/components/BudgetProgress";
@@ -28,39 +27,14 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const q = resolvedParams.q || "";
   const activeMonth = resolvedParams.month || format(new Date(), "yyyy-MM");
 
-  const [currentItems, categories, trendItems, accounts] = await Promise.all([
-    getMonthlyData(activeMonth),
+  const [categories, monthlyBalance, trendItems, accounts] = await Promise.all([
     getCategories(),
+    getMonthlyBalance(activeMonth),
     getTransactionTrend(12),
     getAccounts(),
   ]);
 
-  const filteredTransactions: Transaction[] = currentItems.filter((tx) => {
-    if (!q) return true;
-    const searchStr = q.toLowerCase();
-    return (
-      tx.description?.toLowerCase().includes(searchStr) ||
-      tx.category?.toLowerCase().includes(searchStr)
-    );
-  });
-
-  const spendingMap: Record<string, number> = {};
-  let totalIncome = 0;
-  let totalExpenses = 0;
-
-  filteredTransactions.forEach((item) => {
-    const amount = Math.abs(Number(item.amount) || 0);
-    if (item.transactionType === "INCOME") {
-      totalIncome += amount;
-    } else {
-      totalExpenses += amount;
-      if (item.category) {
-        spendingMap[item.category] = (spendingMap[item.category] || 0) + amount;
-      }
-    }
-  });
-
-  const netCashFlow = totalIncome - totalExpenses;
+  const { totalIncome, totalExpenses, balance: netCashFlow, categorySpending: spendingMap } = monthlyBalance;
 
   return (
     <div className="flex-1 w-full max-w-[1600px] mx-auto space-y-8">
