@@ -2,18 +2,21 @@
 
 import { useState } from "react";
 import { createTransaction } from "@/app/actions/transactions";
-import Link from "next/link";
-import { Settings2, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { Account, Category } from "@/lib/data/budget";
 
 interface TransactionFormProps {
   categories: Category[];
   accounts: Account[];
+  initialType?: "INCOME" | "EXPENSE";
+  hideTypeToggle?: boolean;
 }
 
 export default function TransactionForm({
   categories = [],
   accounts = [],
+  initialType = "EXPENSE",
+  hideTypeToggle = false,
 }: TransactionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +29,7 @@ export default function TransactionForm({
     amount: "",
     date: today,
     category: "",
-    transactionType: "EXPENSE" as "INCOME" | "EXPENSE",
+    transactionType: initialType as "INCOME" | "EXPENSE",
     accountId: "",
   });
 
@@ -63,30 +66,32 @@ export default function TransactionForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Income / Expense toggle */}
-      <div className="flex rounded-md border border-border overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setFormData({ ...formData, transactionType: "EXPENSE" })}
-          className={`flex-1 py-2 text-sm font-medium transition-colors ${
-            formData.transactionType === "EXPENSE"
-              ? "bg-red-500/15 text-red-500"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Expense
-        </button>
-        <button
-          type="button"
-          onClick={() => setFormData({ ...formData, transactionType: "INCOME" })}
-          className={`flex-1 py-2 text-sm font-medium transition-colors ${
-            formData.transactionType === "INCOME"
-              ? "bg-green-500/15 text-green-500"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Income
-        </button>
-      </div>
+      {!hideTypeToggle && (
+        <div className="flex rounded-md border border-border overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setFormData({ ...formData, transactionType: "EXPENSE" })}
+            className={`flex-1 py-2 text-sm font-medium transition-colors ${
+              formData.transactionType === "EXPENSE"
+                ? "bg-orange-500/15 text-orange-500"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Expense
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormData({ ...formData, transactionType: "INCOME" })}
+            className={`flex-1 py-2 text-sm font-medium transition-colors ${
+              formData.transactionType === "INCOME"
+                ? "bg-green-500/15 text-green-500"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Income
+          </button>
+        </div>
+      )}
 
       <div>
         <label className="text-sm font-medium leading-none text-muted-foreground">
@@ -142,18 +147,9 @@ export default function TransactionForm({
       </div>
 
       <div>
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-medium leading-none text-muted-foreground">
-            Category
-          </label>
-          <Link
-            href="/dashboard/settings/categories"
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
-          >
-            <Settings2 className="w-3 h-3" />
-            Manage Categories
-          </Link>
-        </div>
+        <label className="text-sm font-medium leading-none text-muted-foreground">
+          Category
+        </label>
         <select
           required
           value={formData.category}

@@ -84,6 +84,8 @@ export function CategoryForm() {
                   disabled={isPending}
                   {...field}
                   onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+                  onFocus={(e) => { if (Number(e.target.value) === 0) field.onChange(""); }}
+                  onBlur={(e) => { if (e.target.value === "") field.onChange(0); }}
                   className="bg-background/50 border-border text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
               </FormControl>
@@ -96,13 +98,13 @@ export function CategoryForm() {
         />
 
         {form.formState.errors.root && (
-          <p className="text-sm text-red-500">{form.formState.errors.root.message}</p>
+          <p className="text-sm text-destructive">{form.formState.errors.root.message}</p>
         )}
 
         <Button
           type="submit"
           disabled={isPending}
-          className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+          className="w-full"
         >
           {isPending ? "Creating..." : "Add Category"}
         </Button>

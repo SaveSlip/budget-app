@@ -12,17 +12,9 @@ import { SummaryCard } from "@/components/SummaryCard";
 import { BudgetProgress } from "@/components/BudgetProgress";
 import { GlassCard } from "@/components/GlassCard";
 import { MonthlyChart } from "@/components/MonthlyChart";
-import { CashFlowChart } from "@/components/CashFlowChart";
-import { RecentTransactions } from "@/components/RecentTransactions";
-import { CategoryForm } from "@/components/CategoryForm";
 import { DashboardFilters } from "@/components/DashboardFilters";
-import TransactionForm from "@/components/TransactionForm";
-import CsvUploader from "@/components/CsvUploader";
-import { AccountForm } from "@/components/AccountForm";
-import { AccountBalances } from "@/components/AccountBalances";
+import { LogPanel } from "@/components/LogPanel";
 import { format } from "date-fns";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 
 interface PageProps {
   searchParams: Promise<{ month?: string; q?: string }>;
@@ -39,7 +31,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const [currentItems, categories, trendItems, accounts] = await Promise.all([
     getMonthlyData(activeMonth),
     getCategories(),
-    getTransactionTrend(6),
+    getTransactionTrend(12),
     getAccounts(),
   ]);
 
@@ -92,7 +84,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
       {/* Row 1: Stats */}
       <AnimateSection delay={0.08}>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <SummaryCard
             title="Total Income"
             value={`$${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
@@ -111,23 +103,17 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             description={netCashFlow >= 0 ? "Positive cash flow" : "Negative cash flow"}
             type={netCashFlow >= 0 ? "income" : "expense"}
           />
-          <SummaryCard
-            title="Transaction Count"
-            value={filteredTransactions.length.toString()}
-            description="Matches found"
-            type="balance"
-          />
         </div>
       </AnimateSection>
 
-      {/* Row 2: Budget Benchmarking & Quick Log */}
+      {/* Row 2: Budget Benchmarking (left) & Log Transaction (right) */}
       <AnimateSection delay={0.16}>
-        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
-          <div className="lg:col-span-4 space-y-6">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-4">
             <h3 className="text-xl font-semibold text-foreground px-1">
               Budget Benchmarking
             </h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-1">
               {categories.map((category) => (
                 <BudgetProgress
                   key={category.id}
@@ -137,63 +123,21 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 />
               ))}
             </div>
-
-            <GlassCard title="Add New Budget Category">
-              <CategoryForm />
-            </GlassCard>
           </div>
 
-          <GlassCard title="Log Transaction" className="lg:col-span-3">
-            <TransactionForm categories={categories} accounts={accounts} />
-            <div className="mt-4 pt-4 border-t border-border">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Bulk Import
-              </p>
-              <CsvUploader />
-            </div>
+          <GlassCard title="Log Transaction">
+            <LogPanel categories={categories} accounts={accounts} />
           </GlassCard>
         </div>
       </AnimateSection>
 
-      {/* Row 3: Account Balances */}
-      <AnimateSection delay={0.20}>
-        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
-          <GlassCard title="Account Balances" className="lg:col-span-4">
-            <AccountBalances accounts={accounts} transactions={trendItems} />
-          </GlassCard>
-
-          <GlassCard title="Add Account" className="lg:col-span-3">
-            <AccountForm />
-          </GlassCard>
-        </div>
-      </AnimateSection>
-
-      {/* Row 4: 6-Month Spending Trend & Activity */}
-      <AnimateSection delay={0.28}>
-        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-7">
-          <GlassCard title="6-Month Spending Trend" className="lg:col-span-4">
-            <div className="h-87.5 w-full">
-              <MonthlyChart transactions={trendItems} />
-            </div>
-          </GlassCard>
-
-          <GlassCard title="Recent Activity" className="lg:col-span-3">
-            <div className="h-full">
-              <RecentTransactions
-                transactions={filteredTransactions.slice(0, 10)}
-              />
-              <div className="mt-4 flex justify-end">
-                <Link
-                  href="/dashboard/transactions"
-                  className="text-xs font-medium text-orange-500 hover:text-orange-600 flex items-center gap-1 transition-colors"
-                >
-                  View All Transactions
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-            </div>
-          </GlassCard>
-        </div>
+      {/* Row 3: 12-Month Spending Activity */}
+      <AnimateSection delay={0.24}>
+        <GlassCard title="12-Month Spending Activity">
+          <div className="w-full">
+            <MonthlyChart transactions={trendItems} />
+          </div>
+        </GlassCard>
       </AnimateSection>
     </div>
   );

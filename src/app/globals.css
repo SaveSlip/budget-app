@@ -80,7 +80,7 @@
    * ─────────────────────────────────────────────────────────────────────────── */
 
   /* Raw brand values — reference these in semantic tokens below */
-  --brand-orange: #c85b2a; /* 5.1:1 on white, 5.4:1 on cream  */
+  --brand-orange: #a8471f; /* 5.1:1 on white, 5.4:1 on cream  */
   --brand-orange-soft: #fae9e0; /* tinted bg for badges/chips        */
   --brand-green: #5f8c4a; /* 4.6:1 on white — success          */
   --brand-green-soft: #e6f0e1; /* tinted bg for success badges       */
@@ -103,7 +103,7 @@
   --popover: #f8f5ef; /* popover/dropdown surface           */
   --popover-foreground: #1c1a18;
 
-  --primary: #c85b2a; /* 5.1:1 — AA ✓                      */
+  --primary: #a8471f; /* 5.1:1 — AA ✓                      */
   --primary-foreground: #fdf9f4; /* near-white for text on primary     */
 
   --secondary: #5f8c4a; /* green — 4.6:1 — AA ✓              */
@@ -132,12 +132,12 @@
 
   --border: #d8d2c6; /* subtle warm gray border            */
   --input: #d8d2c6;
-  --ring: #c85b2a; /* focus ring matches primary         */
-  --focus-strong: #c85b2a;
+  --ring: #a8471f; /* focus ring matches primary         */
+  --focus-strong: #a8471f;
   --radius: 0.5rem;
 
   /* Charts — ordered by visual priority in bar/line charts */
-  --chart-1: #c85b2a; /* primary orange                    */
+  --chart-1: #a8471f; /* primary orange                    */
   --chart-2: #c99040; /* warm tan/amber                    */
   --chart-3: #5f8c4a; /* forest green                      */
   --chart-4: #4a7a8f; /* slate teal                        */
@@ -146,12 +146,12 @@
   /* Sidebar */
   --sidebar: #ede8df;
   --sidebar-foreground: #1c1a18;
-  --sidebar-primary: #c85b2a;
+  --sidebar-primary: #a8471f;
   --sidebar-primary-foreground: #fdf9f4;
   --sidebar-accent: #e4e0d7;
   --sidebar-accent-foreground: #1c1a18;
   --sidebar-border: #d8d2c6;
-  --sidebar-ring: #c85b2a;
+  --sidebar-ring: #a8471f;
 }
 
 .dark {
@@ -172,7 +172,7 @@
   --popover: #242521; /* popover sits above card            */
   --popover-foreground: #ede8df;
 
-  --primary: #e07a4f; /* 4.7:1 on #111210 — AA ✓           */
+  --primary: #d4663a; /* 4.7:1 on #111210 — AA ✓           */
   --primary-foreground: #0f0e0c; /* very dark for text on primary      */
 
   --secondary: #7ab05e; /* 4.5:1 — AA ✓                      */
@@ -201,11 +201,11 @@
 
   --border: #2e2e2b; /* dark warm border                   */
   --input: #2e2e2b;
-  --ring: #e07a4f;
-  --focus-strong: #e07a4f;
+  --ring: #d4663a;
+  --focus-strong: #d4663a;
 
   /* Charts */
-  --chart-1: #e07a4f; /* primary orange (lighter for dark)  */
+  --chart-1: #d4663a; /* primary orange (lighter for dark)  */
   --chart-2: #d4a04a; /* warm amber                         */
   --chart-3: #7ab05e; /* green                               */
   --chart-4: #6aa4b8; /* teal                                */
@@ -214,12 +214,12 @@
   /* Sidebar */
   --sidebar: #1d1e1b;
   --sidebar-foreground: #ede8df;
-  --sidebar-primary: #e07a4f;
+  --sidebar-primary: #d4663a;
   --sidebar-primary-foreground: #0f0e0c;
   --sidebar-accent: #2a2b27;
   --sidebar-accent-foreground: #ede8df;
   --sidebar-border: #2e2e2b;
-  --sidebar-ring: #e07a4f;
+  --sidebar-ring: #d4663a;
 }
 
 @layer base {

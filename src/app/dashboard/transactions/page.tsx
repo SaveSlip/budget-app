@@ -1,14 +1,22 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getAllTransactions } from "@/app/actions/transactions";
+import { getAccounts, getTransactionTrend } from "@/lib/data/budget";
 import { columns, type Transaction } from "./columns";
 import { DataTable } from "./data-table";
+import { GlassCard } from "@/components/GlassCard";
+import { AccountBalances } from "@/components/AccountBalances";
+import { AccountForm } from "@/components/AccountForm";
 
 export default async function TransactionsPage() {
   const session = await auth();
   if (!session?.user) redirect("/signin");
 
-  const response = await getAllTransactions();
+  const [response, accounts, allTrendItems] = await Promise.all([
+    getAllTransactions(),
+    getAccounts(),
+    getTransactionTrend(24),
+  ]);
   const transactions = (response.transactions || []) as Transaction[];
 
   return (
@@ -23,6 +31,21 @@ export default async function TransactionsPage() {
       </div>
 
       <DataTable columns={columns} data={transactions} />
+
+      {/* Account Overview */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground mb-6">
+          Account Overview
+        </h2>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <GlassCard title="Account Balances">
+            <AccountBalances accounts={accounts} transactions={allTrendItems} />
+          </GlassCard>
+          <GlassCard title="Add Account">
+            <AccountForm />
+          </GlassCard>
+        </div>
+      </div>
     </div>
   );
 }

@@ -165,9 +165,9 @@ export default function CsvUploader() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer ${borderClass}`}
+        className={`relative flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer ${borderClass}`}
       >
-        <Icon className={`w-10 h-10 mb-3 transition-colors ${iconClass}`} />
+        <Icon className={`w-6 h-6 mb-1 transition-colors ${iconClass}`} />
 
         <p className="text-sm font-medium text-foreground text-center">
           {label}

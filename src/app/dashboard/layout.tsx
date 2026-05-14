@@ -15,7 +15,7 @@ export default function DashboardLayout({
         <div className="mx-auto w-[95%] md:w-[90%] lg:w-[80%] max-w-7xl py-5 flex items-center justify-between">
           {/* Left Aligned Logo (Increased Size) */}
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-500">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"

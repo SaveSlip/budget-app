@@ -15,11 +15,11 @@ const ACCOUNT_ICONS: Record<string, React.ElementType> = {
 };
 
 const ACCOUNT_COLORS: Record<string, string> = {
-  CHECKING: "text-blue-500",
-  SAVINGS: "text-green-500",
-  CREDIT: "text-orange-500",
-  CASH: "text-yellow-500",
-  INVESTMENT: "text-purple-500",
+  CHECKING: "text-info",
+  SAVINGS: "text-success",
+  CREDIT: "text-primary",
+  CASH: "text-warning",
+  INVESTMENT: "text-chart-5",
   OTHER: "text-muted-foreground",
 };
 
@@ -93,7 +93,7 @@ export function AccountBalances({ accounts, transactions }: AccountBalancesProps
             <div className="flex items-center gap-3">
               <span
                 className={`font-mono text-sm font-semibold ${
-                  displayBalance >= 0 ? "text-foreground" : "text-red-500"
+                  displayBalance >= 0 ? "text-foreground" : "text-destructive"
                 }`}
               >
                 {displayBalance < 0 ? "-" : ""}$
@@ -105,7 +105,7 @@ export function AccountBalances({ accounts, transactions }: AccountBalancesProps
               <button
                 onClick={() => handleDelete(account.id)}
                 disabled={deletingId === account.id}
-                className="text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50"
+                className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
                 aria-label="Delete account"
               >
                 {deletingId === account.id ? (
@@ -125,7 +125,7 @@ export function AccountBalances({ accounts, transactions }: AccountBalancesProps
         </span>
         <span
           className={`font-mono text-sm font-bold ${
-            totalNetWorth >= 0 ? "text-green-500" : "text-red-500"
+            totalNetWorth >= 0 ? "text-success" : "text-destructive"
           }`}
         >
           {totalNetWorth >= 0 ? "+" : "-"}$

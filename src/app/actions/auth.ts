@@ -111,7 +111,7 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
                   <p>Hello,</p>
                   <p>You requested a password reset for your Budgify account. Click the link below to reset your password:</p>
                   <p style="margin: 30px 0;">
-                    <a href="${resetLink}" style="background-color: #ea580c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a>
+                    <a href="${resetLink}" style="background-color: #a8471f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a>
                   </p>
                   <p><strong>Important:</strong> This link will expire in 15 minutes for security reasons.</p>
                   <p>If you did not request this password reset, please ignore this email.</p>

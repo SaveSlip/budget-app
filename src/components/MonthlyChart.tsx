@@ -27,7 +27,7 @@ interface MonthlyChartProps {
 export function MonthlyChart({ transactions }: MonthlyChartProps) {
   // Process raw transactions into a 6-month trend format
   const chartData = useMemo(() => {
-    const months = Array.from({ length: 6 })
+    const months = Array.from({ length: 12 })
       .map((_, i) => {
         const date = subMonths(new Date(), i);
         return {
@@ -58,7 +58,7 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
 
   return (
     <div className="h-75 w-full">
-      <ResponsiveContainer width="100%" height={300} aspect={2.3}>
+      <ResponsiveContainer width="100%" height={320}>
         <BarChart
           data={chartData}
           margin={{ top: 20, right: 30, left: 20, bottom: 5 }}

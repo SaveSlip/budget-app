@@ -16,7 +16,7 @@ export function BudgetProgress({
 
   const getStatusColor = () => {
     if (percentage >= 100) return "bg-destructive";
-    if (percentage >= 75) return "bg-yellow-500";
+    if (percentage >= 75) return "bg-warning";
     return "bg-primary";
   };
 

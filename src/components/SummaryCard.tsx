@@ -24,7 +24,7 @@ export function SummaryCard({
   const getTypeStyles = () => {
     switch (type) {
       case "income":
-        return "hover:border-primary/30";
+        return "hover:border-green-500/30";
       case "expense":
         return "hover:border-orange-500/30";
       case "balance":
@@ -37,9 +37,9 @@ export function SummaryCard({
   const getTitleColor = () => {
     switch (type) {
       case "income":
-        return "text-primary";
+        return "text-green-500";
       case "expense":
-        return "text-orange-600";
+        return "text-orange-500";
       case "balance":
         return "text-foreground";
       default:
