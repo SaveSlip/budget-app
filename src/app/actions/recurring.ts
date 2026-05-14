@@ -16,11 +16,11 @@ import {
 } from "@/lib/validations/recurring";
 import type { RecurringTransaction } from "@/lib/data/budget";
 
-export function computeNextRunDate(
+async function computeNextRunDate(
   frequency: RecurringTransactionInput["frequency"],
   dayOfMonth?: number,
   from?: Date,
-): string {
+): Promise<string> {
   const base = from ?? new Date();
   const d = new Date(base);
 
@@ -46,10 +46,10 @@ export function computeNextRunDate(
   return d.toISOString().split("T")[0];
 }
 
-function initialNextRunDate(
+async function initialNextRunDate(
   frequency: RecurringTransactionInput["frequency"],
   dayOfMonth?: number,
-): string {
+): Promise<string> {
   const today = new Date();
 
   if (frequency === "MONTHLY" && dayOfMonth) {
@@ -74,8 +74,16 @@ export async function createRecurringTransaction(
     return { error: parsed.error.issues[0].message };
   }
 
-  const { description, amount, category, transactionType, accountId, frequency, dayOfMonth, isActive } =
-    parsed.data;
+  const {
+    description,
+    amount,
+    category,
+    transactionType,
+    accountId,
+    frequency,
+    dayOfMonth,
+    isActive,
+  } = parsed.data;
 
   const id = randomUUID();
   const nextRunDate = initialNextRunDate(frequency, dayOfMonth);
@@ -106,7 +114,9 @@ export async function createRecurringTransaction(
   return { id };
 }
 
-export async function listRecurringTransactions(): Promise<RecurringTransaction[]> {
+export async function listRecurringTransactions(): Promise<
+  RecurringTransaction[]
+> {
   const session = await auth();
   if (!session?.user?.id) return [];
 
@@ -136,8 +146,16 @@ export async function updateRecurringTransaction(
     return { error: parsed.error.issues[0].message };
   }
 
-  const { description, amount, category, transactionType, accountId, frequency, dayOfMonth, isActive } =
-    parsed.data;
+  const {
+    description,
+    amount,
+    category,
+    transactionType,
+    accountId,
+    frequency,
+    dayOfMonth,
+    isActive,
+  } = parsed.data;
 
   const nextRunDate = initialNextRunDate(frequency, dayOfMonth);
 

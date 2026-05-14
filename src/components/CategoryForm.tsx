@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-export function CategoryForm() {
+export function CategoryForm({ onSuccess }: { onSuccess?: () => void } = {}) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -36,11 +36,17 @@ export function CategoryForm() {
       try {
         const result = await createCategory(data);
 
-        if (result.error) {
+        if (result.error === "universal" && result.universalName) {
+          form.setError("name", {
+            message: `"${data.name}" is already tracked under the universal category "${result.universalName}". No need to create it separately.`,
+          });
+        } else if (result.error === "duplicate") {
+          form.setError("name", { message: "A category with this name already exists." });
+        } else if (result.error) {
           form.setError("root", { message: result.error });
         } else {
           form.reset();
-          router.refresh();
+          onSuccess ? onSuccess() : router.refresh();
         }
       } catch {
         form.setError("root", { message: "Something went wrong. Please try again." });

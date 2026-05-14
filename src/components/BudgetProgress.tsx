@@ -1,4 +1,27 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { LockIcon, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { deleteCategory } from "@/app/actions/categories";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface BudgetProgressProps {
   spent: number;
@@ -6,6 +29,8 @@ interface BudgetProgressProps {
   adjustedLimit: number;
   rolloverDelta: number;
   categoryName: string;
+  isUniversal?: boolean;
+  categoryId?: string;
 }
 
 export function BudgetProgress({
@@ -14,10 +39,14 @@ export function BudgetProgress({
   adjustedLimit,
   rolloverDelta,
   categoryName,
+  isUniversal = false,
+  categoryId,
 }: BudgetProgressProps) {
   const effectiveLimit = adjustedLimit;
   const percentage = effectiveLimit > 0 ? (spent / effectiveLimit) * 100 : 0;
   const isOverBudget = effectiveLimit > 0 && spent > effectiveLimit;
+  const [isPending, startTransition] = useTransition();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const getStatusColor = () => {
     if (percentage >= 100) return "bg-destructive";
@@ -28,9 +57,65 @@ export function BudgetProgress({
   const rolloverAbs = Math.abs(rolloverDelta);
   const showRollover = rolloverDelta !== 0;
 
+  function handleDelete() {
+    if (!categoryId) return;
+    startTransition(async () => {
+      await deleteCategory(categoryId);
+      setDeleteOpen(false);
+    });
+  }
+
   return (
-    <div className="space-y-2 w-full p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
-      <div className="flex justify-between items-end text-sm">
+    <div className="relative space-y-2 w-full p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
+      {/* Top-right action: lock for universal, delete for custom */}
+      <div className="absolute top-2 right-2">
+        {isUniversal ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center justify-center h-6 w-6 text-muted-foreground/40">
+                  <LockIcon className="h-3 w-3" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p className="text-xs">Universal category — cannot be removed</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : categoryId ? (
+          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground/40 hover:text-destructive"
+                disabled={isPending}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete category?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete &quot;{categoryName}&quot;. Past transactions assigned to it will not be affected.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : null}
+      </div>
+
+      <div className="flex justify-between items-end text-sm pr-6">
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
             Category

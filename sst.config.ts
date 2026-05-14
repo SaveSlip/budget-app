@@ -44,10 +44,6 @@ export default $config({
 
     const web = new sst.aws.Nextjs("BudgifyWeb", {
       link: [table, email],
-      domain: {
-        name: "amanbrar.pro",
-        dns: sst.cloudflare.dns(),
-      },
       environment: {
         AUTH_SECRET: process.env.AUTH_SECRET!,
       },

@@ -99,7 +99,7 @@ export function CashFlowChart({ transactions, monthsBack = 6 }: CashFlowChartPro
           }}
           itemStyle={{ color: "var(--popover-foreground)" }}
           formatter={(value: number) =>
-            new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value)
+            [new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value)]
           }
         />
         <Legend />

@@ -1,6 +1,7 @@
 import { docClient, TABLE_NAME } from "@/lib/db";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { getActiveUserId } from "@/lib/activeUser";
+import { UNIVERSAL_CATEGORIES } from "@/lib/constants/categories";
 
 export interface Account {
   id: string;
@@ -16,6 +17,7 @@ export interface Category {
   limit: number;
   type: string;
   createdAt: string;
+  isUniversal?: boolean;
 }
 
 export interface Transaction {
@@ -70,7 +72,23 @@ export async function getCategories(): Promise<Category[]> {
         },
       }),
     );
-    return (result.Items ?? []) as Category[];
+
+    const customCategories = (result.Items ?? []) as Category[];
+    const universalNames = new Set(UNIVERSAL_CATEGORIES.map((uc) => uc.name.toLowerCase()));
+    const filteredCustom = customCategories.filter(
+      (c) => !universalNames.has(c.name.toLowerCase())
+    );
+
+    const universals: Category[] = UNIVERSAL_CATEGORIES.map((uc) => ({
+      id: uc.id,
+      name: uc.name,
+      limit: 0,
+      type: "CATEGORY",
+      createdAt: "",
+      isUniversal: true,
+    }));
+
+    return [...universals, ...filteredCustom.map((c) => ({ ...c, isUniversal: false }))];
   } catch (error) {
     console.error("[DAL] Categories fetch failed:", error);
     return [];

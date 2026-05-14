@@ -15,6 +15,7 @@ import { MonthlyChart } from "@/components/MonthlyChart";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { LogPanel } from "@/components/LogPanel";
 import { QuarterlyReview } from "@/components/QuarterlyReview";
+import { AddCategoryDialog } from "@/components/AddCategoryDialog";
 import { format } from "date-fns";
 
 interface PageProps {
@@ -101,9 +102,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <AnimateSection delay={0.16}>
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-4">
-            <h3 className="text-xl font-semibold text-foreground px-1">
-              Budget Benchmarking
-            </h3>
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xl font-semibold text-foreground">
+                Budget Benchmarking
+              </h3>
+              <AddCategoryDialog />
+            </div>
             <div className="grid grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-1">
               {categories.map((category) => (
                 <BudgetProgress
@@ -113,6 +117,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   adjustedLimit={adjustedCategoryLimits[category.name] ?? category.limit ?? 0}
                   rolloverDelta={rolloverDeltas[category.name] ?? 0}
                   spent={spendingMap[category.name] || 0}
+                  isUniversal={category.isUniversal}
+                  categoryId={category.id}
                 />
               ))}
             </div>

@@ -10,12 +10,26 @@ import {
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { z } from "zod";
+import { UNIVERSAL_CATEGORIES, findUniversalCategory } from "@/lib/constants/categories";
 
 const limitSchema = z.coerce.number().nonnegative("Limit must be 0 or greater");
 
 export async function createCategory(data: { name: string; limit: number }) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+
+  const match = findUniversalCategory(data.name);
+  if (match) {
+    return { error: "universal", universalName: match.name };
+  }
+
+  const existing = await listCategories();
+  if (existing.categories) {
+    const duplicate = existing.categories.find(
+      (c: { name: string }) => c.name.toLowerCase() === data.name.toLowerCase().trim()
+    );
+    if (duplicate) return { error: "duplicate" };
+  }
 
   const categoryId = crypto.randomUUID();
 
@@ -47,6 +61,10 @@ export async function createCategory(data: { name: string; limit: number }) {
 export async function deleteCategory(id: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
+
+  if (UNIVERSAL_CATEGORIES.some((uc) => uc.id === id)) {
+    return { error: "Cannot delete a universal category" };
+  }
 
   try {
     await docClient.send(
@@ -82,7 +100,31 @@ export async function listCategories() {
         },
       }),
     );
-    return { success: true, categories: Items ?? [] };
+
+    const customCategories = (Items ?? []) as Array<{ id: string; name: string; limit: number; type: string; createdAt: string }>;
+
+    const universalCategories = UNIVERSAL_CATEGORIES.map((uc) => ({
+      id: uc.id,
+      name: uc.name,
+      limit: 0,
+      type: "CATEGORY",
+      createdAt: "",
+      isUniversal: true,
+    }));
+
+    // Merge: universal categories first, then custom (skip any custom whose name matches a universal)
+    const universalNames = new Set(UNIVERSAL_CATEGORIES.map((uc) => uc.name.toLowerCase()));
+    const filteredCustom = customCategories.filter(
+      (c) => !universalNames.has(c.name.toLowerCase())
+    );
+
+    return {
+      success: true,
+      categories: [
+        ...universalCategories,
+        ...filteredCustom.map((c) => ({ ...c, isUniversal: false })),
+      ],
+    };
   } catch (error) {
     console.error("[DB] Failed to list categories:", error);
     return { error: "Failed to retrieve categories", categories: [] };
