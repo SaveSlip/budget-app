@@ -10,8 +10,8 @@ import {
   forgotPasswordSchema,
   ForgotPasswordInput,
 } from "@/lib/validations/auth";
-import { createUserRecord, docClient, TABLE_NAME } from "@/lib/db";
-import { signOut } from "@/auth";
+import { createUserRecord, deletePartition, docClient, TABLE_NAME } from "@/lib/db";
+import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
 import {
   GetCommand,
@@ -54,6 +54,52 @@ export async function registerUser(data: SignupInput) {
 export async function logout() {
   await signOut();
   redirect("/signin");
+}
+
+export async function deleteAccount(): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id || !session.user.email) return { error: "Unauthorized" };
+
+    const { id: userId, email, role, householdId } = session.user as {
+      id: string;
+      email: string;
+      role?: string | null;
+      householdId?: string | null;
+    };
+
+    if (role === "MASTER" && householdId) {
+      const { Item: householdMeta } = await docClient.send(
+        new GetCommand({
+          TableName: TABLE_NAME,
+          Key: { pk: `HOUSEHOLD#${householdId}`, sk: "METADATA" },
+        }),
+      );
+      await deletePartition(`HOUSEHOLD#${householdId}`);
+      if (householdMeta?.pin) {
+        await docClient.send(
+          new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: { pk: `HOUSEHOLD_PIN#${householdMeta.pin}`, sk: "HOUSEHOLD_PIN" },
+          }),
+        );
+      }
+    }
+
+    await deletePartition(`USER#${userId}`);
+    await docClient.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
+      }),
+    );
+
+    await signOut({ redirect: false });
+    return { success: true };
+  } catch (error) {
+    console.error("Delete account error:", error);
+    return { error: "Failed to delete account. Please try again." };
+  }
 }
 
 export async function forgotPasswordAction(data: ForgotPasswordInput) {
@@ -213,6 +259,146 @@ export async function resetPasswordAction(
     return { success: true };
   } catch (error) {
     console.error("Reset password error:", error);
+    return { error: "Internal server error" };
+  }
+}
+
+export async function sendVerificationEmail(
+  email: string,
+): Promise<{ success?: true; verifyLink?: string; error?: string }> {
+  try {
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const baseUrl =
+      process.env.AUTH_URL ||
+      process.env.NEXTAUTH_URL ||
+      "http://localhost:3000";
+    const verifyLink = `${baseUrl}/verify-email/${token}`;
+
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          pk: `VERIFY#${token}`,
+          sk: `VERIFY#${token}`,
+          email,
+          expiresAt: expiresAt.toISOString(),
+          createdAt: new Date().toISOString(),
+        },
+      }),
+    );
+
+    try {
+      await sesClient.send(
+        new SendEmailCommand({
+          Source: Resource.EmailIdentity.sender,
+          Destination: { ToAddresses: [email] },
+          Message: {
+            Subject: {
+              Data: "Verify your email — Budgify",
+              Charset: "UTF-8",
+            },
+            Body: {
+              Html: {
+                Data: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #333;">Welcome to Budgify!</h2>
+                  <p>Hello,</p>
+                  <p>Thanks for signing up. Please verify your email address to activate your account:</p>
+                  <p style="margin: 30px 0;">
+                    <a href="${verifyLink}" style="background-color: #a8471f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Verify Email Address</a>
+                  </p>
+                  <p><strong>This link expires in 24 hours.</strong></p>
+                  <p>If you did not create a Budgify account, you can safely ignore this email.</p>
+                </div>
+              `,
+                Charset: "UTF-8",
+              },
+            },
+          },
+        }),
+      );
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+      if (process.env.NODE_ENV !== "production") {
+        return { success: true, verifyLink };
+      }
+      return { error: "Failed to send verification email. Please try again." };
+    }
+
+    return {
+      success: true,
+      verifyLink:
+        process.env.NODE_ENV !== "production" ? verifyLink : undefined,
+    };
+  } catch (error) {
+    console.error("Send verification email error:", error);
+    return { error: "Internal server error" };
+  }
+}
+
+export async function resendVerificationEmail(
+  email: string,
+): Promise<{ success?: true; error?: string }> {
+  try {
+    const { Item: user } = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
+      }),
+    );
+    if (!user) return { error: "No account found with that email address." };
+    if (user.emailVerified)
+      return { error: "This email is already verified. Please sign in." };
+
+    return sendVerificationEmail(email);
+  } catch (error) {
+    console.error("Resend verification email error:", error);
+    return { error: "Internal server error" };
+  }
+}
+
+export async function verifyEmailToken(
+  token: string,
+): Promise<{ success?: true; error?: string }> {
+  try {
+    const { Item } = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `VERIFY#${token}`, sk: `VERIFY#${token}` },
+      }),
+    );
+
+    if (!Item) return { error: "Invalid verification link." };
+    if (new Date(Item.expiresAt) < new Date())
+      return {
+        error: "Verification link has expired. Please request a new one.",
+      };
+
+    const email = Item.email as string;
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
+        UpdateExpression: "SET emailVerified = :verified, updatedAt = :now",
+        ExpressionAttributeValues: {
+          ":verified": true,
+          ":now": new Date().toISOString(),
+        },
+      }),
+    );
+
+    await docClient.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `VERIFY#${token}`, sk: `VERIFY#${token}` },
+      }),
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Verify email token error:", error);
     return { error: "Internal server error" };
   }
 }

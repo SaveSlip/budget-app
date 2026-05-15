@@ -3,6 +3,8 @@ import UserNav from "@/components/UserNav";
 import { DashboardNav } from "@/components/DashboardNav";
 import { getHousehold } from "@/app/actions/household";
 import { auth } from "@/auth";
+import { getUserProfile } from "@/lib/db";
+import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
   children,
@@ -13,6 +15,14 @@ export default async function DashboardLayout({
     getHousehold(),
     auth(),
   ]);
+
+  if (!session?.user?.email) redirect("/signin");
+
+  const profile = await getUserProfile(session.user.email);
+  const needsOnboarding =
+    !profile?.onboardingCompleted && !session.user.householdId;
+  if (needsOnboarding) redirect("/onboarding");
+
   const isMaster = session?.user?.role === "MASTER";
   return (
     <div className="min-h-screen bg-background">

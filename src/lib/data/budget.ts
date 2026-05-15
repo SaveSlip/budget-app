@@ -130,6 +130,7 @@ export interface Household {
   id: string;
   name: string;
   masterUserId: string;
+  pin?: string;
   createdAt: string;
 }
 

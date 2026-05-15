@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash, Loader2, UserPlus, ShieldCheck, ShieldOff } from "lucide-react";
+import { Trash, Loader2, UserPlus, ShieldCheck, ShieldOff, AlertTriangle } from "lucide-react";
 import {
   addHouseholdMember,
   removeHouseholdMember,
@@ -17,7 +17,9 @@ interface HouseholdMembersListProps {
 }
 
 export function HouseholdMembersList({ members, isMaster }: HouseholdMembersListProps) {
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<HouseholdMember | null>(null);
+  const [deleteData, setDeleteData] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [accessLoadingId, setAccessLoadingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -25,10 +27,13 @@ export function HouseholdMembersList({ members, isMaster }: HouseholdMembersList
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
-    await removeHouseholdMember(id);
-    setDeletingId(null);
+  const handleConfirmRemove = async () => {
+    if (!removeTarget) return;
+    setIsRemoving(true);
+    await removeHouseholdMember(removeTarget.id, deleteData);
+    setIsRemoving(false);
+    setRemoveTarget(null);
+    setDeleteData(false);
   };
 
   const handleToggleAccess = async (member: HouseholdMember) => {
@@ -99,16 +104,11 @@ export function HouseholdMembersList({ members, isMaster }: HouseholdMembersList
                   )}
                 </button>
                 <button
-                  onClick={() => handleDelete(member.id)}
-                  disabled={deletingId === member.id}
-                  className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                  onClick={() => { setRemoveTarget(member); setDeleteData(false); }}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
                   aria-label="Remove member"
                 >
-                  {deletingId === member.id ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Trash className="w-3.5 h-3.5" />
-                  )}
+                  <Trash className="w-3.5 h-3.5" />
                 </button>
               </div>
             )}
@@ -172,6 +172,71 @@ export function HouseholdMembersList({ members, isMaster }: HouseholdMembersList
             </button>
           )}
         </>
+      )}
+
+      {/* Remove Member Dialog */}
+      {removeTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+              </div>
+              <h2 className="text-lg font-semibold text-foreground">
+                Remove {removeTarget.name}?
+              </h2>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              What should happen to {removeTarget.name}&apos;s financial data?
+            </p>
+            <div className="space-y-2">
+              <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${!deleteData ? "border-primary bg-primary/5" : "border-border hover:border-border/80"}`}>
+                <input
+                  type="radio"
+                  checked={!deleteData}
+                  onChange={() => setDeleteData(false)}
+                  className="mt-0.5 accent-primary"
+                />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Keep financial data</p>
+                  <p className="text-xs text-muted-foreground">Remove from household only. Their transactions and accounts are preserved.</p>
+                </div>
+              </label>
+              <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${deleteData ? "border-destructive bg-destructive/5" : "border-border hover:border-border/80"}`}>
+                <input
+                  type="radio"
+                  checked={deleteData}
+                  onChange={() => setDeleteData(true)}
+                  className="mt-0.5 accent-destructive"
+                />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Delete all data</p>
+                  <p className="text-xs text-muted-foreground">Permanently delete all their transactions, accounts, and categories. Cannot be undone.</p>
+                </div>
+              </label>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => { setRemoveTarget(null); setDeleteData(false); }}
+                disabled={isRemoving}
+                className="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium border border-border text-muted-foreground hover:text-foreground h-9 px-4 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRemove}
+                disabled={isRemoving}
+                className="flex-1 inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-9 px-4 disabled:opacity-50"
+              >
+                {isRemoving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Remove Member"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

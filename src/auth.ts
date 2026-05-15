@@ -43,14 +43,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             Item.passwordHash,
           );
 
-          if (passwordsMatch) {
-            return {
-              id: Item.id,
-              email: Item.email,
-            };
-          }
+          if (!passwordsMatch) return null;
 
-          return null;
+          // Block sign-in for unverified email addresses
+          if (!Item.emailVerified) return null;
+
+          return {
+            id: Item.id,
+            email: Item.email,
+          };
         } catch (error) {
           console.error("Failed to fetch user:", error);
           return null;
@@ -83,6 +84,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       if (trigger === "update" && sessionUpdate?.activeUserId !== undefined) {
         token.activeUserId = sessionUpdate.activeUserId;
+      }
+      if (trigger === "update" && sessionUpdate?.refreshHousehold) {
+        const refreshResult = await docClient.send(
+          new QueryCommand({
+            TableName: Resource.BudgifyTable.name,
+            KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+            ExpressionAttributeValues: {
+              ":pk": `USER#${token.id}`,
+              ":prefix": "HOUSEHOLD_MEMBER#",
+            },
+            Limit: 1,
+          }),
+        );
+        const refreshedLink = refreshResult.Items?.[0];
+        token.role = (refreshedLink?.role as "MASTER" | "MEMBER") ?? null;
+        token.householdId = (refreshedLink?.householdId as string) ?? null;
+        token.canViewHousehold =
+          (refreshedLink?.canViewHousehold as boolean) ?? false;
       }
       return token;
     },

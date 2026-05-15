@@ -1,6 +1,6 @@
 // src/lib/db.ts
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, GetCommand, QueryCommand, BatchWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { Resource } from "sst";
 
 // Initialize the base raw client
@@ -51,6 +51,8 @@ export async function createUserRecord(params: UserRecordParams) {
           email: email,
           name: name || "",
           passwordHash: hashedPassword || null,
+          emailVerified: false,
+          onboardingCompleted: false,
           createdAt: new Date().toISOString(),
         },
         // Prevent overwriting by strictly checking if the PK exists
@@ -74,4 +76,42 @@ export async function createUserRecord(params: UserRecordParams) {
         "We couldn't create your account right now. Please try again in a moment.",
     };
   }
+}
+
+export async function deletePartition(pk: string): Promise<void> {
+  let lastKey: Record<string, unknown> | undefined;
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "pk = :pk",
+        ExpressionAttributeValues: { ":pk": pk },
+        ProjectionExpression: "pk, sk",
+        ExclusiveStartKey: lastKey,
+      }),
+    );
+    const items = result.Items ?? [];
+    for (let i = 0; i < items.length; i += 25) {
+      await docClient.send(
+        new BatchWriteCommand({
+          RequestItems: {
+            [TABLE_NAME]: items.slice(i, i + 25).map((item) => ({
+              DeleteRequest: { Key: { pk: item.pk, sk: item.sk } },
+            })),
+          },
+        }),
+      );
+    }
+    lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (lastKey);
+}
+
+export async function getUserProfile(email: string) {
+  const { Item } = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
+    }),
+  );
+  return Item ?? null;
 }

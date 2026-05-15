@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useForm } from "react-hook-form";
-import { Lock, Mail, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Lock, Mail, Loader2, CheckCircle } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import Link from "next/link";
 import { signinSchema, type SigninInput } from "@/lib/validations/auth";
@@ -20,8 +20,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FadeIn } from "@/components/FadeIn";
 
-export default function SigninPage() {
+function SigninContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const verified = searchParams.get("verified") === "true";
   const { status } = useSession();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -114,9 +116,27 @@ export default function SigninPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                {verified && (
+                  <div className="p-3 text-sm text-primary bg-primary/10 border border-primary/20 rounded-md text-center font-medium flex items-center justify-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Email verified! You can now sign in.
+                  </div>
+                )}
+
                 {serverError && (
-                  <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md text-center font-medium">
-                    {serverError}
+                  <div className="space-y-1">
+                    <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md text-center font-medium">
+                      {serverError}
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Just signed up?{" "}
+                      <Link
+                        href="/check-email"
+                        className="text-primary hover:underline"
+                      >
+                        Check your inbox to verify your email first.
+                      </Link>
+                    </p>
                   </div>
                 )}
 
@@ -199,5 +219,19 @@ export default function SigninPage() {
         </FadeIn>
       </div>
     </div>
+  );
+}
+
+export default function SigninPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <SigninContent />
+    </Suspense>
   );
 }

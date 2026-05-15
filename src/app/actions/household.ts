@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { docClient, TABLE_NAME } from "@/lib/db";
+import { deletePartition, docClient, TABLE_NAME } from "@/lib/db";
 import {
   PutCommand,
   GetCommand,
@@ -61,6 +61,7 @@ export async function getHousehold(): Promise<{ household: Household | null; mem
     id: metaResult.Item.id,
     name: metaResult.Item.name,
     masterUserId: metaResult.Item.masterUserId,
+    pin: metaResult.Item.pin as string | undefined,
     createdAt: metaResult.Item.createdAt,
   };
 
@@ -96,9 +97,10 @@ export async function createHousehold(
   if (existing.household) return { error: "You already belong to a household." };
 
   const householdId = randomUUID();
+  const pin = String(Math.floor(100000 + Math.random() * 900000));
   const now = new Date().toISOString();
 
-  // Create household metadata record
+  // Create household metadata record (includes PIN)
   await docClient.send(
     new PutCommand({
       TableName: TABLE_NAME,
@@ -109,6 +111,7 @@ export async function createHousehold(
         type: "HOUSEHOLD",
         name: parsed.data.name,
         masterUserId: session.user.id,
+        pin,
         createdAt: now,
       },
     }),
@@ -124,6 +127,20 @@ export async function createHousehold(
         householdId,
         role: "MASTER",
         joinedAt: now,
+      },
+    }),
+  );
+
+  // PIN index record so members can join by PIN
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        pk: `HOUSEHOLD_PIN#${pin}`,
+        sk: "HOUSEHOLD_PIN",
+        householdId,
+        masterUserId: session.user.id,
+        createdAt: now,
       },
     }),
   );
@@ -176,6 +193,7 @@ export async function addHouseholdMember(
 
 export async function removeHouseholdMember(
   memberId: string,
+  deleteData: boolean = false,
 ): Promise<{ error?: string }> {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
@@ -199,6 +217,10 @@ export async function removeHouseholdMember(
       },
     }),
   );
+
+  if (deleteData) {
+    await deletePartition(`USER#${memberId}`);
+  }
 
   revalidatePath("/dashboard/settings/household");
   return {};

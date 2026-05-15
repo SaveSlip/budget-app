@@ -5,9 +5,8 @@ import { useForm } from "react-hook-form";
 import { Lock, Mail, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
 import { signupSchema, type SignupInput } from "@/lib/validations/auth";
-import { registerUser } from "@/app/actions/auth";
+import { registerUser, sendVerificationEmail } from "@/app/actions/auth";
 import ThemeToggle from "@/components/ThemeToggle";
 
 import {
@@ -53,20 +52,11 @@ export default function SignupPage() {
       return;
     }
 
-    const signInResult = await signIn("credentials", {
-      email: parsed.data.email,
-      password: parsed.data.password,
-      redirect: false,
-    });
+    await sendVerificationEmail(parsed.data.email);
 
-    if (signInResult?.error) {
-      setServerError(
-        "Account created but sign in failed. Please try signing in manually.",
-      );
-      return;
-    }
-
-    router.push("/dashboard/settings/recurring?onboarding=true");
+    router.push(
+      "/check-email?email=" + encodeURIComponent(parsed.data.email),
+    );
   };
 
   return (
