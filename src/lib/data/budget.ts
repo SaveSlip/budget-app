@@ -1,7 +1,7 @@
 import { docClient, TABLE_NAME } from "@/lib/db";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { getActiveUserId } from "@/lib/activeUser";
-import { UNIVERSAL_CATEGORIES } from "@/lib/constants/categories";
+import { UNIVERSAL_CATEGORIES, UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
 
 export interface Account {
   id: string;
@@ -18,6 +18,7 @@ export interface Category {
   type: string;
   createdAt: string;
   isUniversal?: boolean;
+  categoryType?: "INCOME" | "EXPENSE";
 }
 
 export interface Transaction {
@@ -62,18 +63,34 @@ export async function getCategories(): Promise<Category[]> {
   if (!userId) throw new Error("Unauthorized");
 
   try {
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
-        ExpressionAttributeValues: {
-          ":pk": `USER#${userId}`,
-          ":skPrefix": "CATEGORY#",
-        },
-      }),
+    const [categoryResult, limitResult] = await Promise.all([
+      docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+          ExpressionAttributeValues: {
+            ":pk": `USER#${userId}`,
+            ":skPrefix": "CATEGORY#",
+          },
+        }),
+      ),
+      docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+          ExpressionAttributeValues: {
+            ":pk": `USER#${userId}`,
+            ":skPrefix": "UNIVERSAL_LIMIT#",
+          },
+        }),
+      ),
+    ]);
+
+    const customCategories = (categoryResult.Items ?? []).filter((item) => item.name) as Category[];
+    const universalLimitOverrides = new Map<string, number>(
+      (limitResult.Items ?? []).map((item) => [item.id as string, item.limit as number])
     );
 
-    const customCategories = (result.Items ?? []) as Category[];
     const universalNames = new Set(UNIVERSAL_CATEGORIES.map((uc) => uc.name.toLowerCase()));
     const filteredCustom = customCategories.filter(
       (c) => !universalNames.has(c.name.toLowerCase())
@@ -82,13 +99,28 @@ export async function getCategories(): Promise<Category[]> {
     const universals: Category[] = UNIVERSAL_CATEGORIES.map((uc) => ({
       id: uc.id,
       name: uc.name,
+      limit: universalLimitOverrides.get(uc.id) ?? 0,
+      type: "CATEGORY",
+      createdAt: "",
+      isUniversal: true,
+      categoryType: "EXPENSE" as const,
+    }));
+
+    const universalIncome: Category[] = UNIVERSAL_INCOME_CATEGORIES.map((uc) => ({
+      id: uc.id,
+      name: uc.name,
       limit: 0,
       type: "CATEGORY",
       createdAt: "",
       isUniversal: true,
+      categoryType: "INCOME" as const,
     }));
 
-    return [...universals, ...filteredCustom.map((c) => ({ ...c, isUniversal: false }))];
+    return [
+      ...universals,
+      ...universalIncome,
+      ...filteredCustom.map((c) => ({ ...c, isUniversal: false, categoryType: (c.categoryType ?? "EXPENSE") as "INCOME" | "EXPENSE" })),
+    ];
   } catch (error) {
     console.error("[DAL] Categories fetch failed:", error);
     return [];
@@ -218,7 +250,7 @@ export async function getMonthlyBalance(month: string): Promise<MonthlyBalance> 
     const prevSpend = prevCategorySpending[cat.name];
     const delta = prevSpend !== undefined ? (cat.limit || 0) - prevSpend : 0;
     rolloverDeltas[cat.name] = delta;
-    adjustedCategoryLimits[cat.name] = Math.max(0, (cat.limit || 0) + delta);
+    adjustedCategoryLimits[cat.name] = cat.limit || 0;
   }
 
   const totalAllocated = categories.reduce((sum, c) => sum + (c.limit || 0), 0);

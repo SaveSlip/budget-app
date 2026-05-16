@@ -3,6 +3,7 @@
 import { useState } from "react";
 import TransactionForm from "@/components/TransactionForm";
 import CsvUploader from "@/components/CsvUploader";
+import { UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
 import type { Account, Category } from "@/lib/data/budget";
 
 interface LogPanelProps {
@@ -14,6 +15,17 @@ type Tab = "EXPENSE" | "INCOME";
 
 export function LogPanel({ categories, accounts }: LogPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("EXPENSE");
+
+  const incomeCategories: Category[] = UNIVERSAL_INCOME_CATEGORIES.map((uc) => ({
+    id: uc.id,
+    name: uc.name,
+    limit: 0,
+    type: "CATEGORY",
+    createdAt: "",
+    isUniversal: true,
+  }));
+
+  const activeCategories = activeTab === "INCOME" ? incomeCategories : categories;
 
   return (
     <div className="space-y-4">
@@ -43,7 +55,8 @@ export function LogPanel({ categories, accounts }: LogPanelProps) {
       </div>
 
       <TransactionForm
-        categories={categories}
+        key={activeTab}
+        categories={activeCategories}
         accounts={accounts}
         initialType={activeTab}
         hideTypeToggle

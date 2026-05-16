@@ -22,7 +22,7 @@ import {
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { Resource } from "sst";
 
-const sesClient = new SESClient({});
+const sesClient = new SESClient({ region: process.env.AWS_REGION ?? "us-east-1" });
 
 export async function registerUser(data: SignupInput) {
   try {
@@ -241,10 +241,11 @@ export async function resetPasswordAction(
         TableName: TABLE_NAME,
         Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
         UpdateExpression:
-          "SET passwordHash = :password, updatedAt = :updatedAt",
+          "SET passwordHash = :password, updatedAt = :updatedAt, emailVerified = :verified",
         ExpressionAttributeValues: {
           ":password": hashedPassword,
           ":updatedAt": new Date().toISOString(),
+          ":verified": true,
         },
       }),
     );

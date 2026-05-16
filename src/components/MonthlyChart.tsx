@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart,
   Bar,
+  Rectangle,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -25,13 +27,17 @@ interface MonthlyChartProps {
 }
 
 export function MonthlyChart({ transactions }: MonthlyChartProps) {
-  // Process raw transactions into a 6-month trend format
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeMonth = searchParams.get("month") || format(new Date(), "yyyy-MM");
+
   const chartData = useMemo(() => {
     const months = Array.from({ length: 12 })
       .map((_, i) => {
         const date = subMonths(new Date(), i);
         return {
           label: format(date, "MMM"),
+          monthValue: format(date, "yyyy-MM"),
           start: startOfMonth(date),
           end: endOfMonth(date),
           expense: 0,
@@ -55,6 +61,14 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
 
     return months;
   }, [transactions]);
+
+  function handleBarClick(data: { monthValue: string }) {
+    if (!data?.monthValue) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("month", data.monthValue);
+    router.push(`/dashboard?${params.toString()}`, { scroll: false });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   return (
     <div className="h-75 w-full">
@@ -98,12 +112,22 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
             name="Income"
             fill="var(--chart-3)"
             radius={[4, 4, 0, 0]}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onClick={(data: any) => handleBarClick(data)}
+            style={{ cursor: "pointer" }}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            shape={(props: any) => <Rectangle {...props} fillOpacity={props.monthValue === activeMonth ? 1 : 0.5} />}
           />
           <Bar
             dataKey="expense"
             name="Expense"
             fill="var(--chart-1)"
             radius={[4, 4, 0, 0]}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onClick={(data: any) => handleBarClick(data)}
+            style={{ cursor: "pointer" }}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            shape={(props: any) => <Rectangle {...props} fillOpacity={props.monthValue === activeMonth ? 1 : 0.5} />}
           />
         </BarChart>
       </ResponsiveContainer>

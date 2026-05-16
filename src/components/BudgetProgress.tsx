@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { LockIcon, Trash2 } from "lucide-react";
+import { Trash2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { deleteCategory } from "@/app/actions/categories";
+import { deleteCategory, updateCategory, updateUniversalCategoryLimit } from "@/app/actions/categories";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -17,11 +17,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface BudgetProgressProps {
   spent: number;
@@ -47,12 +48,33 @@ export function BudgetProgress({
   const isOverBudget = effectiveLimit > 0 && spent > effectiveLimit;
   const [isPending, startTransition] = useTransition();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState(categoryName);
+  const [editLimit, setEditLimit] = useState(limit.toString());
+  const [editError, setEditError] = useState<string | null>(null);
+  const [universalEditOpen, setUniversalEditOpen] = useState(false);
+  const [universalEditLimit, setUniversalEditLimit] = useState(limit.toString());
+  const [universalEditError, setUniversalEditError] = useState<string | null>(null);
 
-  const getStatusColor = () => {
-    if (percentage >= 100) return "bg-destructive";
-    if (percentage >= 75) return "bg-warning";
-    return "bg-primary";
-  };
+  function handleUniversalEditOpen() {
+    setUniversalEditLimit(limit.toString());
+    setUniversalEditError(null);
+    setUniversalEditOpen(true);
+  }
+
+  function handleUniversalEditSave() {
+    if (!categoryId) return;
+    const parsedLimit = Number(universalEditLimit);
+    if (isNaN(parsedLimit) || parsedLimit < 0) { setUniversalEditError("Limit must be 0 or greater"); return; }
+    startTransition(async () => {
+      const result = await updateUniversalCategoryLimit(categoryId, parsedLimit);
+      if (result?.error) {
+        setUniversalEditError(result.error);
+      } else {
+        setUniversalEditOpen(false);
+      }
+    });
+  }
 
   const rolloverAbs = Math.abs(rolloverDelta);
   const showRollover = rolloverDelta !== 0;
@@ -65,53 +87,169 @@ export function BudgetProgress({
     });
   }
 
+  function handleEditOpen() {
+    setEditName(categoryName);
+    setEditLimit(limit.toString());
+    setEditError(null);
+    setEditOpen(true);
+  }
+
+  function handleEditSave() {
+    if (!categoryId) return;
+    const parsedLimit = Number(editLimit);
+    if (!editName.trim()) {
+      setEditError("Name is required");
+      return;
+    }
+    if (isNaN(parsedLimit) || parsedLimit < 0) {
+      setEditError("Limit must be 0 or greater");
+      return;
+    }
+    startTransition(async () => {
+      const result = await updateCategory(categoryId, {
+        name: editName.trim(),
+        limit: parsedLimit,
+      });
+      if (result?.error) {
+        setEditError(result.error);
+      } else {
+        setEditOpen(false);
+      }
+    });
+  }
+
   return (
     <div className="relative space-y-2 w-full p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
       {/* Top-right action: lock for universal, delete for custom */}
       <div className="absolute top-2 right-2">
         {isUniversal ? (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex items-center justify-center h-6 w-6 text-muted-foreground/40">
-                  <LockIcon className="h-3 w-3" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                <p className="text-xs">Universal category — cannot be removed</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground/40 hover:text-foreground"
+              disabled={isPending}
+              onClick={handleUniversalEditOpen}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+            <Dialog open={universalEditOpen} onOpenChange={setUniversalEditOpen}>
+              <DialogContent className="sm:max-w-90">
+                <DialogHeader>
+                  <DialogTitle>Set Limit — {categoryName}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-1">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Monthly Limit ($)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={universalEditLimit}
+                      onChange={(e) => setUniversalEditLimit(e.target.value)}
+                      className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                    />
+                  </div>
+                  {universalEditError && <p className="text-sm text-destructive">{universalEditError}</p>}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setUniversalEditOpen(false)} disabled={isPending}>Cancel</Button>
+                  <Button onClick={handleUniversalEditSave} disabled={isPending}>Save</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
         ) : categoryId ? (
-          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-muted-foreground/40 hover:text-destructive"
-                disabled={isPending}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete category?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete &quot;{categoryName}&quot;. Past transactions assigned to it will not be affected.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground/40 hover:text-foreground"
+              disabled={isPending}
+              onClick={handleEditOpen}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground/40 hover:text-destructive"
+                  disabled={isPending}
                 >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete category?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete &quot;{categoryName}&quot;.
+                    Past transactions assigned to it will not be affected.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+              <DialogContent className="sm:max-w-90">
+                <DialogHeader>
+                  <DialogTitle>Edit Category</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pt-1">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Monthly Limit ($)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={editLimit}
+                      onChange={(e) => setEditLimit(e.target.value)}
+                      className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                    />
+                  </div>
+                  {editError && (
+                    <p className="text-sm text-destructive">{editError}</p>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditOpen(false)}
+                    disabled={isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={handleEditSave} disabled={isPending}>
+                    Save
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         ) : null}
       </div>
 
@@ -128,7 +266,11 @@ export function BudgetProgress({
                 rolloverDelta > 0 ? "text-emerald-500" : "text-destructive",
               )}
             >
-              {rolloverDelta > 0 ? "+" : "-"}${rolloverAbs.toLocaleString(undefined, { maximumFractionDigits: 2 })} rolled over
+              {rolloverDelta > 0 ? "+" : "-"}$
+              {rolloverAbs.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })}{" "}
+              rolled over
             </span>
           )}
         </div>
@@ -154,15 +296,23 @@ export function BudgetProgress({
       </div>
 
       <div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary">
-        <div
-          className={cn(
-            "h-full w-full flex-1 transition-all duration-500",
-            getStatusColor(),
-          )}
-          style={{
-            transform: `translateX(-${100 - Math.min(percentage, 100)}%)`,
-          }}
-        />
+        {isOverBudget ? (
+          <div className="h-full w-full bg-destructive" />
+        ) : (
+          <>
+            <div
+              className="absolute left-0 top-0 h-full bg-orange-500 transition-all duration-500"
+              style={{ width: `${Math.min(percentage, 100)}%` }}
+            />
+            <div
+              className="absolute top-0 h-full bg-emerald-500 transition-all duration-500"
+              style={{
+                left: `${Math.min(percentage, 100)}%`,
+                width: `${Math.max(100 - percentage, 0)}%`,
+              }}
+            />
+          </>
+        )}
       </div>
 
       {isOverBudget && (

@@ -67,6 +67,39 @@ export const UNIVERSAL_CATEGORIES: UniversalCategory[] = [
   },
 ];
 
+export const UNIVERSAL_INCOME_CATEGORIES: UniversalCategory[] = [
+  {
+    id: "income-salary",
+    name: "Salary",
+    keywords: ["salary", "payroll", "paycheck", "wages", "direct deposit", "employment income"],
+  },
+  {
+    id: "income-freelance",
+    name: "Freelance",
+    keywords: ["freelance", "contract", "consulting", "self-employed", "gig", "invoice", "client payment"],
+  },
+  {
+    id: "income-investment",
+    name: "Investment Returns",
+    keywords: ["dividend", "interest", "capital gains", "returns", "brokerage deposit", "etf income"],
+  },
+  {
+    id: "income-rental",
+    name: "Rental Income",
+    keywords: ["rent received", "rental income", "tenant payment", "sublease income"],
+  },
+  {
+    id: "income-business",
+    name: "Business Income",
+    keywords: ["business income", "revenue", "sales", "profit", "business deposit"],
+  },
+  {
+    id: "income-other",
+    name: "Other Income",
+    keywords: ["refund", "rebate", "gift", "bonus", "tax return", "cashback", "transfer in"],
+  },
+];
+
 export function findUniversalCategory(name: string): UniversalCategory | undefined {
   const normalized = name.toLowerCase().trim();
   return UNIVERSAL_CATEGORIES.find((uc) =>

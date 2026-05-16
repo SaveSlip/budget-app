@@ -51,20 +51,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     <div className="flex-1 w-full max-w-[1600px] mx-auto space-y-8">
       {/* Header & Global Filters */}
       <AnimateSection delay={0}>
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight text-foreground">
-                Financial Command Center
-              </h2>
-              <p className="text-muted-foreground font-mono uppercase text-xs tracking-tighter">
-                Period: {activeMonth} {q ? `• Search: "${q}"` : ""}
-              </p>
-            </div>
-          </div>
-
-          <DashboardFilters />
-        </div>
+        <DashboardFilters />
       </AnimateSection>
 
       {/* Row 1: Stats */}
@@ -100,16 +87,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
       {/* Row 2: Budget Benchmarking (left) & Log Transaction (right) */}
       <AnimateSection delay={0.16}>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-4">
+        <div className="grid gap-6 lg:grid-cols-2 items-start">
+          <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between px-1">
               <h3 className="text-xl font-semibold text-foreground">
                 Budget Benchmarking
               </h3>
               <AddCategoryDialog />
             </div>
-            <div className="grid grid-cols-2 gap-4 max-h-[600px] overflow-y-auto pr-1">
-              {categories.map((category) => (
+            <div className="grid grid-cols-2 gap-4">
+              {categories.filter((category) => category.categoryType !== "INCOME").map((category) => (
                 <BudgetProgress
                   key={category.id}
                   categoryName={category.name}
@@ -124,9 +111,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             </div>
           </div>
 
-          <GlassCard title="Log Transaction">
-            <LogPanel categories={categories} accounts={accounts} />
-          </GlassCard>
+          <div className="sticky top-8">
+            <GlassCard title="Log Transaction">
+              <LogPanel categories={categories} accounts={accounts} />
+            </GlassCard>
+          </div>
         </div>
       </AnimateSection>
 

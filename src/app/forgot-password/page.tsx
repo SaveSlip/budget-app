@@ -35,6 +35,7 @@ type ActionResponse = {
 export default function ForgotPasswordPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [devResetLink, setDevResetLink] = useState<string | null>(null);
 
   const {
     register,
@@ -65,9 +66,8 @@ export default function ForgotPasswordPage() {
         return;
       }
 
-      // Store the reset link for development testing
       if (response.resetLink) {
-        console.log("Reset link:", response.resetLink);
+        setDevResetLink(response.resetLink);
       }
 
       setIsSuccess(true);
@@ -121,14 +121,17 @@ export default function ForgotPasswordPage() {
                     try again
                   </button>
                 </div>
-                {process.env.NODE_ENV === "development" && (
+                {devResetLink && (
                   <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                     <p className="text-sm text-yellow-800 font-medium">
                       Development Mode
                     </p>
-                    <p className="text-xs text-yellow-700 mt-1">
-                      Check the browser console for the reset link.
-                    </p>
+                    <a
+                      href={devResetLink}
+                      className="text-xs text-yellow-700 mt-1 underline break-all block"
+                    >
+                      Click here to reset password
+                    </a>
                   </div>
                 )}
               </CardContent>

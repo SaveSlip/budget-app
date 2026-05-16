@@ -29,7 +29,7 @@ export default $config({
     });
 
     const email = new sst.aws.Email("EmailIdentity", {
-      sender: "noreply@amanbrar.pro",
+      sender: "amanbrarpro@gmail.com",
     });
 
     const processRecurring = new sst.aws.Function("ProcessRecurring", {

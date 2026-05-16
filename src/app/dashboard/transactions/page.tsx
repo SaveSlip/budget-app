@@ -3,12 +3,8 @@ import { redirect } from "next/navigation";
 import { getAllTransactions } from "@/app/actions/transactions";
 import { listRecurringTransactions } from "@/app/actions/recurring";
 import { getCategories, getAccounts } from "@/lib/data/budget";
-import { columns, type Transaction } from "./columns";
-import { DataTable } from "./data-table";
-import { GlassCard } from "@/components/GlassCard";
-import { RecurringTransactionForm } from "@/components/RecurringTransactionForm";
-import { RecurringList } from "@/components/RecurringList";
-import { FadeIn } from "@/components/FadeIn";
+import { type Transaction } from "./columns";
+import { TransactionsTabView } from "@/components/TransactionsTabView";
 
 export default async function TransactionsPage() {
   const session = await auth();
@@ -34,30 +30,12 @@ export default async function TransactionsPage() {
         </p>
       </div>
 
-      <DataTable columns={columns} data={transactions} />
-
-      <FadeIn delay={0.1}>
-        <div>
-          <h3 className="text-2xl font-bold tracking-tight text-foreground">
-            Recurring Transactions
-          </h3>
-          <p className="text-muted-foreground text-sm mt-1">
-            Fixed expenses and income that repeat automatically each period.
-          </p>
-        </div>
-      </FadeIn>
-
-      {recurring.length > 0 && (
-        <FadeIn delay={0.15}>
-          <RecurringList recurring={recurring} categories={categories} accounts={accounts} />
-        </FadeIn>
-      )}
-
-      <FadeIn delay={0.2}>
-        <GlassCard title="Add Recurring Transaction">
-          <RecurringTransactionForm categories={categories} accounts={accounts} />
-        </GlassCard>
-      </FadeIn>
+      <TransactionsTabView
+        transactions={transactions}
+        recurring={recurring}
+        categories={categories}
+        accounts={accounts}
+      />
     </div>
   );
 }

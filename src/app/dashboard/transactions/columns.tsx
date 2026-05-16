@@ -29,6 +29,33 @@ function HeaderLabel({ children }: { children: React.ReactNode }) {
 
 export const columns: ColumnDef<Transaction>[] = [
   {
+    id: "select",
+    header: ({ table }) => (
+      <input
+        type="checkbox"
+        className="h-4 w-4 rounded border-border cursor-pointer accent-primary"
+        checked={table.getIsAllPageRowsSelected()}
+        ref={(el) => {
+          if (el) el.indeterminate = table.getIsSomePageRowsSelected();
+        }}
+        onChange={table.getToggleAllPageRowsSelectedHandler()}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <input
+        type="checkbox"
+        className="h-4 w-4 rounded border-border cursor-pointer accent-primary"
+        checked={row.getIsSelected()}
+        disabled={!row.getCanSelect()}
+        onChange={row.getToggleSelectedHandler()}
+        aria-label="Select row"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
     accessorKey: "date",
     header: ({ column }) => (
       <Button

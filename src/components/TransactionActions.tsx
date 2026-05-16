@@ -70,6 +70,18 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
   });
 
   useEffect(() => {
+    setFormData({
+      description: transaction.description,
+      amount: transaction.amount.toString(),
+      date: transaction.date,
+      category: transaction.category,
+      transactionType: (transaction.transactionType ?? "EXPENSE") as "INCOME" | "EXPENSE",
+      accountId: transaction.accountId ?? "",
+    });
+    setCategories([]);
+  }, [transaction.id]);
+
+  useEffect(() => {
     if (isEditOpen && categories.length === 0) {
       const fetchData = async () => {
         setIsLoadingCategories(true);

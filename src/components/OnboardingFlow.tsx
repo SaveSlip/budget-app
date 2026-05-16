@@ -21,15 +21,27 @@ import {
   joinHouseholdByPin,
   completeOnboarding,
 } from "@/app/actions/onboarding";
+import { saveOnboardingLimits } from "@/app/actions/categories";
+import { UNIVERSAL_CATEGORIES } from "@/lib/constants/categories";
 
-type Step = "name" | "role" | "master" | "member" | "done";
+type Step = "name" | "role" | "master" | "member" | "budgets" | "done";
 
 const STEP_TOTALS: Record<Step, number> = {
+  name: 4,
+  role: 4,
+  master: 4,
+  member: 4,
+  budgets: 4,
+  done: 4,
+};
+
+const STEP_NUMBERS: Record<Step, number> = {
   name: 1,
   role: 2,
   master: 3,
   member: 3,
-  done: 3,
+  budgets: 4,
+  done: 4,
 };
 
 export function OnboardingFlow() {
@@ -44,6 +56,12 @@ export function OnboardingFlow() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isMasterFlow, setIsMasterFlow] = useState(false);
+
+  // budgets step state: categoryId -> string input value
+  const [categoryLimits, setCategoryLimits] = useState<Record<string, string>>(
+    () => Object.fromEntries(UNIVERSAL_CATEGORIES.map((uc) => [uc.id, ""]))
+  );
 
   const clearError = () => setError(null);
 
@@ -76,10 +94,10 @@ export function OnboardingFlow() {
       setError(result.error);
       return;
     }
-    await completeOnboarding();
     setIsLoading(false);
     setRevealedPin(result.pin!);
-    setStep("done");
+    setIsMasterFlow(true);
+    setStep("budgets");
   };
 
   const handleMemberSubmit = async () => {
@@ -95,10 +113,30 @@ export function OnboardingFlow() {
       setError(result.error);
       return;
     }
-    await completeOnboarding();
     await update({ refreshHousehold: true });
     setIsLoading(false);
-    router.push("/dashboard");
+    setIsMasterFlow(false);
+    setStep("budgets");
+  };
+
+  const handleBudgetsSubmit = async () => {
+    setIsLoading(true);
+    clearError();
+    const limits: Record<string, number> = {};
+    for (const [id, val] of Object.entries(categoryLimits)) {
+      const n = Number(val);
+      if (val.trim() !== "" && !isNaN(n) && n > 0) limits[id] = n;
+    }
+    if (Object.keys(limits).length > 0) {
+      await saveOnboardingLimits(limits);
+    }
+    await completeOnboarding();
+    setIsLoading(false);
+    if (isMasterFlow) {
+      setStep("done");
+    } else {
+      router.push("/dashboard");
+    }
   };
 
   const handleCopyPin = () => {
@@ -108,9 +146,6 @@ export function OnboardingFlow() {
       setTimeout(() => setCopied(false), 2000);
     }
   };
-
-  const stepNumber = step === "done" ? 3 : STEP_TOTALS[step];
-  const totalSteps = step === "member" || step === "master" || step === "done" ? 3 : STEP_TOTALS[step];
 
   return (
     <div className="w-full max-w-md px-4">
@@ -144,13 +179,13 @@ export function OnboardingFlow() {
             <div className="px-6 pt-6">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Step {stepNumber} of {totalSteps}
+                  Step {STEP_NUMBERS[step]} of {STEP_TOTALS[step]}
                 </span>
               </div>
               <div className="w-full bg-muted rounded-full h-1.5">
                 <div
                   className="bg-primary h-1.5 rounded-full transition-all duration-300"
-                  style={{ width: `${(stepNumber / totalSteps) * 100}%` }}
+                  style={{ width: `${(STEP_NUMBERS[step] / STEP_TOTALS[step]) * 100}%` }}
                 />
               </div>
             </div>
@@ -373,6 +408,67 @@ export function OnboardingFlow() {
                   className="text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                </Button>
+              </CardFooter>
+            </>
+          )}
+
+          {/* Step: Budgets — set monthly limits */}
+          {step === "budgets" && (
+            <>
+              <CardHeader className="space-y-1 pt-5 pb-3">
+                <CardTitle className="text-xl font-bold text-foreground">
+                  Set your monthly budgets
+                </CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Enter a monthly spending limit for each category. Leave blank to set later.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 max-h-85 overflow-y-auto pr-1">
+                {error && (
+                  <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md font-medium mb-2">
+                    {error}
+                  </div>
+                )}
+                {UNIVERSAL_CATEGORIES.map((uc) => (
+                  <div key={uc.id} className="flex items-center justify-between gap-3 py-1.5 border-b border-border/50 last:border-0">
+                    <span className="text-sm font-medium text-foreground min-w-0 truncate flex-1">{uc.name}</span>
+                    <div className="relative shrink-0 w-28">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                        value={categoryLimits[uc.id]}
+                        onChange={(e) =>
+                          setCategoryLimits((prev) => ({ ...prev, [uc.id]: e.target.value }))
+                        }
+                        className="w-full pl-6 pr-2 h-8 rounded-md border border-border bg-muted text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+              <CardFooter className="flex flex-col gap-3 pb-8 pt-4">
+                <Button
+                  onClick={handleBudgetsSubmit}
+                  disabled={isLoading}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-5"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Save & Continue"
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={handleBudgetsSubmit}
+                  disabled={isLoading}
+                  className="text-muted-foreground hover:text-foreground hover:bg-foreground/5 text-sm"
+                >
+                  Skip for now
                 </Button>
               </CardFooter>
             </>

@@ -53,7 +53,7 @@ export default function TransactionForm({
         setError(result.error);
       } else {
         setSuccess(true);
-        setFormData({ description: "", amount: "", date: today, category: "", transactionType: "EXPENSE", accountId: "" });
+        setFormData({ description: "", amount: "", date: today, category: "", transactionType: initialType, accountId: "" });
         setTimeout(() => setSuccess(false), 3000);
       }
     } catch {

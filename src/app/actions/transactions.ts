@@ -217,6 +217,41 @@ export async function deleteTransaction(date: string, txId: string) {
   }
 }
 
+export async function batchDeleteTransactions(
+  items: { date: string; id: string }[],
+) {
+  const session = await auth();
+  const userId = await getActiveUserId();
+  if (!userId) return { error: "Unauthorized" };
+  try { assertAuthorized(session, userId); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
+
+  try {
+    for (let i = 0; i < items.length; i += 25) {
+      const chunk = items.slice(i, i + 25);
+      await docClient.send(
+        new BatchWriteCommand({
+          RequestItems: {
+            [TABLE_NAME]: chunk.map(({ date, id }) => ({
+              DeleteRequest: {
+                Key: { pk: `USER#${userId}`, sk: `TX#${date}#${id}` },
+              },
+            })),
+          },
+        }),
+      );
+    }
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/transactions");
+    return { success: true, count: items.length };
+  } catch (error) {
+    console.error("[DB] Failed to batch delete transactions:", error);
+    return { error: "Failed to delete transactions" };
+  }
+}
+
 export async function updateTransaction(
   originalDate: string,
   txId: string,

@@ -167,7 +167,7 @@ export async function updateRecurringTransaction(
     isActive,
   } = parsed.data;
 
-  const nextRunDate = initialNextRunDate(frequency, dayOfMonth);
+  const nextRunDate = await initialNextRunDate(frequency, dayOfMonth);
 
   await docClient.send(
     new PutCommand({

@@ -12,14 +12,20 @@ interface QuarterlyReviewProps {
 export function QuarterlyReview({ suggestions }: QuarterlyReviewProps) {
   const [dismissed, setDismissed] = useState(false);
   const [applied, setApplied] = useState<Set<string>>(new Set());
+  const [applyError, setApplyError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (dismissed || suggestions.length === 0) return null;
 
   const handleApply = (suggestion: CategoryReviewSuggestion) => {
+    setApplyError(null);
     startTransition(async () => {
-      await updateCategoryLimit(suggestion.categoryId, suggestion.suggestedLimit);
-      setApplied((prev) => new Set(prev).add(suggestion.categoryId));
+      const result = await updateCategoryLimit(suggestion.categoryId, suggestion.suggestedLimit);
+      if (result?.error) {
+        setApplyError(result.error);
+      } else {
+        setApplied((prev) => new Set(prev).add(suggestion.categoryId));
+      }
     });
   };
 
@@ -42,6 +48,9 @@ export function QuarterlyReview({ suggestions }: QuarterlyReviewProps) {
         </button>
       </div>
 
+      {applyError && (
+        <p className="text-sm text-destructive">{applyError}</p>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         {suggestions.map((s) => {
           const isApplied = applied.has(s.categoryId);

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import {
   createRecurringTransaction,
   updateRecurringTransaction,
 } from "@/app/actions/recurring";
+import { createCategory } from "@/app/actions/categories";
 import type { Account, Category, RecurringTransaction } from "@/lib/data/budget";
 
 const FREQUENCY_OPTIONS = [
@@ -31,6 +32,10 @@ export function RecurringTransactionForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [localIncomeCategories, setLocalIncomeCategories] = useState<Category[]>([]);
+  const [newCatName, setNewCatName] = useState("");
+  const [addingCat, setAddingCat] = useState(false);
+  const [catError, setCatError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     description: existing?.description ?? "",
@@ -42,6 +47,34 @@ export function RecurringTransactionForm({
     dayOfMonth: existing?.dayOfMonth?.toString() ?? "",
     isActive: existing?.isActive ?? true,
   });
+
+  const handleAddIncomeCategory = async () => {
+    if (!newCatName.trim()) return;
+    setAddingCat(true);
+    setCatError(null);
+    const result = await createCategory({ name: newCatName.trim(), limit: 0, categoryType: "INCOME" });
+    setAddingCat(false);
+    if (result.error === "universal") {
+      setCatError(`"${newCatName.trim()}" is already a built-in income category.`);
+    } else if (result.error === "duplicate") {
+      setCatError("A category with this name already exists.");
+    } else if (result.error) {
+      setCatError(result.error);
+    } else {
+      const newCat: Category = {
+        id: result.id!,
+        name: newCatName.trim(),
+        limit: 0,
+        type: "CATEGORY",
+        createdAt: new Date().toISOString(),
+        isUniversal: false,
+        categoryType: "INCOME",
+      };
+      setLocalIncomeCategories((prev) => [...prev, newCat]);
+      setFormData((prev) => ({ ...prev, category: newCatName.trim() }));
+      setNewCatName("");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -95,7 +128,7 @@ export function RecurringTransactionForm({
       <div className="flex rounded-md border border-border overflow-hidden">
         <button
           type="button"
-          onClick={() => setFormData({ ...formData, transactionType: "EXPENSE" })}
+          onClick={() => { setFormData({ ...formData, transactionType: "EXPENSE", category: "" }); setCatError(null); }}
           className={`flex-1 py-2 text-sm font-medium transition-colors ${
             formData.transactionType === "EXPENSE"
               ? "bg-primary/15 text-primary"
@@ -106,7 +139,7 @@ export function RecurringTransactionForm({
         </button>
         <button
           type="button"
-          onClick={() => setFormData({ ...formData, transactionType: "INCOME" })}
+          onClick={() => { setFormData({ ...formData, transactionType: "INCOME", category: "" }); setCatError(null); }}
           className={`flex-1 py-2 text-sm font-medium transition-colors ${
             formData.transactionType === "INCOME"
               ? "bg-success/15 text-success"
@@ -194,23 +227,55 @@ export function RecurringTransactionForm({
         <label className="text-sm font-medium leading-none text-muted-foreground">
           Category
         </label>
-        <select
-          required
-          value={formData.category}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-          className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
-        >
-          <option value="" disabled>Select a category...</option>
-          {categories.length === 0 ? (
-            <option disabled>No categories yet</option>
-          ) : (
-            categories.map((cat) => (
-              <option key={cat.id} value={cat.name}>
-                {cat.name}
-              </option>
-            ))
-          )}
-        </select>
+        {(() => {
+          const visibleCategories = [
+            ...categories.filter((c) => c.categoryType === formData.transactionType),
+            ...(formData.transactionType === "INCOME" ? localIncomeCategories : []),
+          ];
+          return (
+            <select
+              required
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+            >
+              <option value="" disabled>Select a category...</option>
+              {visibleCategories.length === 0 ? (
+                <option disabled>No categories yet</option>
+              ) : (
+                visibleCategories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))
+              )}
+            </select>
+          );
+        })()}
+        {formData.transactionType === "INCOME" && (
+          <div className="mt-2 space-y-1">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="New income category name..."
+                value={newCatName}
+                onChange={(e) => { setNewCatName(e.target.value); setCatError(null); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddIncomeCategory(); } }}
+                className="flex h-9 flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                type="button"
+                onClick={handleAddIncomeCategory}
+                disabled={addingCat || !newCatName.trim()}
+                className="inline-flex items-center gap-1 h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors disabled:opacity-50"
+              >
+                {addingCat ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                Add
+              </button>
+            </div>
+            {catError && <p className="text-xs text-destructive">{catError}</p>}
+          </div>
+        )}
       </div>
 
       <div>

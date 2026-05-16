@@ -10,12 +10,13 @@ import {
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { assertAuthorized, ForbiddenError } from "@/lib/auth-guard";
+import { getActiveUserId } from "@/lib/activeUser";
 import { z } from "zod";
-import { UNIVERSAL_CATEGORIES, findUniversalCategory } from "@/lib/constants/categories";
+import { UNIVERSAL_CATEGORIES, UNIVERSAL_INCOME_CATEGORIES, findUniversalCategory } from "@/lib/constants/categories";
 
 const limitSchema = z.coerce.number().nonnegative("Limit must be 0 or greater");
 
-export async function createCategory(data: { name: string; limit: number }) {
+export async function createCategory(data: { name: string; limit: number; categoryType?: "INCOME" | "EXPENSE" }) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
   try { assertAuthorized(session, session.user.id); } catch (e) {
@@ -23,15 +24,27 @@ export async function createCategory(data: { name: string; limit: number }) {
     throw e;
   }
 
-  const match = findUniversalCategory(data.name);
-  if (match) {
-    return { error: "universal", universalName: match.name };
+  const categoryType = data.categoryType ?? "EXPENSE";
+  const trimmedName = data.name.trim();
+
+  if (categoryType === "INCOME") {
+    const incomeMatch = UNIVERSAL_INCOME_CATEGORIES.find(
+      (uc) => uc.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (incomeMatch) {
+      return { error: "universal", universalName: incomeMatch.name };
+    }
+  } else {
+    const match = findUniversalCategory(trimmedName);
+    if (match) {
+      return { error: "universal", universalName: match.name };
+    }
   }
 
   const existing = await listCategories();
   if (existing.categories) {
     const duplicate = existing.categories.find(
-      (c: { name: string }) => c.name.toLowerCase() === data.name.toLowerCase().trim()
+      (c: { name: string }) => c.name.toLowerCase() === trimmedName.toLowerCase()
     );
     if (duplicate) return { error: "duplicate" };
   }
@@ -46,8 +59,9 @@ export async function createCategory(data: { name: string; limit: number }) {
           pk: `USER#${session.user.id}`,
           sk: `CATEGORY#${categoryId}`,
           id: categoryId,
-          name: data.name,
+          name: trimmedName,
           type: "CATEGORY",
+          categoryType,
           limit: data.limit ?? 0,
           count: 0,
           createdAt: new Date().toISOString(),
@@ -103,23 +117,38 @@ export async function listCategories() {
   }
 
   try {
-    const { Items } = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
-        ExpressionAttributeValues: {
-          ":pk": `USER#${session.user.id}`,
-          ":sk": "CATEGORY#",
-        },
-      }),
-    );
+    const [{ Items }, { Items: limitItems }] = await Promise.all([
+      docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
+          ExpressionAttributeValues: {
+            ":pk": `USER#${session.user.id}`,
+            ":sk": "CATEGORY#",
+          },
+        }),
+      ),
+      docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :sk)",
+          ExpressionAttributeValues: {
+            ":pk": `USER#${session.user.id}`,
+            ":sk": "UNIVERSAL_LIMIT#",
+          },
+        }),
+      ),
+    ]);
 
     const customCategories = (Items ?? []) as Array<{ id: string; name: string; limit: number; type: string; createdAt: string }>;
+    const universalLimitOverrides = new Map<string, number>(
+      (limitItems ?? []).map((item) => [item.id as string, item.limit as number])
+    );
 
     const universalCategories = UNIVERSAL_CATEGORIES.map((uc) => ({
       id: uc.id,
       name: uc.name,
-      limit: 0,
+      limit: universalLimitOverrides.get(uc.id) ?? 0,
       type: "CATEGORY",
       createdAt: "",
       isUniversal: true,
@@ -147,7 +176,9 @@ export async function listCategories() {
 export async function updateCategoryLimit(id: string, limit: number) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
-  try { assertAuthorized(session, session.user.id); } catch (e) {
+  const activeUserId = await getActiveUserId();
+  if (!activeUserId) return { error: "Unauthorized" };
+  try { assertAuthorized(session, activeUserId); } catch (e) {
     if (e instanceof ForbiddenError) return e.toResponse();
     throw e;
   }
@@ -160,7 +191,7 @@ export async function updateCategoryLimit(id: string, limit: number) {
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: {
-          pk: `USER#${session.user.id}`,
+          pk: `USER#${activeUserId}`,
           sk: `CATEGORY#${id}`,
         },
         UpdateExpression: "SET #limit = :limit",
@@ -177,6 +208,86 @@ export async function updateCategoryLimit(id: string, limit: number) {
     return { success: true };
   } catch (error) {
     console.error("[DB] Failed to update category limit:", error);
+    return { error: "Failed to update limit" };
+  }
+}
+
+export async function saveOnboardingLimits(limits: Record<string, number>) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+  const activeUserId = await getActiveUserId();
+  if (!activeUserId) return { error: "Unauthorized" };
+  try { assertAuthorized(session, activeUserId); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
+
+  const validIds = new Set(UNIVERSAL_CATEGORIES.map((uc) => uc.id));
+  const entries = Object.entries(limits).filter(
+    ([id, val]) => validIds.has(id) && val > 0
+  );
+
+  try {
+    await Promise.all(
+      entries.map(([id, limit]) =>
+        docClient.send(
+          new PutCommand({
+            TableName: TABLE_NAME,
+            Item: {
+              pk: `USER#${activeUserId}`,
+              sk: `UNIVERSAL_LIMIT#${id}`,
+              id,
+              limit,
+              updatedAt: new Date().toISOString(),
+            },
+          }),
+        ),
+      ),
+    );
+
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("[DB] Failed to save onboarding limits:", error);
+    return { error: "Failed to save limits" };
+  }
+}
+
+export async function updateUniversalCategoryLimit(id: string, limit: number) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+  const activeUserId = await getActiveUserId();
+  if (!activeUserId) return { error: "Unauthorized" };
+  try { assertAuthorized(session, activeUserId); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
+
+  if (!UNIVERSAL_CATEGORIES.some((uc) => uc.id === id)) {
+    return { error: "Not a universal category" };
+  }
+
+  const parsed = limitSchema.safeParse(limit);
+  if (!parsed.success) return { error: "Invalid limit value" };
+
+  try {
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          pk: `USER#${activeUserId}`,
+          sk: `UNIVERSAL_LIMIT#${id}`,
+          id,
+          limit: parsed.data,
+          updatedAt: new Date().toISOString(),
+        },
+      }),
+    );
+
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    console.error("[DB] Failed to update universal category limit:", error);
     return { error: "Failed to update limit" };
   }
 }

@@ -59,7 +59,8 @@ export function RecurringList({ recurring, categories = [], accounts = [] }: Rec
                   {item.description}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {FREQUENCY_LABELS[item.frequency]} · {item.category} · next: {item.nextRunDate}
+                  {FREQUENCY_LABELS[item.frequency]} · {item.category} · next:{" "}
+                  {typeof item.nextRunDate === "string" ? item.nextRunDate : "—"}
                 </p>
               </div>
             </div>
