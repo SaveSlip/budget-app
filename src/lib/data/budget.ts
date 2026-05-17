@@ -2,6 +2,7 @@ import { docClient, TABLE_NAME } from "@/lib/db";
 import { QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { getActiveUserId } from "@/lib/activeUser";
 import { UNIVERSAL_CATEGORIES, UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
+import { format, subMonths } from "date-fns";
 
 export interface Account {
   id: string;
@@ -325,26 +326,14 @@ export async function getQuarterlyReview(
 export async function getTransactionTrend(
   monthsBack: number = 6,
 ): Promise<Transaction[]> {
-  const userId = await getActiveUserId();
-  if (!userId) throw new Error("Unauthorized");
-
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - monthsBack);
+  const now = new Date();
+  const months = Array.from({ length: monthsBack }, (_, i) =>
+    format(subMonths(now, i), "yyyy-MM"),
+  );
 
   try {
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: "pk = :pk AND sk BETWEEN :startSk AND :endSk",
-        ExpressionAttributeValues: {
-          ":pk": `USER#${userId}`,
-          ":startSk": `TX#${startDate.toISOString().split("T")[0]}`,
-          ":endSk": `TX#${endDate.toISOString().split("T")[0]}#\uffff`,
-        },
-      }),
-    );
-    return (result.Items ?? []) as Transaction[];
+    const results = await Promise.all(months.map((m) => getMonthlyData(m)));
+    return results.flat();
   } catch (error) {
     console.error("[DAL] Trend fetch failed:", error);
     return [];

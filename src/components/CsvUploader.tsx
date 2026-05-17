@@ -4,24 +4,6 @@ import { useState, DragEvent, useRef } from "react";
 import Papa from "papaparse";
 import { UploadCloud, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { batchCreateTransactions } from "@/app/actions/transactions";
-import { UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
-
-const INCOME_TYPE_KEYWORDS = ["income", "credit", "deposit", "revenue", "inflow"];
-
-function detectTransactionType(
-  rawType: string,
-  description: string,
-): "INCOME" | "EXPENSE" {
-  const typeVal = rawType.toLowerCase().trim();
-  if (INCOME_TYPE_KEYWORDS.some((kw) => typeVal.includes(kw))) return "INCOME";
-
-  const desc = description.toLowerCase();
-  for (const cat of UNIVERSAL_INCOME_CATEGORIES) {
-    if (cat.keywords.some((kw) => desc.includes(kw))) return "INCOME";
-  }
-
-  return "EXPENSE";
-}
 
 function filterCsvFiles(files: FileList | File[]): { valid: File[]; rejected: string[] } {
   const arr = Array.from(files);
@@ -70,26 +52,23 @@ export default function CsvUploader() {
                 normalizedRow.name ||
                 normalizedRow.memo ||
                 "Imported Transaction";
-              const rawType =
-                normalizedRow.type ||
-                normalizedRow["transaction type"] ||
-                normalizedRow["transaction_type"] ||
-                "";
+              const rawAmount = Number(
+                (normalizedRow.amount || normalizedRow.value || "0").replace(
+                  /[^0-9.-]+/g,
+                  "",
+                ),
+              );
+              const transactionType: "EXPENSE" | "INCOME" = rawAmount < 0 ? "EXPENSE" : "INCOME";
 
               return {
                 description,
-                amount: Number(
-                  (normalizedRow.amount || normalizedRow.value || "0").replace(
-                    /[^0-9.-]+/g,
-                    "",
-                  ),
-                ),
+                amount: Math.abs(rawAmount),
                 date:
                   normalizedRow.date ||
                   normalizedRow["transaction date"] ||
                   new Date().toISOString().split("T")[0],
-                category: normalizedRow.category || rawType || "Uncategorized",
-                transactionType: detectTransactionType(rawType, description),
+                category: normalizedRow.category || "Uncategorized",
+                transactionType,
               };
             })
             .filter((tx) => tx.amount !== 0);

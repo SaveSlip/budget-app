@@ -107,7 +107,7 @@ export const columns: ColumnDef<Transaction>[] = [
       </div>
     ),
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("amount"));
+      const amount = Math.abs(parseFloat(row.getValue("amount")));
       const isIncome = row.original.transactionType === "INCOME";
       const formatted = new Intl.NumberFormat("en-US", {
         style: "currency",

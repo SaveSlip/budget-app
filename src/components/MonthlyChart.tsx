@@ -47,7 +47,7 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
       .reverse();
 
     transactions.forEach((tx) => {
-      const txDate = new Date(tx.date);
+      const txDate = new Date(tx.date + "T00:00:00");
       const amount = Math.abs(Number(tx.amount) || 0);
       const isIncome = tx.transactionType === "INCOME";
 
@@ -67,11 +67,11 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", data.monthValue);
     router.push(`/dashboard?${params.toString()}`, { scroll: false });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 200);
   }
 
   return (
-    <div className="h-75 w-full">
+    <div className="h-75 w-full [&_svg]:outline-none **:outline-none">
       <ResponsiveContainer width="100%" height={320}>
         <BarChart
           data={chartData}
@@ -97,7 +97,7 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
             tickFormatter={(v) => `$${v}`}
           />
           <Tooltip
-            cursor={{ fill: "var(--muted)" }}
+            cursor={{ fill: "var(--muted)", stroke: "none" }}
             contentStyle={{
               backgroundColor: "var(--popover)",
               border: "1px solid var(--border)",

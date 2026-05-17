@@ -38,6 +38,13 @@ import {
 import { Download, Loader2, Trash2 } from "lucide-react"
 import Papa from "papaparse"
 import { batchDeleteTransactions } from "@/app/actions/transactions"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -56,9 +63,27 @@ export function DataTable<TData, TValue>({
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
+  const [monthFilter, setMonthFilter] = React.useState<string>("all")
+
+  const availableMonths = React.useMemo(() => {
+    const months = new Set<string>()
+    data.forEach((row) => {
+      const d = (row as { date?: string }).date
+      if (d && d.length >= 7) months.add(d.slice(0, 7))
+    })
+    return Array.from(months).sort((a, b) => b.localeCompare(a))
+  }, [data])
+
+  const filteredData = React.useMemo(() => {
+    if (monthFilter === "all") return data
+    return data.filter((row) => {
+      const d = (row as { date?: string }).date
+      return d?.startsWith(monthFilter)
+    })
+  }, [data, monthFilter])
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     enableRowSelection: true,
     getCoreRowModel: getCoreRowModel(),
@@ -124,6 +149,25 @@ export function DataTable<TData, TValue>({
           }
           className="max-w-sm"
         />
+        <Select
+          value={monthFilter}
+          onValueChange={(val) => {
+            setMonthFilter(val)
+            setPagination((p) => ({ ...p, pageIndex: 0 }))
+          }}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="All months" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All months</SelectItem>
+            {availableMonths.map((m) => (
+              <SelectItem key={m} value={m}>
+                {new Date(m + "-02").toLocaleString("default", { month: "long", year: "numeric" })}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {selectedCount > 0 && (
           <Button
             variant="destructive"
@@ -181,23 +225,48 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 pt-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
+      <div className="flex items-center justify-end gap-2 pt-4">
+        <span className="text-xs text-muted-foreground mr-auto">
+          Page {pagination.pageIndex + 1} of {table.getPageCount() || 1}
+        </span>
+        <span className="text-xs text-muted-foreground">Rows per page</span>
+        <Select
+          value={pagination.pageSize === Number.MAX_SAFE_INTEGER ? "all" : String(pagination.pageSize)}
+          onValueChange={(val) => {
+            const size = val === "all" ? Number.MAX_SAFE_INTEGER : Number(val)
+            setPagination({ pageIndex: 0, pageSize: size })
+          }}
         >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
+          <SelectTrigger className="w-24">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[10, 25, 50, 100].map((n) => (
+              <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+            ))}
+            <SelectItem value="all">All</SelectItem>
+          </SelectContent>
+        </Select>
+        {pagination.pageSize !== Number.MAX_SAFE_INTEGER && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </>
+        )}
       </div>
     </>
   )
