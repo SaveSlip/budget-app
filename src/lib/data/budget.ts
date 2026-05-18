@@ -163,8 +163,18 @@ export interface Household {
   id: string;
   name: string;
   masterUserId: string;
-  pin?: string;
   createdAt: string;
+}
+
+export interface HouseholdInvite {
+  token: string;
+  householdId: string;
+  householdName: string;
+  inviterName: string;
+  email: string;
+  status: "PENDING" | "ACCEPTED" | "DECLINED";
+  createdAt: string;
+  expiresAt: string;
 }
 
 export interface RecurringTransaction {

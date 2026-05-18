@@ -24,6 +24,8 @@ function SigninContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const verified = searchParams.get("verified") === "true";
+  const registered = searchParams.get("registered") === "true";
+  const inviteToken = searchParams.get("invite");
   const { status } = useSession();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -38,9 +40,9 @@ function SigninContent() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.push("/dashboard");
+      router.push(inviteToken ? `/join?token=${inviteToken}` : "/dashboard");
     }
-  }, [status, router]);
+  }, [status, router, inviteToken]);
 
   const onSubmit = async (data: SigninInput) => {
     setServerError(null);
@@ -65,7 +67,7 @@ function SigninContent() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push(inviteToken ? `/join?token=${inviteToken}` : "/dashboard");
   };
 
   if (status === "loading") {
@@ -120,6 +122,13 @@ function SigninContent() {
                   <div className="p-3 text-sm text-primary bg-primary/10 border border-primary/20 rounded-md text-center font-medium flex items-center justify-center gap-2">
                     <CheckCircle className="h-4 w-4" />
                     Email verified! You can now sign in.
+                  </div>
+                )}
+
+                {registered && (
+                  <div className="p-3 text-sm text-primary bg-primary/10 border border-primary/20 rounded-md text-center font-medium flex items-center justify-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Account created! Sign in to join the household.
                   </div>
                 )}
 
@@ -208,7 +217,7 @@ function SigninContent() {
               <p>
                 Don&apos;t have an account?{" "}
                 <Link
-                  href="/signup"
+                  href={inviteToken ? `/signup?invite=${inviteToken}` : "/signup"}
                   className="text-primary hover:text-primary/80 font-bold hover:underline"
                 >
                   Sign up

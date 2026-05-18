@@ -1,13 +1,14 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getHousehold } from "@/app/actions/household";
+import { getHousehold, getHouseholdPendingInvites, getMyPendingInvites } from "@/app/actions/household";
 import { GlassCard } from "@/components/GlassCard";
 import { FadeIn } from "@/components/FadeIn";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, CreditCard, Users } from "lucide-react";
 import { CreateHouseholdForm } from "@/components/CreateHouseholdForm";
 import { HouseholdMembersList } from "@/components/HouseholdMembersList";
+import { PendingInviteCard } from "@/components/PendingInviteCard";
 
 export default async function HouseholdSettingsPage() {
   const session = await auth();
@@ -15,6 +16,11 @@ export default async function HouseholdSettingsPage() {
 
   const { household, members } = await getHousehold();
   const isMaster = household?.masterUserId === session.user.id;
+
+  const [pendingInvites, myPendingInvites] = await Promise.all([
+    isMaster ? getHouseholdPendingInvites() : Promise.resolve([]),
+    !household ? getMyPendingInvites() : Promise.resolve([]),
+  ]);
 
   return (
     <div className="mx-auto max-w-4xl flex flex-col gap-6 pb-12">
@@ -68,11 +74,22 @@ export default async function HouseholdSettingsPage() {
             </div>
           </FadeIn>
 
+          {/* Pending invites for users who aren't in a household yet */}
+          {!household && myPendingInvites.length > 0 && (
+            <FadeIn delay={0.35}>
+              <div className="space-y-3">
+                {myPendingInvites.map((invite) => (
+                  <PendingInviteCard key={invite.token} invite={invite} />
+                ))}
+              </div>
+            </FadeIn>
+          )}
+
           {!household ? (
             <FadeIn delay={0.4}>
               <GlassCard title="Create a Household">
                 <p className="text-sm text-muted-foreground mb-4">
-                  Create a household to manage budgets for multiple family members from one account.
+                  Create a household to manage budgets for multiple family members from one account. You can invite members by email once your household is set up.
                 </p>
                 <CreateHouseholdForm />
               </GlassCard>
@@ -88,7 +105,7 @@ export default async function HouseholdSettingsPage() {
                     <div>
                       <p className="font-semibold text-foreground">{household.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {isMaster ? "You are the master of this household" : "You are a member"}
+                        {isMaster ? "You are the admin of this household" : "You are a member"}
                       </p>
                     </div>
                   </div>
@@ -99,6 +116,7 @@ export default async function HouseholdSettingsPage() {
                 <GlassCard title="Members">
                   <HouseholdMembersList
                     members={members}
+                    pendingInvites={pendingInvites}
                     isMaster={isMaster}
                     householdId={household.id}
                   />

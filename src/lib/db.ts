@@ -30,13 +30,14 @@ export interface UserRecordParams {
   email: string;
   name?: string;
   hashedPassword?: string;
+  emailVerified?: boolean;
 }
 
 /**
  * Creates a new user profile record in the DynamoDB table.
  */
 export async function createUserRecord(params: UserRecordParams) {
-  const { id, email, name, hashedPassword } = params;
+  const { id, email, name, hashedPassword, emailVerified } = params;
 
   try {
     // FIXED: Now correctly routing the PutCommand through the Document Client
@@ -51,7 +52,7 @@ export async function createUserRecord(params: UserRecordParams) {
           email: email,
           name: name || "",
           passwordHash: hashedPassword || null,
-          emailVerified: false,
+          emailVerified: emailVerified ?? false,
           onboardingCompleted: false,
           createdAt: new Date().toISOString(),
         },

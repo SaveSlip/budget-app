@@ -71,21 +71,7 @@ export async function deleteAccount(): Promise<{ error?: string; success?: boole
     };
 
     if (role === "MASTER" && householdId) {
-      const { Item: householdMeta } = await docClient.send(
-        new GetCommand({
-          TableName: TABLE_NAME,
-          Key: { pk: `HOUSEHOLD#${householdId}`, sk: "METADATA" },
-        }),
-      );
       await deletePartition(`HOUSEHOLD#${householdId}`);
-      if (householdMeta?.pin) {
-        await docClient.send(
-          new DeleteCommand({
-            TableName: TABLE_NAME,
-            Key: { pk: `HOUSEHOLD_PIN#${householdMeta.pin}`, sk: "HOUSEHOLD_PIN" },
-          }),
-        );
-      }
     }
 
     await deletePartition(`USER#${userId}`);
@@ -409,6 +395,70 @@ export async function resendVerificationEmail(
   } catch (error) {
     console.error("Resend verification email error:", error);
     return { error: "Internal server error" };
+  }
+}
+
+export async function getInviteEmail(
+  token: string,
+): Promise<{ email?: string; error?: string }> {
+  try {
+    const { Item: invite } = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `HOUSEHOLD_INVITE#${token}`, sk: "HOUSEHOLD_INVITE" },
+      }),
+    );
+
+    if (!invite) return { error: "Invalid invite link." };
+    if (invite.status !== "PENDING") return { error: "This invite has already been used." };
+    if (new Date(invite.expiresAt as string) < new Date()) return { error: "This invite link has expired." };
+
+    return { email: invite.email as string };
+  } catch (error) {
+    console.error("getInviteEmail error:", error);
+    return { error: "Internal server error" };
+  }
+}
+
+export async function registerUserFromInvite(
+  token: string,
+  data: SignupInput,
+): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const parsed = signupSchema.safeParse(data);
+    if (!parsed.success) return { error: "Invalid input data" };
+
+    const { Item: invite } = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `HOUSEHOLD_INVITE#${token}`, sk: "HOUSEHOLD_INVITE" },
+      }),
+    );
+
+    if (!invite) return { error: "Invalid invite link." };
+    if (invite.status !== "PENDING") return { error: "This invite has already been used." };
+    if (new Date(invite.expiresAt as string) < new Date()) return { error: "This invite link has expired." };
+
+    if (parsed.data.email.toLowerCase() !== (invite.email as string).toLowerCase()) {
+      return { error: "Email does not match the invite." };
+    }
+
+    const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
+    const userId = crypto.randomUUID();
+
+    const dbResult = await createUserRecord({
+      id: userId,
+      email: parsed.data.email,
+      hashedPassword,
+      emailVerified: true,
+    });
+
+    if (dbResult.error) return { error: dbResult.error };
+
+    return { success: true };
+  } catch (error) {
+    console.error("registerUserFromInvite error:", error);
+    return { error: "Internal Server Error" };
   }
 }
 

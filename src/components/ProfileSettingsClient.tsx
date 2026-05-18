@@ -27,9 +27,6 @@ import {
   Save,
   CreditCard,
   Users,
-  Copy,
-  CheckCircle,
-  KeyRound,
   AlertTriangle,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
@@ -40,14 +37,12 @@ import { changePasswordSchema } from "@/lib/validations/auth";
 interface ProfileSettingsClientProps {
   initialName: string;
   email: string;
-  householdPin?: string;
   isMaster?: boolean;
 }
 
 export function ProfileSettingsClient({
   initialName,
   email,
-  householdPin,
   isMaster,
 }: ProfileSettingsClientProps) {
   const router = useRouter();
@@ -62,7 +57,6 @@ export function ProfileSettingsClient({
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [copied, setCopied] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -125,14 +119,6 @@ export function ProfileSettingsClient({
       setIsDeleting(false);
     } else {
       router.push("/signin");
-    }
-  };
-
-  const handleCopyPin = () => {
-    if (householdPin) {
-      navigator.clipboard.writeText(householdPin);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -400,60 +386,8 @@ export function ProfileSettingsClient({
             </GlassCard>
           </FadeIn>
 
-          {/* Household PIN — master only */}
-          {householdPin && (
-            <FadeIn delay={0.6}>
-              <GlassCard>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 border border-primary/20">
-                      <KeyRound className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-foreground">
-                        Household PIN
-                      </CardTitle>
-                      <CardDescription className="text-muted-foreground">
-                        Share this code with family members so they can join
-                        your household.
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between p-5 rounded-xl border-2 border-primary/20 bg-primary/5">
-                    <p className="text-3xl font-mono font-bold tracking-[0.4em] text-foreground">
-                      {householdPin}
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCopyPin}
-                      className="border-primary/30 text-primary hover:bg-primary/10 shrink-0"
-                    >
-                      {copied ? (
-                        <>
-                          <CheckCircle className="w-3.5 h-3.5 mr-1.5" />{" "}
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5 mr-1.5" /> Copy
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Members who sign up for Budgify can enter this PIN during
-                    onboarding to link their account to your household.
-                  </p>
-                </CardContent>
-              </GlassCard>
-            </FadeIn>
-          )}
-
           {/* Danger Zone */}
-          <FadeIn delay={0.7}>
+          <FadeIn delay={0.6}>
             <GlassCard className="border-destructive/30 bg-destructive/5">
               <CardHeader>
                 <div className="flex items-center gap-3">

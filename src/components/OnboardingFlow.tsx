@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { ArrowLeft, Home, Users, Copy, CheckCircle, Loader2, User } from "lucide-react";
+import { ArrowLeft, Home, Users, Loader2, User, CheckCircle } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -17,20 +16,18 @@ import { Input } from "@/components/ui/input";
 import { FadeIn } from "@/components/FadeIn";
 import {
   updateUserName,
-  createHouseholdWithPin,
-  joinHouseholdByPin,
+  createHouseholdDuringOnboarding,
   completeOnboarding,
 } from "@/app/actions/onboarding";
 import { saveOnboardingLimits } from "@/app/actions/categories";
 import { UNIVERSAL_CATEGORIES } from "@/lib/constants/categories";
 
-type Step = "name" | "role" | "master" | "member" | "budgets" | "done";
+type Step = "name" | "role" | "master" | "budgets" | "done";
 
 const STEP_TOTALS: Record<Step, number> = {
   name: 4,
   role: 4,
   master: 4,
-  member: 4,
   budgets: 4,
   done: 4,
 };
@@ -39,26 +36,20 @@ const STEP_NUMBERS: Record<Step, number> = {
   name: 1,
   role: 2,
   master: 3,
-  member: 3,
   budgets: 4,
   done: 4,
 };
 
-export function OnboardingFlow() {
+export function OnboardingFlow({ isInvitedMember = false }: { isInvitedMember?: boolean }) {
   const router = useRouter();
-  const { update } = useSession();
 
   const [step, setStep] = useState<Step>("name");
   const [displayName, setDisplayName] = useState("");
   const [householdName, setHouseholdName] = useState("");
-  const [pin, setPin] = useState("");
-  const [revealedPin, setRevealedPin] = useState<string | null>(null);
+  const [isMasterFlow, setIsMasterFlow] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [isMasterFlow, setIsMasterFlow] = useState(false);
 
-  // budgets step state: categoryId -> string input value
   const [categoryLimits, setCategoryLimits] = useState<Record<string, string>>(
     () => Object.fromEntries(UNIVERSAL_CATEGORIES.map((uc) => [uc.id, ""]))
   );
@@ -73,11 +64,17 @@ export function OnboardingFlow() {
     setIsLoading(true);
     clearError();
     const result = await updateUserName(displayName.trim());
-    setIsLoading(false);
     if (result.error) {
+      setIsLoading(false);
       setError(result.error);
       return;
     }
+    if (isInvitedMember) {
+      await completeOnboarding();
+      router.push("/dashboard");
+      return;
+    }
+    setIsLoading(false);
     setStep("role");
   };
 
@@ -88,33 +85,19 @@ export function OnboardingFlow() {
     }
     setIsLoading(true);
     clearError();
-    const result = await createHouseholdWithPin(householdName.trim());
+    const result = await createHouseholdDuringOnboarding(householdName.trim());
     if (result.error) {
       setIsLoading(false);
       setError(result.error);
       return;
     }
     setIsLoading(false);
-    setRevealedPin(result.pin!);
     setIsMasterFlow(true);
     setStep("budgets");
   };
 
-  const handleMemberSubmit = async () => {
-    if (pin.length !== 6 || !/^\d{6}$/.test(pin)) {
-      setError("PIN must be exactly 6 digits.");
-      return;
-    }
-    setIsLoading(true);
+  const handleSkipHousehold = () => {
     clearError();
-    const result = await joinHouseholdByPin(pin);
-    if (result.error) {
-      setIsLoading(false);
-      setError(result.error);
-      return;
-    }
-    await update({ refreshHousehold: true });
-    setIsLoading(false);
     setIsMasterFlow(false);
     setStep("budgets");
   };
@@ -136,14 +119,6 @@ export function OnboardingFlow() {
       setStep("done");
     } else {
       router.push("/dashboard");
-    }
-  };
-
-  const handleCopyPin = () => {
-    if (revealedPin) {
-      navigator.clipboard.writeText(revealedPin);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -245,7 +220,7 @@ export function OnboardingFlow() {
                   How would you like to use Budgify?
                 </CardTitle>
                 <CardDescription className="text-muted-foreground">
-                  Set up your own household or join one that already exists.
+                  Create a household for your family, or track your own budget solo.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -254,7 +229,7 @@ export function OnboardingFlow() {
                   className="w-full p-4 rounded-xl border-2 border-border bg-background/40 hover:border-primary/60 hover:bg-primary/5 transition-all text-left group"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0 group-hover:bg-primary/20 transition-colors">
                       <Home className="h-5 w-5" />
                     </div>
                     <div>
@@ -262,27 +237,26 @@ export function OnboardingFlow() {
                         Create a Household
                       </div>
                       <div className="text-sm text-muted-foreground mt-0.5">
-                        You&apos;re the household master. Get a PIN to share with
-                        family members.
+                        You&apos;re the household admin. Invite family members by email to join.
                       </div>
                     </div>
                   </div>
                 </button>
 
                 <button
-                  onClick={() => { clearError(); setStep("member"); }}
+                  onClick={handleSkipHousehold}
                   className="w-full p-4 rounded-xl border-2 border-border bg-background/40 hover:border-primary/60 hover:bg-primary/5 transition-all text-left group"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0 group-hover:bg-primary/20 transition-colors">
                       <Users className="h-5 w-5" />
                     </div>
                     <div>
                       <div className="font-semibold text-foreground">
-                        Join a Household
+                        Solo Account
                       </div>
                       <div className="text-sm text-muted-foreground mt-0.5">
-                        Enter the PIN your household master shared with you.
+                        Track your own budget independently. You can join a household later if invited.
                       </div>
                     </div>
                   </div>
@@ -308,7 +282,7 @@ export function OnboardingFlow() {
                   Name your household
                 </CardTitle>
                 <CardDescription className="text-muted-foreground">
-                  This is how your household will appear to members who join.
+                  This is how your household will appear to members you invite.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -345,65 +319,6 @@ export function OnboardingFlow() {
                 <Button
                   variant="ghost"
                   onClick={() => { clearError(); setStep("role"); }}
-                  disabled={isLoading}
-                  className="text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" /> Back
-                </Button>
-              </CardFooter>
-            </>
-          )}
-
-          {/* Step: Member — enter PIN */}
-          {step === "member" && (
-            <>
-              <CardHeader className="space-y-1 pt-5 pb-4">
-                <CardTitle className="text-xl font-bold text-foreground">
-                  Enter your household PIN
-                </CardTitle>
-                <CardDescription className="text-muted-foreground">
-                  Ask your household master for the 6-digit PIN to join their
-                  account.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {error && (
-                  <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md font-medium">
-                    {error}
-                  </div>
-                )}
-                <Input
-                  value={pin}
-                  onChange={(e) =>
-                    setPin(e.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
-                  onKeyDown={(e) => e.key === "Enter" && handleMemberSubmit()}
-                  placeholder="000000"
-                  maxLength={6}
-                  className="text-center text-2xl tracking-[0.5em] font-mono bg-muted border-border text-foreground focus:ring-primary focus:border-primary"
-                  disabled={isLoading}
-                  autoFocus
-                />
-                <p className="text-xs text-muted-foreground text-center">
-                  Your household master can find this PIN in their profile
-                  settings.
-                </p>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-3 pb-8">
-                <Button
-                  onClick={handleMemberSubmit}
-                  disabled={isLoading || pin.length !== 6}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-5"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Join Household"
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => { clearError(); setPin(""); setStep("role"); }}
                   disabled={isLoading}
                   className="text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                 >
@@ -474,8 +389,8 @@ export function OnboardingFlow() {
             </>
           )}
 
-          {/* Step: Done — PIN reveal for master */}
-          {step === "done" && revealedPin && (
+          {/* Step: Done — household created */}
+          {step === "done" && (
             <>
               <CardHeader className="space-y-1 pt-8 pb-4 text-center">
                 <div className="flex justify-center mb-4">
@@ -487,37 +402,9 @@ export function OnboardingFlow() {
                   Your household is ready!
                 </CardTitle>
                 <CardDescription className="text-muted-foreground">
-                  Share this PIN with family members so they can join your
-                  household. You can always find it again in your profile
-                  settings.
+                  Head to your household settings to invite family members by email. They&apos;ll receive a link to join your household.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-6 rounded-xl border-2 border-primary/20 bg-primary/5 text-center space-y-3">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Household PIN
-                  </p>
-                  <p className="text-4xl font-mono font-bold tracking-[0.4em] text-foreground">
-                    {revealedPin}
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyPin}
-                    className="border-primary/30 text-primary hover:bg-primary/10"
-                  >
-                    {copied ? (
-                      <>
-                        <CheckCircle className="h-3.5 w-3.5 mr-1.5" /> Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy PIN
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
               <CardFooter className="pb-8">
                 <Button
                   onClick={() => router.push("/dashboard")}

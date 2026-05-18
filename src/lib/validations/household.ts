@@ -4,10 +4,9 @@ export const createHouseholdSchema = z.object({
   name: z.string().min(1, "Household name is required").max(50),
 });
 
-export const addMemberSchema = z.object({
-  name: z.string().min(1, "Member name is required").max(50),
-  email: z.string().email().optional().or(z.literal("")),
+export const inviteMemberSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
 });
 
 export type CreateHouseholdInput = z.infer<typeof createHouseholdSchema>;
-export type AddMemberInput = z.infer<typeof addMemberSchema>;
+export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;

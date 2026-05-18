@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Lock, Mail, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signupSchema, type SignupInput } from "@/lib/validations/auth";
-import { registerUser, sendVerificationEmail } from "@/app/actions/auth";
+import { registerUser, sendVerificationEmail, getInviteEmail, registerUserFromInvite } from "@/app/actions/auth";
 import ThemeToggle from "@/components/ThemeToggle";
+import { Suspense } from "react";
 
 import {
   Card,
@@ -20,18 +21,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FadeIn } from "@/components/FadeIn";
 
-export default function SignupPage() {
+function SignupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite");
   const [serverError, setServerError] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<SignupInput>({
     defaultValues: { email: "", password: "", confirmPassword: "" },
   });
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    getInviteEmail(inviteToken).then((result) => {
+      if (result.error) {
+        setInviteError(result.error);
+      } else if (result.email) {
+        setInviteEmail(result.email);
+        setValue("email", result.email);
+      }
+    });
+  }, [inviteToken, setValue]);
 
   const onSubmit = async (data: SignupInput) => {
     setServerError(null);
@@ -45,6 +63,16 @@ export default function SignupPage() {
       return;
     }
 
+    if (inviteToken) {
+      const response = await registerUserFromInvite(inviteToken, parsed.data);
+      if (response.error) {
+        setServerError(response.error);
+        return;
+      }
+      router.push(`/signin?invite=${encodeURIComponent(inviteToken)}&registered=true`);
+      return;
+    }
+
     const response = await registerUser(parsed.data);
 
     if (response.error) {
@@ -54,13 +82,12 @@ export default function SignupPage() {
 
     await sendVerificationEmail(parsed.data.email);
 
-    router.push(
-      "/check-email?email=" + encodeURIComponent(parsed.data.email),
-    );
+    router.push("/check-email?email=" + encodeURIComponent(parsed.data.email));
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
+
       <div className="absolute top-6 right-6 z-50">
         <ThemeToggle />
       </div>
@@ -94,8 +121,18 @@ export default function SignupPage() {
               <CardTitle className="text-2xl font-bold text-foreground">
                 Create Account
               </CardTitle>
+              {inviteToken && inviteEmail && (
+                <p className="text-sm text-muted-foreground">
+                  You&apos;re signing up with your invited email address.
+                </p>
+              )}
             </CardHeader>
             <CardContent>
+              {inviteError ? (
+                <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md text-center font-medium">
+                  {inviteError}
+                </div>
+              ) : (
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {serverError && (
                   <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md text-center font-medium">
@@ -113,7 +150,7 @@ export default function SignupPage() {
                       className={`pl-10 bg-muted border-border text-foreground focus:ring-primary focus:border-primary ${
                         errors.email ? "border-red-500" : ""
                       }`}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !!inviteEmail}
                     />
                   </div>
                   {errors.email && (
@@ -178,12 +215,13 @@ export default function SignupPage() {
                   )}
                 </Button>
               </form>
+              )}
             </CardContent>
             <CardFooter className="flex flex-col space-y-3 text-center text-sm text-muted-foreground pb-8">
               <p>
                 Already have an account?{" "}
                 <Link
-                  href="/signin"
+                  href={inviteToken ? `/signin?invite=${inviteToken}` : "/signin"}
                   className="text-primary hover:text-primary/80 font-bold hover:underline"
                 >
                   Sign in
@@ -194,5 +232,19 @@ export default function SignupPage() {
         </FadeIn>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <SignupContent />
+    </Suspense>
   );
 }
