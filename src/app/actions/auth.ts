@@ -20,6 +20,7 @@ import {
   UpdateCommand,
   DeleteCommand,
   PutCommand,
+  QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { Resource } from "sst";
@@ -80,6 +81,28 @@ export async function deleteAccount(): Promise<{ error?: string; success?: boole
         TableName: TABLE_NAME,
         Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
       }),
+    );
+
+    // Clean up orphaned email-keyed invite notification records (not covered by deletePartition)
+    const orphanedInvites = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+        ExpressionAttributeValues: {
+          ":pk": `USER#${email}`,
+          ":prefix": "PENDING_INVITE#",
+        },
+      }),
+    );
+    await Promise.all(
+      (orphanedInvites.Items ?? []).map((item) =>
+        docClient.send(
+          new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: { pk: item.pk as string, sk: item.sk as string },
+          }),
+        ),
+      ),
     );
 
     await signOut({ redirect: false });

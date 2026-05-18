@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Trash, Loader2, Mail, ShieldCheck, ShieldOff, AlertTriangle, X, LogOut } from "lucide-react";
@@ -121,7 +122,7 @@ export function HouseholdMembersList({ members, pendingInvites, isMaster, househ
             >
               <div>
                 <p className="text-sm font-medium text-foreground">{member.name}</p>
-                {member.email && (
+                {member.email && member.email !== member.name && (
                   <p className="text-xs text-muted-foreground">{member.email}</p>
                 )}
                 {member.canViewHousehold && (
@@ -253,7 +254,7 @@ export function HouseholdMembersList({ members, pendingInvites, isMaster, househ
       )}
 
       {/* Remove Member Dialog */}
-      {removeTarget && (
+      {removeTarget && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-card border border-border rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center gap-3">
@@ -315,10 +316,10 @@ export function HouseholdMembersList({ members, pendingInvites, isMaster, househ
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* Leave Household Dialog */}
-      {showLeaveDialog && (
+      {showLeaveDialog && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-card border border-border rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center gap-3">
@@ -353,7 +354,7 @@ export function HouseholdMembersList({ members, pendingInvites, isMaster, househ
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }

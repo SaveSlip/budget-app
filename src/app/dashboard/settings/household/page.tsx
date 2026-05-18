@@ -26,12 +26,12 @@ export default async function HouseholdSettingsPage() {
     <div className="mx-auto max-w-4xl flex flex-col gap-6 pb-12">
       <FadeIn delay={0.1}>
         <div className="flex items-center">
-          <Link href="/dashboard/settings/profile">
+          <Link href="/dashboard">
             <Button
               variant="ghost"
               className="text-muted-foreground hover:text-foreground hover:bg-foreground/10"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Settings
+              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
             </Button>
           </Link>
         </div>

@@ -243,7 +243,28 @@ export async function sendHouseholdInvite(
     }),
   );
   if (existingInviteResult.Items && existingInviteResult.Items.length > 0) {
-    return { error: "An invite has already been sent to this email." };
+    // Guard: if the invitee's account was deleted, the PENDING_INVITE# record is orphaned.
+    // Check whether the user profile still exists; if not, clean up and proceed.
+    const { Item: inviteeProfile } = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${inviteeEmail}`, sk: `PROFILE#${inviteeEmail}` },
+      }),
+    );
+    if (inviteeProfile) {
+      return { error: "An invite has already been sent to this email." };
+    }
+    // Profile gone — delete stale notification records so the new invite can proceed
+    await Promise.all(
+      existingInviteResult.Items.map((item) =>
+        docClient.send(
+          new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: { pk: item.pk as string, sk: item.sk as string },
+          }),
+        ),
+      ),
+    );
   }
 
   const token = randomUUID();
