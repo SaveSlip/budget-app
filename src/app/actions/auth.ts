@@ -9,6 +9,8 @@ import {
   ResetPasswordInput,
   forgotPasswordSchema,
   ForgotPasswordInput,
+  changePasswordSchema,
+  ChangePasswordInput,
 } from "@/lib/validations/auth";
 import { createUserRecord, deletePartition, docClient, TABLE_NAME } from "@/lib/db";
 import { auth, signOut } from "@/auth";
@@ -99,6 +101,57 @@ export async function deleteAccount(): Promise<{ error?: string; success?: boole
   } catch (error) {
     console.error("Delete account error:", error);
     return { error: "Failed to delete account. Please try again." };
+  }
+}
+
+export async function changePasswordAction(
+  data: ChangePasswordInput,
+): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const parsed = changePasswordSchema.safeParse(data);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0]?.message ?? "Invalid input.";
+      return { error: firstError };
+    }
+
+    const session = await auth();
+    if (!session?.user?.email) return { error: "Unauthorized" };
+
+    const email = session.user.email;
+
+    const { Item: user } = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
+      }),
+    );
+
+    if (!user?.passwordHash) return { error: "User not found." };
+
+    const isMatch = await bcrypt.compare(
+      parsed.data.currentPassword,
+      user.passwordHash,
+    );
+    if (!isMatch) return { error: "Current password is incorrect." };
+
+    const hashedPassword = await bcrypt.hash(parsed.data.newPassword, 10);
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
+        UpdateExpression: "SET passwordHash = :password, updatedAt = :updatedAt",
+        ExpressionAttributeValues: {
+          ":password": hashedPassword,
+          ":updatedAt": new Date().toISOString(),
+        },
+      }),
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Change password error:", error);
+    return { error: "Internal server error" };
   }
 }
 

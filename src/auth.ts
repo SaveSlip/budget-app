@@ -51,6 +51,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return {
             id: Item.id,
             email: Item.email,
+            name: (Item.name as string) ?? null,
           };
         } catch (error) {
           console.error("Failed to fetch user:", error);
@@ -64,6 +65,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id as string;
         token.activeUserId = user.id as string;
+        token.name = user.name ?? null;
 
         // Resolve household role at login time
         const linkResult = await docClient.send(
@@ -84,6 +86,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       if (trigger === "update" && sessionUpdate?.activeUserId !== undefined) {
         token.activeUserId = sessionUpdate.activeUserId;
+      }
+      if (trigger === "update" && sessionUpdate?.name !== undefined) {
+        token.name = sessionUpdate.name;
       }
       if (trigger === "update" && sessionUpdate?.refreshHousehold) {
         const refreshResult = await docClient.send(
@@ -112,6 +117,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = (token.role as "MASTER" | "MEMBER") ?? null;
         session.user.householdId = (token.householdId as string) ?? null;
         session.user.canViewHousehold = (token.canViewHousehold as boolean) ?? false;
+        session.user.name = (token.name as string) ?? null;
       }
       return session;
     },

@@ -23,5 +23,6 @@ declare module "next-auth/jwt" {
     role?: "MASTER" | "MEMBER" | null;
     householdId?: string | null;
     canViewHousehold?: boolean;
+    name?: string | null;
   }
 }

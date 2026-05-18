@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -33,7 +34,8 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { updateUserName } from "@/app/actions/onboarding";
-import { deleteAccount } from "@/app/actions/auth";
+import { changePasswordAction, deleteAccount } from "@/app/actions/auth";
+import { changePasswordSchema } from "@/lib/validations/auth";
 
 interface ProfileSettingsClientProps {
   initialName: string;
@@ -49,10 +51,17 @@ export function ProfileSettingsClient({
   isMaster,
 }: ProfileSettingsClientProps) {
   const router = useRouter();
+  const { update } = useSession();
   const [name, setName] = useState(initialName);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [copied, setCopied] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -71,8 +80,39 @@ export function ProfileSettingsClient({
     if (result.error) {
       setSaveError(result.error);
     } else {
+      await update({ name: name.trim() });
       setSaveMessage("Profile saved successfully.");
       setTimeout(() => setSaveMessage(""), 3000);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordMessage("");
+
+    const parsed = changePasswordSchema.safeParse({
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
+    if (!parsed.success) {
+      setPasswordError(parsed.error.issues[0]?.message ?? "Invalid input.");
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    const result = await changePasswordAction(parsed.data);
+    setIsUpdatingPassword(false);
+
+    if (result.error) {
+      setPasswordError(result.error);
+    } else {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordMessage("Password updated successfully.");
+      setTimeout(() => setPasswordMessage(""), 3000);
     }
   };
 
@@ -231,42 +271,85 @@ export function ProfileSettingsClient({
                   Manage your Zero-Trust credentials.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Current Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      placeholder="••••••••"
-                      className="pl-10 bg-background/40 border-foreground/10 text-foreground"
-                    />
+              <form onSubmit={handleUpdatePassword}>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Current Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        className="pl-10 bg-background/40 border-foreground/10 text-foreground"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">
-                    New Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="password"
-                      placeholder="Leave blank to keep current"
-                      className="pl-10 bg-background/40 border-foreground/10 text-foreground"
-                    />
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="password"
+                        placeholder="Min. 8 characters"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="pl-10 bg-background/40 border-foreground/10 text-foreground"
+                      />
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-              <CardFooter className="bg-background/20 border-t border-foreground/5 mt-4 pt-6">
-                <Button
-                  variant="outline"
-                  className="border-foreground/10 text-muted-foreground hover:text-foreground hover:bg-foreground/5 ml-auto"
-                >
-                  Update Password
-                </Button>
-              </CardFooter>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="password"
+                        placeholder="Re-enter new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="pl-10 bg-background/40 border-foreground/10 text-foreground"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="bg-background/20 border-t border-foreground/5 mt-4 pt-6">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="h-5">
+                      {passwordError && (
+                        <p className="text-sm text-destructive font-medium">
+                          {passwordError}
+                        </p>
+                      )}
+                      {passwordMessage && (
+                        <p className="text-sm text-primary font-medium">
+                          {passwordMessage}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={isUpdatingPassword}
+                      variant="outline"
+                      className="border-foreground/10 text-muted-foreground hover:text-foreground hover:bg-foreground/5 ml-auto"
+                    >
+                      {isUpdatingPassword ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating...
+                        </>
+                      ) : (
+                        "Update Password"
+                      )}
+                    </Button>
+                  </div>
+                </CardFooter>
+              </form>
             </GlassCard>
           </FadeIn>
 
