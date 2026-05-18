@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Home, Users, Loader2, User, CheckCircle } from "lucide-react";
+import { ArrowLeft, Home, Users, Loader2, User, CheckCircle, Mail } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -20,6 +20,7 @@ import {
   completeOnboarding,
 } from "@/app/actions/onboarding";
 import { saveOnboardingLimits } from "@/app/actions/categories";
+import { sendHouseholdInvite } from "@/app/actions/household";
 import { UNIVERSAL_CATEGORIES } from "@/lib/constants/categories";
 
 type Step = "name" | "role" | "master" | "budgets" | "done";
@@ -54,7 +55,27 @@ export function OnboardingFlow({ isInvitedMember = false }: { isInvitedMember?: 
     () => Object.fromEntries(UNIVERSAL_CATEGORIES.map((uc) => [uc.id, ""]))
   );
 
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [isInviting, setIsInviting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+
   const clearError = () => setError(null);
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    setIsInviting(true);
+    setInviteError(null);
+    setInviteSuccess(null);
+    const result = await sendHouseholdInvite({ email: inviteEmail.trim() });
+    setIsInviting(false);
+    if (result.error) {
+      setInviteError(result.error);
+    } else {
+      setInviteSuccess(`Invite sent to ${inviteEmail.trim()}`);
+      setInviteEmail("");
+    }
+  };
 
   const handleNameSubmit = async () => {
     if (!displayName.trim()) {
@@ -402,15 +423,55 @@ export function OnboardingFlow({ isInvitedMember = false }: { isInvitedMember?: 
                   Your household is ready!
                 </CardTitle>
                 <CardDescription className="text-muted-foreground">
-                  Head to your household settings to invite family members by email. They&apos;ll receive a link to join your household.
+                  Invite family members by email — they&apos;ll receive a link to join your household.
                 </CardDescription>
               </CardHeader>
-              <CardFooter className="pb-8">
+              <CardContent className="space-y-3">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleInvite()}
+                      placeholder="member@email.com"
+                      className="pl-10 bg-muted border-border text-foreground focus:ring-primary focus:border-primary"
+                      disabled={isInviting}
+                    />
+                  </div>
+                  <Button
+                    onClick={handleInvite}
+                    disabled={isInviting || !inviteEmail.trim()}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shrink-0"
+                  >
+                    {isInviting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
+                  </Button>
+                </div>
+                {inviteError && (
+                  <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2 font-medium">
+                    {inviteError}
+                  </p>
+                )}
+                {inviteSuccess && (
+                  <p className="text-sm text-green-600 dark:text-green-400 bg-green-500/10 border border-green-500/20 rounded-md px-3 py-2 font-medium">
+                    {inviteSuccess}
+                  </p>
+                )}
+              </CardContent>
+              <CardFooter className="flex flex-col gap-3 pb-8 pt-2">
                 <Button
                   onClick={() => router.push("/dashboard")}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-5"
                 >
                   Go to Dashboard →
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push("/dashboard")}
+                  className="text-muted-foreground hover:text-foreground hover:bg-foreground/5 text-sm"
+                >
+                  Skip for now
                 </Button>
               </CardFooter>
             </>

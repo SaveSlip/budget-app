@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { Lock, Mail, Loader2, CheckCircle } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -28,6 +28,8 @@ function SigninContent() {
   const inviteToken = searchParams.get("invite");
   const { status } = useSession();
   const [serverError, setServerError] = useState<string | null>(null);
+
+  const formRef = useRef<HTMLFormElement>(null);
 
   const {
     register,
@@ -117,7 +119,7 @@ function SigninContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {verified && (
                   <div className="p-3 text-sm text-primary bg-primary/10 border border-primary/20 rounded-md text-center font-medium flex items-center justify-center gap-2">
                     <CheckCircle className="h-4 w-4" />
@@ -193,6 +195,12 @@ function SigninContent() {
                   type="submit"
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 text-lg transition-all shadow-md"
                   disabled={isSubmitting}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      formRef.current?.requestSubmit();
+                    }
+                  }}
                 >
                   {isSubmitting ? (
                     <>

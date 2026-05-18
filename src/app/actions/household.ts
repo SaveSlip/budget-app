@@ -88,14 +88,24 @@ export async function getHousehold(): Promise<{ household: Household | null; mem
 
   // Backfill: if the admin has no MEMBER# record (created before this fix), synthesize one
   if (!members.find((m) => m.id === household.masterUserId)) {
-    const adminName =
-      session.user.id === household.masterUserId
-        ? (session.user.name ?? session.user.email ?? "")
-        : (metaResult.Item.adminName ?? metaResult.Item.adminEmail ?? "");
-    const adminEmail =
-      session.user.id === household.masterUserId
-        ? (session.user.email ?? "")
-        : (metaResult.Item.adminEmail ?? "");
+    let adminName: string;
+    let adminEmail: string;
+    if (session.user.id === household.masterUserId) {
+      adminName = session.user.name ?? session.user.email ?? "";
+      adminEmail = session.user.email ?? "";
+    } else if (metaResult.Item.adminName || metaResult.Item.adminEmail) {
+      adminName = metaResult.Item.adminName ?? metaResult.Item.adminEmail ?? "";
+      adminEmail = metaResult.Item.adminEmail ?? "";
+    } else {
+      const adminUserResult = await docClient.send(
+        new GetCommand({
+          TableName: TABLE_NAME,
+          Key: { pk: `USER#${household.masterUserId}`, sk: "PROFILE" },
+        }),
+      );
+      adminName = adminUserResult.Item?.name ?? adminUserResult.Item?.email ?? "";
+      adminEmail = adminUserResult.Item?.email ?? "";
+    }
 
     const adminMember: HouseholdMember = {
       id: household.masterUserId,
@@ -319,6 +329,32 @@ export async function sendHouseholdInvite(
     return { error: "An invite has already been sent to this email." };
   }
 
+  // Look up the invitee's profile (used for household check, stale-notification cleanup, and in-app notification)
+  const { Item: inviteeProfile } = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { pk: `USER#${inviteeEmail}`, sk: `PROFILE#${inviteeEmail}` },
+    }),
+  );
+
+  // Block invite if the invitee already belongs to another household
+  if (inviteeProfile) {
+    const existingHouseholdLink = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+        ExpressionAttributeValues: {
+          ":pk": `USER#${inviteeProfile.id as string}`,
+          ":prefix": "HOUSEHOLD_MEMBER#",
+        },
+        Limit: 1,
+      }),
+    );
+    if (existingHouseholdLink.Items && existingHouseholdLink.Items.length > 0) {
+      return { error: "This person is already a member of another household." };
+    }
+  }
+
   // Clean up any stale PENDING_INVITE# notification records for orphaned (deleted) profiles
   const existingNotificationResult = await docClient.send(
     new QueryCommand({
@@ -332,12 +368,6 @@ export async function sendHouseholdInvite(
     }),
   );
   if (existingNotificationResult.Items && existingNotificationResult.Items.length > 0) {
-    const { Item: inviteeProfile } = await docClient.send(
-      new GetCommand({
-        TableName: TABLE_NAME,
-        Key: { pk: `USER#${inviteeEmail}`, sk: `PROFILE#${inviteeEmail}` },
-      }),
-    );
     if (!inviteeProfile) {
       // Profile gone — delete stale notification records
       await Promise.all(
@@ -395,14 +425,6 @@ export async function sendHouseholdInvite(
         createdAt: now,
         expiresAt,
       },
-    }),
-  );
-
-  // Check if the invitee is an existing app user
-  const { Item: inviteeProfile } = await docClient.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: { pk: `USER#${inviteeEmail}`, sk: `PROFILE#${inviteeEmail}` },
     }),
   );
 
