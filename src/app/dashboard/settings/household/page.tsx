@@ -113,12 +113,20 @@ export default async function HouseholdSettingsPage() {
               </FadeIn>
 
               <FadeIn delay={0.5}>
-                <GlassCard title="Members">
+                <GlassCard title="Household Members">
                   <HouseholdMembersList
-                    members={members}
+                    members={[...members].sort((a, b) => {
+                      const rankA = a.id === household.masterUserId ? 0 : a.role === "MASTER" ? 1 : 2;
+                      const rankB = b.id === household.masterUserId ? 0 : b.role === "MASTER" ? 1 : 2;
+                      if (rankA !== rankB) return rankA - rankB;
+                      return a.name.localeCompare(b.name);
+                    })}
                     pendingInvites={pendingInvites}
                     isMaster={isMaster}
+                    isOriginalAdmin={household.masterUserId === session.user.id}
                     householdId={household.id}
+                    masterUserId={household.masterUserId}
+                    currentUserId={session.user.id}
                   />
                 </GlassCard>
               </FadeIn>

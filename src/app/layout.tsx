@@ -31,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
+      <head suppressHydrationWarning>
         {/*
          * Blocking theme script — executed synchronously before first paint.
          * A raw <script> tag (not next/script) is used here intentionally:

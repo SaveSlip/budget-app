@@ -16,7 +16,7 @@ interface UserNavProps {
 export default function UserNav({ householdName, householdMembers = [] }: UserNavProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { data: session } = useSession();
+  const { data: session, update } = useSession();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,30 +39,60 @@ export default function UserNav({ householdName, householdMembers = [] }: UserNa
   const userEmail = session?.user?.email ?? "";
   const userName = session?.user?.name ?? "Account";
 
+  const activeUserId = session?.user?.activeUserId;
+  const ownId = session?.user?.id;
+  const activeMember = activeUserId && activeUserId !== ownId
+    ? householdMembers.find((m) => m.id === activeUserId)
+    : null;
+
+  const handleSwitchToSelf = async () => {
+    await update({ activeUserId: ownId });
+    setIsOpen(false);
+  };
+
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative flex items-center gap-2" ref={menuRef}>
+      {activeMember && (
+        <span className="text-xs font-medium text-primary hidden sm:block">
+          {activeMember.name}
+        </span>
+      )}
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Open user menu"
         aria-expanded={isOpen}
-        className="flex items-center justify-center w-10 h-10 rounded-full border border-border hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+        className={`flex items-center justify-center w-10 h-10 rounded-full border hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${activeMember ? "border-primary" : "border-border"}`}
       >
-        <User className="w-5 h-5 text-muted-foreground" />
+        <User className={`w-5 h-5 ${activeMember ? "text-primary" : "text-muted-foreground"}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 rounded-md border border-border bg-popover shadow-lg py-1 z-50">
-          <div className="px-4 py-2 border-b border-border">
-            <p className="text-sm font-medium text-popover-foreground truncate">
-              {userEmail}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              {userName}
-            </p>
-          </div>
+        <div className="absolute right-0 top-full mt-3 w-60 rounded-xl border border-border bg-popover shadow-xl py-1 z-50">
+          {/* Header — acts as "Me" identity card; clickable to switch back when viewing another member */}
+          <button
+            onClick={activeMember ? handleSwitchToSelf : undefined}
+            disabled={!activeMember}
+            className={`w-full px-4 py-4 border-b border-border flex flex-col items-center gap-2 transition-colors ${activeMember ? "hover:bg-accent cursor-pointer" : "cursor-default"}`}
+          >
+            <div className={`w-11 h-11 rounded-full flex items-center justify-center ${activeMember ? "bg-muted border border-border" : "bg-primary/10 border border-primary/20"}`}>
+              <User className={`w-5 h-5 ${activeMember ? "text-muted-foreground" : "text-primary"}`} />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-popover-foreground">{userName}</p>
+              <p className="text-xs text-muted-foreground truncate max-w-50">{userEmail}</p>
+              {activeMember && (
+                <p className="text-xs text-primary mt-0.5">Switch back to me</p>
+              )}
+            </div>
+          </button>
 
           {householdName && householdMembers.length > 0 && (
-            <UserSwitcher members={householdMembers} householdName={householdName} />
+            <UserSwitcher
+              members={householdMembers}
+              householdName={householdName}
+              canViewHousehold={session?.user?.role === "MASTER" || !!session?.user?.canViewHousehold}
+              onClose={() => setIsOpen(false)}
+            />
           )}
 
           <div className="px-4 py-2 border-b border-border">

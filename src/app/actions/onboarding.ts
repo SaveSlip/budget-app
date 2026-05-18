@@ -13,10 +13,12 @@ export async function updateUserName(
   name: string,
 ): Promise<{ error?: string }> {
   const session = await auth();
-  if (!session?.user?.email) return { error: "Unauthorized" };
+  if (!session?.user?.email || !session.user.id) return { error: "Unauthorized" };
 
   const parsed = onboardingNameSchema.safeParse({ name });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const now = new Date().toISOString();
 
   await docClient.send(
     new UpdateCommand({
@@ -29,10 +31,41 @@ export async function updateUserName(
       ExpressionAttributeNames: { "#n": "name" },
       ExpressionAttributeValues: {
         ":name": parsed.data.name,
-        ":now": new Date().toISOString(),
+        ":now": now,
       },
     }),
   );
+
+  // Propagate name to household member record if user is in a household
+  const linkResult = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": `USER#${session.user.id}`,
+        ":prefix": "HOUSEHOLD_MEMBER#",
+      },
+      Limit: 1,
+    }),
+  );
+  const link = linkResult.Items?.[0];
+  if (link?.householdId) {
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          pk: `HOUSEHOLD#${link.householdId}`,
+          sk: `MEMBER#${session.user.id}`,
+        },
+        UpdateExpression: "SET #n = :name",
+        ExpressionAttributeNames: { "#n": "name" },
+        ExpressionAttributeValues: { ":name": parsed.data.name },
+        ConditionExpression: "attribute_exists(pk)",
+      }),
+    ).catch(() => {
+      // Member record may not exist yet; ignore
+    });
+  }
 
   return {};
 }

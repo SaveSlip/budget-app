@@ -24,6 +24,7 @@ export default async function DashboardLayout({
   if (needsOnboarding) redirect("/onboarding");
 
   const isMaster = session?.user?.role === "MASTER";
+  const canSeeHousehold = isMaster || !!session?.user?.canViewHousehold;
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation Bar - Enlarged and Aligned */}
@@ -59,7 +60,7 @@ export default async function DashboardLayout({
             {/* Log Out button removed from here, it now lives inside the UserNav popout */}
             <UserNav
               householdName={household?.name}
-              householdMembers={isMaster ? members : []}
+              householdMembers={canSeeHousehold ? members : []}
             />
           </div>
         </div>

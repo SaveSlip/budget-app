@@ -48,6 +48,7 @@ export async function createTransaction(data: TransactionInput) {
           category,
           transactionType,
           accountId: accountId ?? null,
+          addedByUserId: session?.user?.id ?? userId,
           createdAt: new Date().toISOString(),
         },
       }),
@@ -77,6 +78,7 @@ export async function batchCreateTransactions(
   if (validTransactions.length === 0)
     return { error: "No valid transactions found." };
 
+  const addedByUserId = session?.user?.id ?? userId;
   const putRequests = validTransactions.map((tx) => {
     const txId = crypto.randomUUID();
     return {
@@ -92,6 +94,7 @@ export async function batchCreateTransactions(
           category: tx.category,
           transactionType: tx.transactionType ?? "EXPENSE",
           accountId: tx.accountId ?? null,
+          addedByUserId,
           createdAt: new Date().toISOString(),
         },
       },
@@ -300,6 +303,7 @@ export async function updateTransaction(
                   category,
                   transactionType,
                   accountId: accountId ?? null,
+                  addedByUserId: session?.user?.id ?? userId,
                   createdAt: new Date().toISOString(),
                 },
               },
@@ -322,6 +326,7 @@ export async function updateTransaction(
             category,
             transactionType,
             accountId: accountId ?? null,
+            addedByUserId: session?.user?.id ?? userId,
             createdAt: new Date().toISOString(),
           },
         }),

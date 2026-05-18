@@ -33,6 +33,7 @@ export interface Transaction {
   type: string;
   transactionType?: "INCOME" | "EXPENSE";
   accountId?: string;
+  addedByUserId?: string;
   createdAt: string;
 }
 
@@ -156,6 +157,7 @@ export interface HouseholdMember {
   email?: string;
   role: "MASTER" | "MEMBER";
   canViewHousehold: boolean;
+  isNonUser?: boolean;
   createdAt: string;
 }
 
@@ -175,6 +177,7 @@ export interface HouseholdInvite {
   status: "PENDING" | "ACCEPTED" | "DECLINED";
   createdAt: string;
   expiresAt: string;
+  nonUserId?: string;
 }
 
 export interface RecurringTransaction {
@@ -348,4 +351,97 @@ export async function getTransactionTrend(
     console.error("[DAL] Trend fetch failed:", error);
     return [];
   }
+}
+
+export interface HouseholdTransaction extends Transaction {
+  memberUserId: string;
+  memberName: string;
+  addedByName?: string;
+}
+
+export interface HouseholdMonthlyBalance {
+  month: string;
+  totalIncome: number;
+  totalExpenses: number;
+  balance: number;
+  categorySpending: Record<string, number>;
+  perMember: Record<string, { name: string; income: number; expenses: number }>;
+}
+
+export async function getHouseholdMonthlyData(
+  members: HouseholdMember[],
+  month: string,
+): Promise<HouseholdTransaction[]> {
+  const realMembers = members.filter((m) => !m.isNonUser);
+  if (realMembers.length === 0) return [];
+
+  const memberMap = new Map(realMembers.map((m) => [m.id, m.name]));
+
+  const results = await Promise.all(
+    realMembers.map(async (member) => {
+      try {
+        const result = await docClient.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+            ExpressionAttributeValues: {
+              ":pk": `USER#${member.id}`,
+              ":skPrefix": `TX#${month}`,
+            },
+            ScanIndexForward: false,
+          }),
+        );
+        return ((result.Items ?? []) as Transaction[]).map((tx) => ({
+          ...tx,
+          memberUserId: member.id,
+          memberName: member.name,
+          addedByName: tx.addedByUserId ? memberMap.get(tx.addedByUserId) : undefined,
+        }));
+      } catch {
+        return [];
+      }
+    }),
+  );
+
+  return results
+    .flat()
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+}
+
+export async function getHouseholdMonthlyBalance(
+  members: HouseholdMember[],
+  month: string,
+): Promise<HouseholdMonthlyBalance> {
+  const transactions = await getHouseholdMonthlyData(members, month);
+
+  let totalIncome = 0;
+  let totalExpenses = 0;
+  const categorySpending: Record<string, number> = {};
+  const perMember: Record<string, { name: string; income: number; expenses: number }> = {};
+
+  for (const tx of transactions) {
+    const amount = Math.abs(Number(tx.amount) || 0);
+    if (!perMember[tx.memberUserId]) {
+      perMember[tx.memberUserId] = { name: tx.memberName, income: 0, expenses: 0 };
+    }
+    if (tx.transactionType === "INCOME") {
+      totalIncome += amount;
+      perMember[tx.memberUserId].income += amount;
+    } else {
+      totalExpenses += amount;
+      perMember[tx.memberUserId].expenses += amount;
+      if (tx.category) {
+        categorySpending[tx.category] = (categorySpending[tx.category] || 0) + amount;
+      }
+    }
+  }
+
+  return {
+    month,
+    totalIncome,
+    totalExpenses,
+    balance: totalIncome - totalExpenses,
+    categorySpending,
+    perMember,
+  };
 }

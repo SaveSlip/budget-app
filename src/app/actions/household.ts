@@ -8,6 +8,8 @@ import {
   QueryCommand,
   DeleteCommand,
   UpdateCommand,
+  BatchWriteCommand,
+  TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { assertAuthorized, ForbiddenError } from "@/lib/auth-guard";
 import { revalidatePath } from "next/cache";
@@ -17,10 +19,15 @@ import { Resource } from "sst";
 import {
   createHouseholdSchema,
   inviteMemberSchema,
+  addNonUserMemberSchema,
+  inviteNonUserMemberSchema,
   type CreateHouseholdInput,
   type InviteMemberInput,
+  type AddNonUserMemberInput,
+  type InviteNonUserMemberInput,
 } from "@/lib/validations/household";
 import type { Household, HouseholdMember, HouseholdInvite } from "@/lib/data/budget";
+import { getHouseholdMonthlyData, getHouseholdMonthlyBalance, type HouseholdTransaction, type HouseholdMonthlyBalance } from "@/lib/data/budget";
 
 const sesClient = new SESClient({ region: process.env.AWS_REGION ?? "us-east-1" });
 
@@ -77,7 +84,47 @@ export async function getHousehold(): Promise<{ household: Household | null; mem
     }),
   );
 
-  const members = (membersResult.Items ?? []) as HouseholdMember[];
+  let members = (membersResult.Items ?? []) as HouseholdMember[];
+
+  // Backfill: if the admin has no MEMBER# record (created before this fix), synthesize one
+  if (!members.find((m) => m.id === household.masterUserId)) {
+    const adminName =
+      session.user.id === household.masterUserId
+        ? (session.user.name ?? session.user.email ?? "")
+        : (metaResult.Item.adminName ?? metaResult.Item.adminEmail ?? "");
+    const adminEmail =
+      session.user.id === household.masterUserId
+        ? (session.user.email ?? "")
+        : (metaResult.Item.adminEmail ?? "");
+
+    const adminMember: HouseholdMember = {
+      id: household.masterUserId,
+      name: adminName,
+      email: adminEmail,
+      role: "MASTER",
+      canViewHousehold: true,
+      createdAt: household.createdAt,
+    };
+    members = [adminMember, ...members];
+
+    // Persist the missing record so future fetches don't need to synthesize
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          pk: `HOUSEHOLD#${household.id}`,
+          sk: `MEMBER#${household.masterUserId}`,
+          id: household.masterUserId,
+          name: adminName,
+          email: adminEmail,
+          role: "MASTER",
+          canViewHousehold: true,
+          createdAt: household.createdAt,
+        },
+      }),
+    ).catch(() => {});
+  }
+
   return { household, members };
 }
 
@@ -108,6 +155,7 @@ export async function getHouseholdPendingInvites(): Promise<HouseholdInvite[]> {
       status: i.status as "PENDING",
       createdAt: i.createdAt as string,
       expiresAt: i.expiresAt as string,
+      nonUserId: i.nonUserId as string | undefined,
     }));
 }
 
@@ -156,6 +204,9 @@ export async function createHousehold(
   const householdId = randomUUID();
   const now = new Date().toISOString();
 
+  const adminName = session.user.name ?? session.user.email ?? "";
+  const adminEmail = session.user.email ?? "";
+
   await docClient.send(
     new PutCommand({
       TableName: TABLE_NAME,
@@ -166,6 +217,8 @@ export async function createHousehold(
         type: "HOUSEHOLD",
         name: parsed.data.name,
         masterUserId: session.user.id,
+        adminName,
+        adminEmail,
         createdAt: now,
       },
     }),
@@ -184,7 +237,25 @@ export async function createHousehold(
     }),
   );
 
+  // Write the admin's MEMBER# record so they appear in the members list
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        pk: `HOUSEHOLD#${householdId}`,
+        sk: `MEMBER#${session.user.id}`,
+        id: session.user.id,
+        name: adminName,
+        email: adminEmail,
+        role: "MASTER",
+        canViewHousehold: true,
+        createdAt: now,
+      },
+    }),
+  );
+
   revalidatePath("/dashboard/settings/household");
+  revalidatePath("/dashboard", "layout");
   return { householdId };
 }
 
@@ -230,8 +301,26 @@ export async function sendHouseholdInvite(
   );
   if (alreadyMember) return { error: "This person is already a member of your household." };
 
-  // Check for an existing pending invite for this email
-  const existingInviteResult = await docClient.send(
+  // Check for an existing pending invite for this email by querying household-scoped invite records
+  const existingHouseholdInvitesResult = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": `HOUSEHOLD#${household.id}`,
+        ":prefix": "INVITE#",
+      },
+    }),
+  );
+  const alreadyInvited = (existingHouseholdInvitesResult.Items ?? []).some(
+    (i) => (i.email as string)?.toLowerCase() === inviteeEmail && i.status === "PENDING",
+  );
+  if (alreadyInvited) {
+    return { error: "An invite has already been sent to this email." };
+  }
+
+  // Clean up any stale PENDING_INVITE# notification records for orphaned (deleted) profiles
+  const existingNotificationResult = await docClient.send(
     new QueryCommand({
       TableName: TABLE_NAME,
       KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
@@ -242,29 +331,26 @@ export async function sendHouseholdInvite(
       Limit: 1,
     }),
   );
-  if (existingInviteResult.Items && existingInviteResult.Items.length > 0) {
-    // Guard: if the invitee's account was deleted, the PENDING_INVITE# record is orphaned.
-    // Check whether the user profile still exists; if not, clean up and proceed.
+  if (existingNotificationResult.Items && existingNotificationResult.Items.length > 0) {
     const { Item: inviteeProfile } = await docClient.send(
       new GetCommand({
         TableName: TABLE_NAME,
         Key: { pk: `USER#${inviteeEmail}`, sk: `PROFILE#${inviteeEmail}` },
       }),
     );
-    if (inviteeProfile) {
-      return { error: "An invite has already been sent to this email." };
-    }
-    // Profile gone — delete stale notification records so the new invite can proceed
-    await Promise.all(
-      existingInviteResult.Items.map((item) =>
-        docClient.send(
-          new DeleteCommand({
-            TableName: TABLE_NAME,
-            Key: { pk: item.pk as string, sk: item.sk as string },
-          }),
+    if (!inviteeProfile) {
+      // Profile gone — delete stale notification records
+      await Promise.all(
+        existingNotificationResult.Items.map((item) =>
+          docClient.send(
+            new DeleteCommand({
+              TableName: TABLE_NAME,
+              Key: { pk: item.pk as string, sk: item.sk as string },
+            }),
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   const token = randomUUID();
@@ -385,6 +471,260 @@ export async function sendHouseholdInvite(
   }
 
   revalidatePath("/dashboard/settings/household");
+  revalidatePath("/dashboard", "layout");
+  return {};
+}
+
+export async function addNonUserMember(
+  data: AddNonUserMemberInput,
+): Promise<{ error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
+
+  const parsed = addNonUserMemberSchema.safeParse(data);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const { household } = await getHousehold();
+  if (!household) return { error: "You don't have a household yet." };
+  if (household.masterUserId !== session.user.id) {
+    return { error: "Only the household admin can add members." };
+  }
+
+  const id = `NONUSER_${randomUUID()}`;
+  const now = new Date().toISOString();
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        pk: `HOUSEHOLD#${household.id}`,
+        sk: `MEMBER#${id}`,
+        id,
+        name: parsed.data.name,
+        role: "MEMBER",
+        canViewHousehold: false,
+        isNonUser: true,
+        createdAt: now,
+      },
+    }),
+  );
+
+  revalidatePath("/dashboard/settings/household");
+  revalidatePath("/dashboard", "layout");
+  return {};
+}
+
+export async function sendNonUserInvite(
+  data: InviteNonUserMemberInput,
+): Promise<{ error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.email) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
+
+  const parsed = inviteNonUserMemberSchema.safeParse(data);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const { household } = await getHousehold();
+  if (!household) return { error: "You don't have a household yet." };
+  if (household.masterUserId !== session.user.id) {
+    return { error: "Only the household admin can send invites." };
+  }
+
+  // Verify the non-user member exists in this household
+  const { Item: nonUserRecord } = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        pk: `HOUSEHOLD#${household.id}`,
+        sk: `MEMBER#${parsed.data.nonUserId}`,
+      },
+    }),
+  );
+  if (!nonUserRecord || !nonUserRecord.isNonUser) {
+    return { error: "Non-user member not found." };
+  }
+
+  const inviteeEmail = parsed.data.email.toLowerCase();
+
+  if (inviteeEmail === session.user.email.toLowerCase()) {
+    return { error: "You cannot invite yourself." };
+  }
+
+  // Check for an existing pending invite for this email by querying household-scoped invite records
+  const existingHouseholdInvitesResult = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": `HOUSEHOLD#${household.id}`,
+        ":prefix": "INVITE#",
+      },
+    }),
+  );
+  const alreadyInvited = (existingHouseholdInvitesResult.Items ?? []).some(
+    (i) => (i.email as string)?.toLowerCase() === inviteeEmail && i.status === "PENDING",
+  );
+  if (alreadyInvited) {
+    return { error: "An invite has already been sent to this email." };
+  }
+
+  // Clean up any stale PENDING_INVITE# notification records for orphaned (deleted) profiles
+  const existingNotificationResult = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": `USER#${inviteeEmail}`,
+        ":prefix": "PENDING_INVITE#",
+      },
+      Limit: 1,
+    }),
+  );
+  if (existingNotificationResult.Items && existingNotificationResult.Items.length > 0) {
+    const { Item: inviteeProfile } = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${inviteeEmail}`, sk: `PROFILE#${inviteeEmail}` },
+      }),
+    );
+    if (!inviteeProfile) {
+      await Promise.all(
+        existingNotificationResult.Items.map((item) =>
+          docClient.send(
+            new DeleteCommand({
+              TableName: TABLE_NAME,
+              Key: { pk: item.pk as string, sk: item.sk as string },
+            }),
+          ),
+        ),
+      );
+    }
+  }
+
+  const token = randomUUID();
+  const now = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const inviterName = session.user.name ?? session.user.email;
+  const baseUrl = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const joinLink = `${baseUrl}/join?token=${token}`;
+  const nonUserId = parsed.data.nonUserId;
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        pk: `HOUSEHOLD_INVITE#${token}`,
+        sk: "HOUSEHOLD_INVITE",
+        token,
+        householdId: household.id,
+        householdName: household.name,
+        inviterName,
+        email: inviteeEmail,
+        status: "PENDING",
+        nonUserId,
+        createdAt: now,
+        expiresAt,
+      },
+    }),
+  );
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        pk: `HOUSEHOLD#${household.id}`,
+        sk: `INVITE#${token}`,
+        token,
+        householdId: household.id,
+        householdName: household.name,
+        inviterName,
+        email: inviteeEmail,
+        status: "PENDING",
+        nonUserId,
+        createdAt: now,
+        expiresAt,
+      },
+    }),
+  );
+
+  const { Item: inviteeProfile } = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { pk: `USER#${inviteeEmail}`, sk: `PROFILE#${inviteeEmail}` },
+    }),
+  );
+
+  if (inviteeProfile) {
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          pk: `USER#${inviteeEmail}`,
+          sk: `PENDING_INVITE#${household.id}`,
+          token,
+          householdId: household.id,
+          householdName: household.name,
+          inviterName,
+          createdAt: now,
+          expiresAt,
+        },
+      }),
+    );
+  }
+
+  try {
+    await sesClient.send(
+      new SendEmailCommand({
+        Source: Resource.EmailIdentity.sender,
+        Destination: { ToAddresses: [inviteeEmail] },
+        Message: {
+          Subject: { Data: `${inviterName} invited you to join ${household.name} on Budgify`, Charset: "UTF-8" },
+          Body: {
+            Html: {
+              Data: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2 style="color: #333;">You've been invited to Budgify!</h2>
+                  <p>Hello,</p>
+                  <p><strong>${inviterName}</strong> has invited you to join their household <strong>${household.name}</strong> on Budgify — a smart budgeting app for families.</p>
+                  <p>Your financial history has already been set up for you. Once you join, it will be linked to your new account.</p>
+                  <p style="margin: 30px 0;">
+                    <a href="${joinLink}" style="background-color: #a8471f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Join ${household.name}</a>
+                  </p>
+                  <p><strong>This invite expires in 7 days.</strong></p>
+                  <p>If you don't have a Budgify account yet, you'll be prompted to create one when you click the link above.</p>
+                  <p>If you did not expect this invitation, you can safely ignore this email.</p>
+                </div>
+              `,
+              Charset: "UTF-8",
+            },
+          },
+        },
+      }),
+    );
+  } catch (emailError) {
+    console.error("Failed to send non-user invite email:", emailError);
+    if (process.env.NODE_ENV !== "production") {
+      return {};
+    }
+    await Promise.all([
+      docClient.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { pk: `HOUSEHOLD_INVITE#${token}`, sk: "HOUSEHOLD_INVITE" } })),
+      docClient.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { pk: `HOUSEHOLD#${household.id}`, sk: `INVITE#${token}` } })),
+      inviteeProfile
+        ? docClient.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { pk: `USER#${inviteeEmail}`, sk: `PENDING_INVITE#${household.id}` } }))
+        : Promise.resolve(),
+    ]);
+    return { error: "Failed to send invite email. Please try again." };
+  }
+
+  revalidatePath("/dashboard/settings/household");
+  revalidatePath("/dashboard", "layout");
   return {};
 }
 
@@ -414,6 +754,7 @@ export async function cancelHouseholdInvite(token: string): Promise<{ error?: st
   ]);
 
   revalidatePath("/dashboard/settings/household");
+  revalidatePath("/dashboard", "layout");
   return {};
 }
 
@@ -514,7 +855,63 @@ export async function acceptHouseholdInvite(token: string): Promise<{ error?: st
     ),
   ]);
 
+  // If this invite was for a non-user member, re-key their historical data
+  const nonUserId = invite.nonUserId as string | undefined;
+  if (nonUserId) {
+    const realId = session.user.id;
+
+    // Re-key all data from USER#NONUSER_<uuid> → USER#<real-id>
+    let lastKey: Record<string, unknown> | undefined;
+    do {
+      const result = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "pk = :pk",
+          ExpressionAttributeValues: { ":pk": `USER#${nonUserId}` },
+          ExclusiveStartKey: lastKey,
+        }),
+      );
+      const items = result.Items ?? [];
+      for (let i = 0; i < items.length; i += 25) {
+        const chunk = items.slice(i, i + 25);
+        await docClient.send(
+          new BatchWriteCommand({
+            RequestItems: {
+              [TABLE_NAME]: [
+                // Write each item under the new real user ID
+                ...chunk.map((item) => ({
+                  PutRequest: {
+                    Item: { ...item, pk: `USER#${realId}` },
+                  },
+                })),
+                // Delete the originals
+                ...chunk.map((item) => ({
+                  DeleteRequest: {
+                    Key: { pk: item.pk as string, sk: item.sk as string },
+                  },
+                })),
+              ],
+            },
+          }),
+        );
+      }
+      lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+    } while (lastKey);
+
+    // Remove the old NONUSER member record from the household
+    await docClient.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          pk: `HOUSEHOLD#${householdId}`,
+          sk: `MEMBER#${nonUserId}`,
+        },
+      }),
+    );
+  }
+
   revalidatePath("/dashboard/settings/household");
+  revalidatePath("/dashboard", "layout");
   return {};
 }
 
@@ -564,6 +961,7 @@ export async function declineHouseholdInvite(token: string): Promise<{ error?: s
   ]);
 
   revalidatePath("/dashboard/settings/household");
+  revalidatePath("/dashboard", "layout");
   return {};
 }
 
@@ -593,6 +991,7 @@ export async function leaveHousehold(): Promise<{ error?: string }> {
   ]);
 
   revalidatePath("/dashboard/settings/household");
+  revalidatePath("/dashboard", "layout");
   return {};
 }
 
@@ -631,27 +1030,35 @@ export async function removeHouseholdMember(
     }),
   );
 
-  // Remove the user-side link if this is a real app user
-  await docClient.send(
-    new DeleteCommand({
-      TableName: TABLE_NAME,
-      Key: { pk: `USER#${memberId}`, sk: `HOUSEHOLD_MEMBER#${household.id}` },
-    }),
-  );
+  const isNonUser = memberRecord?.isNonUser === true;
 
-  if (deleteData) {
-    await deletePartition(`USER#${memberId}`);
-    if (memberRecord?.email) {
-      await docClient.send(
-        new DeleteCommand({
-          TableName: TABLE_NAME,
-          Key: { pk: `USER#${memberRecord.email}`, sk: `PROFILE#${memberRecord.email}` },
-        }),
-      );
+  if (!isNonUser) {
+    // Remove the user-side link for real app users
+    await docClient.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${memberId}`, sk: `HOUSEHOLD_MEMBER#${household.id}` },
+      }),
+    );
+
+    if (deleteData) {
+      await deletePartition(`USER#${memberId}`);
+      if (memberRecord?.email) {
+        await docClient.send(
+          new DeleteCommand({
+            TableName: TABLE_NAME,
+            Key: { pk: `USER#${memberRecord.email}`, sk: `PROFILE#${memberRecord.email}` },
+          }),
+        );
+      }
     }
+  } else if (deleteData) {
+    // Non-user: delete their data partition (transactions, accounts etc.) but no user auth records
+    await deletePartition(`USER#${memberId}`);
   }
 
   revalidatePath("/dashboard/settings/household");
+  revalidatePath("/dashboard", "layout");
   return {};
 }
 
@@ -684,6 +1091,7 @@ export async function grantHouseholdAccess(
   );
 
   revalidatePath("/dashboard/settings/household");
+  revalidatePath("/dashboard", "layout");
   return {};
 }
 
@@ -715,6 +1123,200 @@ export async function revokeHouseholdAccess(
     }),
   );
 
+  revalidatePath("/dashboard/settings/household");
+  revalidatePath("/dashboard", "layout");
+  return {};
+}
+
+// --- Household overview ---
+
+export async function getHouseholdOverviewData(month: string): Promise<{
+  error?: string;
+  household?: Household;
+  members?: HouseholdMember[];
+  balance?: HouseholdMonthlyBalance;
+  transactions?: HouseholdTransaction[];
+}> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+
+  const isMaster = session.user.role === "MASTER";
+  const canView = isMaster || session.user.canViewHousehold;
+  if (!canView) return { error: "Access denied." };
+
+  const { household, members } = await getHousehold();
+  if (!household) return { error: "No household found." };
+
+  const balance = await getHouseholdMonthlyBalance(members, month);
+
+  if (isMaster) {
+    const transactions = await getHouseholdMonthlyData(members, month);
+    return { household, members, balance, transactions };
+  }
+
+  return { household, members, balance };
+}
+
+// --- Admin transfer / co-admin ---
+
+export async function transferAdminRole(targetMemberId: string): Promise<{ error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
+
+  const { household, members } = await getHousehold();
+  if (!household) return { error: "No household found." };
+  if (household.masterUserId !== session.user.id) {
+    return { error: "Only the original admin can transfer admin role." };
+  }
+
+  const target = members.find((m) => m.id === targetMemberId);
+  if (!target || target.isNonUser) return { error: "Invalid target member." };
+  if (targetMemberId === session.user.id) return { error: "You are already the admin." };
+
+  await docClient.send(
+    new TransactWriteCommand({
+      TransactItems: [
+        {
+          Update: {
+            TableName: TABLE_NAME,
+            Key: { pk: `HOUSEHOLD#${household.id}`, sk: `MEMBER#${targetMemberId}` },
+            UpdateExpression: "SET #role = :master",
+            ExpressionAttributeNames: { "#role": "role" },
+            ExpressionAttributeValues: { ":master": "MASTER" },
+          },
+        },
+        {
+          Update: {
+            TableName: TABLE_NAME,
+            Key: { pk: `HOUSEHOLD#${household.id}`, sk: `MEMBER#${session.user.id}` },
+            UpdateExpression: "SET #role = :member",
+            ExpressionAttributeNames: { "#role": "role" },
+            ExpressionAttributeValues: { ":member": "MEMBER" },
+          },
+        },
+        {
+          Update: {
+            TableName: TABLE_NAME,
+            Key: { pk: `USER#${targetMemberId}`, sk: `HOUSEHOLD_MEMBER#${household.id}` },
+            UpdateExpression: "SET #role = :master",
+            ExpressionAttributeNames: { "#role": "role" },
+            ExpressionAttributeValues: { ":master": "MASTER" },
+          },
+        },
+        {
+          Update: {
+            TableName: TABLE_NAME,
+            Key: { pk: `USER#${session.user.id}`, sk: `HOUSEHOLD_MEMBER#${household.id}` },
+            UpdateExpression: "SET #role = :member",
+            ExpressionAttributeNames: { "#role": "role" },
+            ExpressionAttributeValues: { ":member": "MEMBER" },
+          },
+        },
+        {
+          Update: {
+            TableName: TABLE_NAME,
+            Key: { pk: `HOUSEHOLD#${household.id}`, sk: "METADATA" },
+            UpdateExpression: "SET masterUserId = :targetId",
+            ExpressionAttributeValues: { ":targetId": targetMemberId },
+          },
+        },
+      ],
+    }),
+  );
+
+  revalidatePath("/dashboard", "layout");
+  revalidatePath("/dashboard/settings/household");
+  return {};
+}
+
+export async function addCoAdmin(targetMemberId: string): Promise<{ error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
+
+  const { household, members } = await getHousehold();
+  if (!household) return { error: "No household found." };
+  if (household.masterUserId !== session.user.id) {
+    return { error: "Only the original admin can grant co-admin status." };
+  }
+
+  const target = members.find((m) => m.id === targetMemberId);
+  if (!target || target.isNonUser) return { error: "Invalid target member." };
+  if (targetMemberId === session.user.id) return { error: "You are already the admin." };
+
+  await Promise.all([
+    docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `HOUSEHOLD#${household.id}`, sk: `MEMBER#${targetMemberId}` },
+        UpdateExpression: "SET #role = :master",
+        ExpressionAttributeNames: { "#role": "role" },
+        ExpressionAttributeValues: { ":master": "MASTER" },
+      }),
+    ),
+    docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${targetMemberId}`, sk: `HOUSEHOLD_MEMBER#${household.id}` },
+        UpdateExpression: "SET #role = :master",
+        ExpressionAttributeNames: { "#role": "role" },
+        ExpressionAttributeValues: { ":master": "MASTER" },
+      }),
+    ),
+  ]);
+
+  revalidatePath("/dashboard", "layout");
+  revalidatePath("/dashboard/settings/household");
+  return {};
+}
+
+export async function revokeCoAdmin(targetMemberId: string): Promise<{ error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+  try { assertAuthorized(session, session.user.id); } catch (e) {
+    if (e instanceof ForbiddenError) return e.toResponse();
+    throw e;
+  }
+
+  const { household, members } = await getHousehold();
+  if (!household) return { error: "No household found." };
+  if (household.masterUserId !== session.user.id) {
+    return { error: "Only the original admin can revoke co-admin status." };
+  }
+  if (targetMemberId === session.user.id) return { error: "Cannot revoke your own admin status." };
+
+  const target = members.find((m) => m.id === targetMemberId);
+  if (!target) return { error: "Member not found." };
+
+  await Promise.all([
+    docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `HOUSEHOLD#${household.id}`, sk: `MEMBER#${targetMemberId}` },
+        UpdateExpression: "SET #role = :member",
+        ExpressionAttributeNames: { "#role": "role" },
+        ExpressionAttributeValues: { ":member": "MEMBER" },
+      }),
+    ),
+    docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${targetMemberId}`, sk: `HOUSEHOLD_MEMBER#${household.id}` },
+        UpdateExpression: "SET #role = :member",
+        ExpressionAttributeNames: { "#role": "role" },
+        ExpressionAttributeValues: { ":member": "MEMBER" },
+      }),
+    ),
+  ]);
+
+  revalidatePath("/dashboard", "layout");
   revalidatePath("/dashboard/settings/household");
   return {};
 }
