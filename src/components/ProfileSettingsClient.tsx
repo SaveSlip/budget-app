@@ -75,6 +75,7 @@ export function ProfileSettingsClient({
       setSaveError(result.error);
     } else {
       await update({ name: name.trim() });
+      router.refresh();
       setSaveMessage("Profile saved successfully.");
       setTimeout(() => setSaveMessage(""), 3000);
     }

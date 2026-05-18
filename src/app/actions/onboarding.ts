@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { docClient, TABLE_NAME } from "@/lib/db";
-import { GetCommand, PutCommand, UpdateCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, UpdateCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "crypto";
 import {
   onboardingNameSchema,
@@ -60,7 +60,6 @@ export async function updateUserName(
         UpdateExpression: "SET #n = :name",
         ExpressionAttributeNames: { "#n": "name" },
         ExpressionAttributeValues: { ":name": parsed.data.name },
-        ConditionExpression: "attribute_exists(pk)",
       }),
     ).catch(() => {
       // Member record may not exist yet; ignore

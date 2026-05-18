@@ -58,7 +58,7 @@ export function OnboardingFlow({ isInvitedMember = false }: { isInvitedMember?: 
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
-  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [invitedEmails, setInvitedEmails] = useState<string[]>([]);
 
   const clearError = () => setError(null);
 
@@ -72,7 +72,7 @@ export function OnboardingFlow({ isInvitedMember = false }: { isInvitedMember?: 
     if (result.error) {
       setInviteError(result.error);
     } else {
-      setInviteSuccess(`Invite sent to ${inviteEmail.trim()}`);
+      setInvitedEmails((prev) => [...prev, inviteEmail.trim()]);
       setInviteEmail("");
     }
   };
@@ -438,6 +438,7 @@ export function OnboardingFlow({ isInvitedMember = false }: { isInvitedMember?: 
                       placeholder="member@email.com"
                       className="pl-10 bg-muted border-border text-foreground focus:ring-primary focus:border-primary"
                       disabled={isInviting}
+                      autoFocus
                     />
                   </div>
                   <Button
@@ -453,10 +454,18 @@ export function OnboardingFlow({ isInvitedMember = false }: { isInvitedMember?: 
                     {inviteError}
                   </p>
                 )}
-                {inviteSuccess && (
-                  <p className="text-sm text-green-600 dark:text-green-400 bg-green-500/10 border border-green-500/20 rounded-md px-3 py-2 font-medium">
-                    {inviteSuccess}
-                  </p>
+                {invitedEmails.length > 0 && (
+                  <div className="space-y-1.5">
+                    {invitedEmails.map((email) => (
+                      <div
+                        key={email}
+                        className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 bg-green-500/10 border border-green-500/20 rounded-md px-3 py-2"
+                      >
+                        <CheckCircle className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{email}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
               <CardFooter className="flex flex-col gap-3 pb-8 pt-2">
@@ -466,13 +475,9 @@ export function OnboardingFlow({ isInvitedMember = false }: { isInvitedMember?: 
                 >
                   Go to Dashboard →
                 </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => router.push("/dashboard")}
-                  className="text-muted-foreground hover:text-foreground hover:bg-foreground/5 text-sm"
-                >
-                  Skip for now
-                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  You can invite more members later from Settings.
+                </p>
               </CardFooter>
             </>
           )}

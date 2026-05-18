@@ -86,8 +86,13 @@ export async function getHousehold(): Promise<{ household: Household | null; mem
 
   let members = (membersResult.Items ?? []) as HouseholdMember[];
 
-  // Backfill: if the admin has no MEMBER# record (created before this fix), synthesize one
-  if (!members.find((m) => m.id === household.masterUserId)) {
+  // Backfill: if the admin has no MEMBER# record, or the record has an empty name, repair it
+  const existingAdminMember = members.find((m) => m.id === household.masterUserId);
+  const needsRepair =
+    !existingAdminMember ||
+    (!existingAdminMember.name && session.user.id === household.masterUserId);
+
+  if (needsRepair) {
     let adminName: string;
     let adminEmail: string;
     if (session.user.id === household.masterUserId) {
@@ -97,27 +102,27 @@ export async function getHousehold(): Promise<{ household: Household | null; mem
       adminName = metaResult.Item.adminName ?? metaResult.Item.adminEmail ?? "";
       adminEmail = metaResult.Item.adminEmail ?? "";
     } else {
-      const adminUserResult = await docClient.send(
-        new GetCommand({
-          TableName: TABLE_NAME,
-          Key: { pk: `USER#${household.masterUserId}`, sk: "PROFILE" },
-        }),
-      );
-      adminName = adminUserResult.Item?.name ?? adminUserResult.Item?.email ?? "";
-      adminEmail = adminUserResult.Item?.email ?? "";
+      adminName = "";
+      adminEmail = "";
     }
 
-    const adminMember: HouseholdMember = {
-      id: household.masterUserId,
-      name: adminName,
-      email: adminEmail,
-      role: "MASTER",
-      canViewHousehold: true,
-      createdAt: household.createdAt,
-    };
-    members = [adminMember, ...members];
+    if (existingAdminMember) {
+      members = members.map((m) =>
+        m.id === household.masterUserId ? { ...m, name: adminName } : m,
+      );
+    } else {
+      const adminMember: HouseholdMember = {
+        id: household.masterUserId,
+        name: adminName,
+        email: adminEmail,
+        role: "MASTER",
+        canViewHousehold: true,
+        createdAt: household.createdAt,
+      };
+      members = [adminMember, ...members];
+    }
 
-    // Persist the missing record so future fetches don't need to synthesize
+    // Persist the corrected record so future fetches don't need to repair
     await docClient.send(
       new PutCommand({
         TableName: TABLE_NAME,
@@ -126,10 +131,10 @@ export async function getHousehold(): Promise<{ household: Household | null; mem
           sk: `MEMBER#${household.masterUserId}`,
           id: household.masterUserId,
           name: adminName,
-          email: adminEmail,
+          email: adminEmail || existingAdminMember?.email || "",
           role: "MASTER",
           canViewHousehold: true,
-          createdAt: household.createdAt,
+          createdAt: existingAdminMember?.createdAt ?? household.createdAt,
         },
       }),
     ).catch(() => {});
