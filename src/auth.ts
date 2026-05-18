@@ -51,7 +51,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return {
             id: Item.id,
             email: Item.email,
-            name: (Item.name as string) ?? null,
+            name: (Item.name as string) || null,
           };
         } catch (error) {
           console.error("Failed to fetch user:", error);
@@ -89,6 +89,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       if (trigger === "update" && sessionUpdate?.name !== undefined) {
         token.name = sessionUpdate.name;
+      }
+      if (trigger === "update" && sessionUpdate?.refreshName) {
+        const profileResult = await docClient.send(
+          new GetCommand({
+            TableName: Resource.BudgifyTable.name,
+            Key: {
+              pk: `USER#${token.email}`,
+              sk: `PROFILE#${token.email}`,
+            },
+          }),
+        );
+        token.name = (profileResult.Item?.name as string) || null;
       }
       if (trigger === "update" && sessionUpdate?.refreshHousehold) {
         const refreshResult = await docClient.send(

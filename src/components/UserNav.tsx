@@ -37,7 +37,7 @@ export default function UserNav({ householdName, householdMembers = [] }: UserNa
   }, []);
 
   const userEmail = session?.user?.email ?? "";
-  const userName = session?.user?.name ?? "Account";
+  const userName = session?.user?.name || session?.user?.email || "Account";
 
   const activeUserId = session?.user?.activeUserId;
   const ownId = session?.user?.id;

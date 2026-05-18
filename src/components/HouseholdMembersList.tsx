@@ -232,7 +232,7 @@ export function HouseholdMembersList({ members, pendingInvites, isMaster, isOrig
             >
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-foreground">{member.name}</p>
+                  <p className="text-sm font-medium text-foreground">{member.name || member.email || "Unknown"}</p>
                   {member.id === currentUserId && (
                     <span className="text-xs text-muted-foreground">(you)</span>
                   )}
@@ -246,7 +246,7 @@ export function HouseholdMembersList({ members, pendingInvites, isMaster, isOrig
                 {member.isNonUser ? (
                   <p className="text-xs text-muted-foreground italic">no account</p>
                 ) : (
-                  member.email && member.email !== member.name && (
+                  member.name && member.email && member.email !== member.name && (
                     <p className="text-xs text-muted-foreground">{member.email}</p>
                   )
                 )}

@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { docClient, TABLE_NAME } from "@/lib/db";
-import { PutCommand, UpdateCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, UpdateCommand, QueryCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "crypto";
 import {
   onboardingNameSchema,
@@ -120,6 +120,30 @@ export async function createHouseholdDuringOnboarding(
         householdId,
         role: "MASTER",
         joinedAt: now,
+      },
+    }),
+  );
+
+  const { Item: profile } = await docClient.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { pk: `USER#${session.user.email}`, sk: `PROFILE#${session.user.email}` },
+    }),
+  );
+  const userName = (profile?.name as string) || "";
+
+  await docClient.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        pk: `HOUSEHOLD#${householdId}`,
+        sk: `MEMBER#${session.user.id}`,
+        id: session.user.id,
+        name: userName,
+        email: session.user.email,
+        role: "MASTER",
+        canViewHousehold: true,
+        createdAt: now,
       },
     }),
   );

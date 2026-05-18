@@ -59,7 +59,7 @@ export async function logout() {
   redirect("/signin");
 }
 
-export async function deleteAccount(): Promise<{ error?: string; success?: boolean }> {
+export async function deleteAccount(): Promise<{ error?: string }> {
   try {
     const session = await auth();
     if (!session?.user?.id || !session.user.email) return { error: "Unauthorized" };
@@ -106,11 +106,12 @@ export async function deleteAccount(): Promise<{ error?: string; success?: boole
     );
 
     await signOut({ redirect: false });
-    return { success: true };
   } catch (error) {
     console.error("Delete account error:", error);
     return { error: "Failed to delete account. Please try again." };
   }
+
+  redirect("/signin");
 }
 
 export async function changePasswordAction(

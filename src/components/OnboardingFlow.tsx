@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ArrowLeft, Home, Users, Loader2, User, CheckCircle, Mail } from "lucide-react";
 import {
   Card,
@@ -43,6 +44,7 @@ const STEP_NUMBERS: Record<Step, number> = {
 
 export function OnboardingFlow({ isInvitedMember = false }: { isInvitedMember?: boolean }) {
   const router = useRouter();
+  const { update } = useSession();
 
   const [step, setStep] = useState<Step>("name");
   const [displayName, setDisplayName] = useState("");
@@ -66,7 +68,6 @@ export function OnboardingFlow({ isInvitedMember = false }: { isInvitedMember?: 
     if (!inviteEmail.trim()) return;
     setIsInviting(true);
     setInviteError(null);
-    setInviteSuccess(null);
     const result = await sendHouseholdInvite({ email: inviteEmail.trim() });
     setIsInviting(false);
     if (result.error) {
@@ -90,6 +91,7 @@ export function OnboardingFlow({ isInvitedMember = false }: { isInvitedMember?: 
       setError(result.error);
       return;
     }
+    await update({ refreshName: true });
     if (isInvitedMember) {
       await completeOnboarding();
       router.push("/dashboard");

@@ -74,7 +74,7 @@ export function ProfileSettingsClient({
     if (result.error) {
       setSaveError(result.error);
     } else {
-      await update({ name: name.trim() });
+      await update({ refreshName: true });
       router.refresh();
       setSaveMessage("Profile saved successfully.");
       setTimeout(() => setSaveMessage(""), 3000);
@@ -115,11 +115,9 @@ export function ProfileSettingsClient({
     setIsDeleting(true);
     setDeleteError("");
     const result = await deleteAccount();
-    if (result.error) {
+    if (result?.error) {
       setDeleteError(result.error);
       setIsDeleting(false);
-    } else {
-      router.push("/signin");
     }
   };
 
