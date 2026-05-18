@@ -6,7 +6,7 @@ import {
   DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { auth } from "@/auth";
-import { assertAuthorized, ForbiddenError } from "@/lib/auth-guard";
+
 import { docClient, TABLE_NAME } from "@/lib/db";
 import { accountSchema, AccountInput } from "@/lib/validations/account";
 import { revalidatePath } from "next/cache";
@@ -14,10 +14,7 @@ import { revalidatePath } from "next/cache";
 export async function createAccount(data: AccountInput) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
-  try { assertAuthorized(session, session.user.id); } catch (e) {
-    if (e instanceof ForbiddenError) return e.toResponse();
-    throw e;
-  }
+
 
   const parsed = accountSchema.safeParse(data);
   if (!parsed.success) return { error: "Invalid account data." };
@@ -54,10 +51,7 @@ export async function createAccount(data: AccountInput) {
 export async function listAccounts() {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
-  try { assertAuthorized(session, session.user.id); } catch (e) {
-    if (e instanceof ForbiddenError) return e.toResponse();
-    throw e;
-  }
+
 
   const userId = session.user.id;
 
@@ -82,10 +76,7 @@ export async function listAccounts() {
 export async function deleteAccount(accountId: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
-  try { assertAuthorized(session, session.user.id); } catch (e) {
-    if (e instanceof ForbiddenError) return e.toResponse();
-    throw e;
-  }
+
 
   try {
     await docClient.send(

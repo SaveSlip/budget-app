@@ -9,8 +9,8 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { assertAuthorized, ForbiddenError } from "@/lib/auth-guard";
-import { getActiveUserId } from "@/lib/activeUser";
+
+
 import { z } from "zod";
 import { UNIVERSAL_CATEGORIES, UNIVERSAL_INCOME_CATEGORIES, findUniversalCategory } from "@/lib/constants/categories";
 
@@ -19,10 +19,7 @@ const limitSchema = z.coerce.number().nonnegative("Limit must be 0 or greater");
 export async function createCategory(data: { name: string; limit: number; categoryType?: "INCOME" | "EXPENSE" }) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
-  try { assertAuthorized(session, session.user.id); } catch (e) {
-    if (e instanceof ForbiddenError) return e.toResponse();
-    throw e;
-  }
+
 
   const categoryType = data.categoryType ?? "EXPENSE";
   const trimmedName = data.name.trim();
@@ -80,10 +77,7 @@ export async function createCategory(data: { name: string; limit: number; catego
 export async function deleteCategory(id: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
-  try { assertAuthorized(session, session.user.id); } catch (e) {
-    if (e instanceof ForbiddenError) return e.toResponse();
-    throw e;
-  }
+
 
   if (UNIVERSAL_CATEGORIES.some((uc) => uc.id === id)) {
     return { error: "Cannot delete a universal category" };
@@ -111,10 +105,7 @@ export async function deleteCategory(id: string) {
 export async function listCategories() {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
-  try { assertAuthorized(session, session.user.id); } catch (e) {
-    if (e instanceof ForbiddenError) return e.toResponse();
-    throw e;
-  }
+
 
   try {
     const [{ Items }, { Items: limitItems }] = await Promise.all([
@@ -176,12 +167,6 @@ export async function listCategories() {
 export async function updateCategoryLimit(id: string, limit: number) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
-  const activeUserId = await getActiveUserId();
-  if (!activeUserId) return { error: "Unauthorized" };
-  try { assertAuthorized(session, activeUserId); } catch (e) {
-    if (e instanceof ForbiddenError) return e.toResponse();
-    throw e;
-  }
 
   const parsed = limitSchema.safeParse(limit);
   if (!parsed.success) return { error: "Invalid limit value" };
@@ -191,7 +176,7 @@ export async function updateCategoryLimit(id: string, limit: number) {
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: {
-          pk: `USER#${activeUserId}`,
+          pk: `USER#${session.user.id}`,
           sk: `CATEGORY#${id}`,
         },
         UpdateExpression: "SET #limit = :limit",
@@ -215,12 +200,6 @@ export async function updateCategoryLimit(id: string, limit: number) {
 export async function saveOnboardingLimits(limits: Record<string, number>) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
-  const activeUserId = await getActiveUserId();
-  if (!activeUserId) return { error: "Unauthorized" };
-  try { assertAuthorized(session, activeUserId); } catch (e) {
-    if (e instanceof ForbiddenError) return e.toResponse();
-    throw e;
-  }
 
   const validIds = new Set(UNIVERSAL_CATEGORIES.map((uc) => uc.id));
   const entries = Object.entries(limits).filter(
@@ -234,7 +213,7 @@ export async function saveOnboardingLimits(limits: Record<string, number>) {
           new PutCommand({
             TableName: TABLE_NAME,
             Item: {
-              pk: `USER#${activeUserId}`,
+              pk: `USER#${session.user.id}`,
               sk: `UNIVERSAL_LIMIT#${id}`,
               id,
               limit,
@@ -256,12 +235,6 @@ export async function saveOnboardingLimits(limits: Record<string, number>) {
 export async function updateUniversalCategoryLimit(id: string, limit: number) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
-  const activeUserId = await getActiveUserId();
-  if (!activeUserId) return { error: "Unauthorized" };
-  try { assertAuthorized(session, activeUserId); } catch (e) {
-    if (e instanceof ForbiddenError) return e.toResponse();
-    throw e;
-  }
 
   if (!UNIVERSAL_CATEGORIES.some((uc) => uc.id === id)) {
     return { error: "Not a universal category" };
@@ -275,7 +248,7 @@ export async function updateUniversalCategoryLimit(id: string, limit: number) {
       new PutCommand({
         TableName: TABLE_NAME,
         Item: {
-          pk: `USER#${activeUserId}`,
+          pk: `USER#${session.user.id}`,
           sk: `UNIVERSAL_LIMIT#${id}`,
           id,
           limit: parsed.data,
@@ -298,10 +271,7 @@ export async function updateCategory(
 ) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
-  try { assertAuthorized(session, session.user.id); } catch (e) {
-    if (e instanceof ForbiddenError) return e.toResponse();
-    throw e;
-  }
+
 
   try {
     await docClient.send(

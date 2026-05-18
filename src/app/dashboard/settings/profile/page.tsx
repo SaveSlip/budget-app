@@ -13,7 +13,6 @@ export default async function ProfileSettingsPage() {
     <ProfileSettingsClient
       initialName={profile?.name ?? ""}
       email={session.user.email ?? ""}
-      isMaster={session.user.role === "MASTER"}
     />
   );
 }

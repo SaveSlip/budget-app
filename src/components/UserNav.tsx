@@ -5,18 +5,11 @@ import { User, LogOut, Sun, Moon, Monitor, Settings } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useTheme } from "@/hooks/useTheme";
-import { UserSwitcher } from "@/components/UserSwitcher";
-import type { HouseholdMember } from "@/lib/data/budget";
 
-interface UserNavProps {
-  householdName?: string;
-  householdMembers?: HouseholdMember[];
-}
-
-export default function UserNav({ householdName, householdMembers = [] }: UserNavProps) {
+export default function UserNav() {
   const [isOpen, setIsOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { data: session, update } = useSession();
+  const { data: session } = useSession();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,61 +32,29 @@ export default function UserNav({ householdName, householdMembers = [] }: UserNa
   const userEmail = session?.user?.email ?? "";
   const userName = session?.user?.name || session?.user?.email || "Account";
 
-  const activeUserId = session?.user?.activeUserId;
-  const ownId = session?.user?.id;
-  const activeMember = activeUserId && activeUserId !== ownId
-    ? householdMembers.find((m) => m.id === activeUserId)
-    : null;
-
-  const handleSwitchToSelf = async () => {
-    await update({ activeUserId: ownId });
-    setIsOpen(false);
-  };
-
   return (
     <div className="relative flex items-center gap-2" ref={menuRef}>
-      {activeMember && (
-        <span className="text-xs font-medium text-primary hidden sm:block">
-          {activeMember.name}
-        </span>
-      )}
       <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Open user menu"
         aria-expanded={isOpen}
-        className={`flex items-center justify-center w-10 h-10 rounded-full border hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${activeMember ? "border-primary" : "border-border"}`}
+        className="flex items-center justify-center w-10 h-10 rounded-full border border-border hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
       >
-        <User className={`w-5 h-5 ${activeMember ? "text-primary" : "text-muted-foreground"}`} />
+        <User className="w-5 h-5 text-muted-foreground" />
       </button>
 
       {isOpen && (
         <div className="absolute right-0 top-full mt-3 w-60 rounded-xl border border-border bg-popover shadow-xl py-1 z-50">
-          {/* Header — acts as "Me" identity card; clickable to switch back when viewing another member */}
-          <button
-            onClick={activeMember ? handleSwitchToSelf : undefined}
-            disabled={!activeMember}
-            className={`w-full px-4 py-4 border-b border-border flex flex-col items-center gap-2 transition-colors ${activeMember ? "hover:bg-accent cursor-pointer" : "cursor-default"}`}
-          >
-            <div className={`w-11 h-11 rounded-full flex items-center justify-center ${activeMember ? "bg-muted border border-border" : "bg-primary/10 border border-primary/20"}`}>
-              <User className={`w-5 h-5 ${activeMember ? "text-muted-foreground" : "text-primary"}`} />
+          {/* Header — identity card */}
+          <div className="w-full px-4 py-4 border-b border-border flex flex-col items-center gap-2">
+            <div className="w-11 h-11 rounded-full flex items-center justify-center bg-primary/10 border border-primary/20">
+              <User className="w-5 h-5 text-primary" />
             </div>
             <div className="text-center">
               <p className="text-sm font-semibold text-popover-foreground">{userName}</p>
               <p className="text-xs text-muted-foreground truncate max-w-50">{userEmail}</p>
-              {activeMember && (
-                <p className="text-xs text-primary mt-0.5">Switch back to me</p>
-              )}
             </div>
-          </button>
-
-          {householdName && householdMembers.length > 0 && (
-            <UserSwitcher
-              members={householdMembers}
-              householdName={householdName}
-              canViewHousehold={session?.user?.role === "MASTER" || !!session?.user?.canViewHousehold}
-              onClose={() => setIsOpen(false)}
-            />
-          )}
+          </div>
 
           <div className="px-4 py-2 border-b border-border">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">

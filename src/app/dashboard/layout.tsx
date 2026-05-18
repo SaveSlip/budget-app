@@ -1,7 +1,6 @@
 import Link from "next/link";
 import UserNav from "@/components/UserNav";
 import { DashboardNav } from "@/components/DashboardNav";
-import { getHousehold } from "@/app/actions/household";
 import { auth } from "@/auth";
 import { getUserProfile } from "@/lib/db";
 import { redirect } from "next/navigation";
@@ -11,20 +10,13 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [{ household, members }, session] = await Promise.all([
-    getHousehold(),
-    auth(),
-  ]);
+  const session = await auth();
 
   if (!session?.user?.email) redirect("/signin");
 
   const profile = await getUserProfile(session.user.email);
-  const needsOnboarding =
-    !profile?.onboardingCompleted && !session.user.householdId;
-  if (needsOnboarding) redirect("/onboarding");
+  if (!profile?.onboardingCompleted) redirect("/onboarding");
 
-  const isMaster = session?.user?.role === "MASTER";
-  const canSeeHousehold = isMaster || !!session?.user?.canViewHousehold;
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation Bar - Enlarged and Aligned */}
@@ -57,11 +49,7 @@ export default async function DashboardLayout({
 
           {/* Right Aligned Actions */}
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            {/* Log Out button removed from here, it now lives inside the UserNav popout */}
-            <UserNav
-              householdName={household?.name}
-              householdMembers={canSeeHousehold ? members : []}
-            />
+            <UserNav />
           </div>
         </div>
       </nav>

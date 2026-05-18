@@ -20,7 +20,6 @@ import {
   UpdateCommand,
   DeleteCommand,
   PutCommand,
-  QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { Resource } from "sst";
@@ -64,16 +63,7 @@ export async function deleteAccount(): Promise<{ error?: string }> {
     const session = await auth();
     if (!session?.user?.id || !session.user.email) return { error: "Unauthorized" };
 
-    const { id: userId, email, role, householdId } = session.user as {
-      id: string;
-      email: string;
-      role?: string | null;
-      householdId?: string | null;
-    };
-
-    if (role === "MASTER" && householdId) {
-      await deletePartition(`HOUSEHOLD#${householdId}`);
-    }
+    const { id: userId, email } = session.user;
 
     await deletePartition(`USER#${userId}`);
     await docClient.send(
@@ -81,28 +71,6 @@ export async function deleteAccount(): Promise<{ error?: string }> {
         TableName: TABLE_NAME,
         Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
       }),
-    );
-
-    // Clean up orphaned email-keyed invite notification records (not covered by deletePartition)
-    const orphanedInvites = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: "pk = :pk AND begins_with(sk, :prefix)",
-        ExpressionAttributeValues: {
-          ":pk": `USER#${email}`,
-          ":prefix": "PENDING_INVITE#",
-        },
-      }),
-    );
-    await Promise.all(
-      (orphanedInvites.Items ?? []).map((item) =>
-        docClient.send(
-          new DeleteCommand({
-            TableName: TABLE_NAME,
-            Key: { pk: item.pk as string, sk: item.sk as string },
-          }),
-        ),
-      ),
     );
 
     await signOut({ redirect: false });
@@ -419,70 +387,6 @@ export async function resendVerificationEmail(
   } catch (error) {
     console.error("Resend verification email error:", error);
     return { error: "Internal server error" };
-  }
-}
-
-export async function getInviteEmail(
-  token: string,
-): Promise<{ email?: string; error?: string }> {
-  try {
-    const { Item: invite } = await docClient.send(
-      new GetCommand({
-        TableName: TABLE_NAME,
-        Key: { pk: `HOUSEHOLD_INVITE#${token}`, sk: "HOUSEHOLD_INVITE" },
-      }),
-    );
-
-    if (!invite) return { error: "Invalid invite link." };
-    if (invite.status !== "PENDING") return { error: "This invite has already been used." };
-    if (new Date(invite.expiresAt as string) < new Date()) return { error: "This invite link has expired." };
-
-    return { email: invite.email as string };
-  } catch (error) {
-    console.error("getInviteEmail error:", error);
-    return { error: "Internal server error" };
-  }
-}
-
-export async function registerUserFromInvite(
-  token: string,
-  data: SignupInput,
-): Promise<{ error?: string; success?: boolean }> {
-  try {
-    const parsed = signupSchema.safeParse(data);
-    if (!parsed.success) return { error: "Invalid input data" };
-
-    const { Item: invite } = await docClient.send(
-      new GetCommand({
-        TableName: TABLE_NAME,
-        Key: { pk: `HOUSEHOLD_INVITE#${token}`, sk: "HOUSEHOLD_INVITE" },
-      }),
-    );
-
-    if (!invite) return { error: "Invalid invite link." };
-    if (invite.status !== "PENDING") return { error: "This invite has already been used." };
-    if (new Date(invite.expiresAt as string) < new Date()) return { error: "This invite link has expired." };
-
-    if (parsed.data.email.toLowerCase() !== (invite.email as string).toLowerCase()) {
-      return { error: "Email does not match the invite." };
-    }
-
-    const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
-    const userId = crypto.randomUUID();
-
-    const dbResult = await createUserRecord({
-      id: userId,
-      email: parsed.data.email,
-      hashedPassword,
-      emailVerified: true,
-    });
-
-    if (dbResult.error) return { error: dbResult.error };
-
-    return { success: true };
-  } catch (error) {
-    console.error("registerUserFromInvite error:", error);
-    return { error: "Internal Server Error" };
   }
 }
 

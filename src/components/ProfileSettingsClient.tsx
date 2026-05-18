@@ -26,7 +26,6 @@ import {
   Monitor,
   Save,
   CreditCard,
-  Users,
   AlertTriangle,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
@@ -37,13 +36,11 @@ import { changePasswordSchema } from "@/lib/validations/auth";
 interface ProfileSettingsClientProps {
   initialName: string;
   email: string;
-  isMaster?: boolean;
 }
 
 export function ProfileSettingsClient({
   initialName,
   email,
-  isMaster,
 }: ProfileSettingsClientProps) {
   const router = useRouter();
   const { update } = useSession();
@@ -155,14 +152,6 @@ export function ProfileSettingsClient({
                   className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                 >
                   <CreditCard className="w-4 h-4 mr-2" /> Accounts
-                </Button>
-              </Link>
-              <Link href="/dashboard/settings/household">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                >
-                  <Users className="w-4 h-4 mr-2" /> Household
                 </Button>
               </Link>
             </div>
@@ -405,11 +394,6 @@ export function ProfileSettingsClient({
                 <p className="text-sm text-muted-foreground">
                   Once you delete your account, all your transactions, accounts, categories, and settings will be permanently removed. This action cannot be undone.
                 </p>
-                {isMaster && (
-                  <p className="text-sm text-destructive font-medium">
-                    As a household master, your entire household and all member records will also be permanently deleted.
-                  </p>
-                )}
                 <Button
                   variant="destructive"
                   onClick={() => setShowDeleteDialog(true)}
@@ -436,11 +420,6 @@ export function ProfileSettingsClient({
             <p className="text-sm text-muted-foreground">
               This will permanently delete your account and all associated data. This action is <strong className="text-foreground">irreversible</strong>.
             </p>
-            {isMaster && (
-              <p className="text-sm text-destructive">
-                Your household and all its member records will also be deleted.
-              </p>
-            )}
             {deleteError && (
               <p className="text-sm text-destructive font-medium">{deleteError}</p>
             )}
