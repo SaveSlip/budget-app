@@ -13,16 +13,20 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { FadeIn } from "@/components/FadeIn";
 import ThemeToggle from "@/components/ThemeToggle";
 import { resendVerificationEmail } from "@/app/actions/auth";
 
 function CheckEmailContent() {
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") ?? "";
+  const emailParam = searchParams.get("email") ?? "";
+  const [manualEmail, setManualEmail] = useState("");
   const [isResending, setIsResending] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [resendError, setResendError] = useState<string | null>(null);
+
+  const email = emailParam || manualEmail;
 
   const handleResend = async () => {
     if (!email) return;
@@ -33,7 +37,9 @@ function CheckEmailContent() {
     const result = await resendVerificationEmail(email);
 
     setIsResending(false);
-    if (result.error) {
+    if (result.error === "This email is already verified. Please sign in.") {
+      setResendMessage("Your email is already verified! Sign in to continue.");
+    } else if (result.error) {
       setResendError(result.error);
     } else {
       setResendMessage("Verification email resent! Check your inbox.");
@@ -81,13 +87,17 @@ function CheckEmailContent() {
                 Check your inbox
               </CardTitle>
               <CardDescription className="text-muted-foreground text-sm leading-relaxed">
-                We sent a verification link to{" "}
-                {email ? (
-                  <span className="font-semibold text-foreground">{email}</span>
+                {emailParam ? (
+                  <>
+                    We sent a verification link to{" "}
+                    <span className="font-semibold text-foreground">
+                      {emailParam}
+                    </span>
+                    . Click the link in that email to activate your account.
+                  </>
                 ) : (
-                  "your email address"
+                  "Enter your email address below to resend the verification link."
                 )}
-                . Click the link in that email to activate your account.
               </CardDescription>
             </CardHeader>
 
@@ -104,12 +114,25 @@ function CheckEmailContent() {
                 </div>
               )}
 
-              <div className="p-4 bg-muted/50 rounded-lg border border-border text-sm text-muted-foreground space-y-1">
-                <p className="font-medium text-foreground">
-                  Didn&apos;t receive an email?
-                </p>
-                <p>Check your spam or junk folder, or click below to resend.</p>
-              </div>
+              {!emailParam && (
+                <Input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={manualEmail}
+                  onChange={(e) => setManualEmail(e.target.value)}
+                  className="bg-muted border-border text-foreground focus:ring-primary focus:border-primary"
+                  disabled={isResending}
+                />
+              )}
+
+              {emailParam && (
+                <div className="p-4 bg-muted/50 rounded-lg border border-border text-sm text-muted-foreground space-y-1">
+                  <p className="font-medium text-foreground">
+                    Didn&apos;t receive an email?
+                  </p>
+                  <p>Check your spam or junk folder, or click below to resend.</p>
+                </div>
+              )}
 
               <Button
                 onClick={handleResend}

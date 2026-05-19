@@ -1,14 +1,13 @@
-// src/app/forgot-password/page.tsx
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Mail, Loader2, Wallet, CheckCircle } from "lucide-react";
+import { Lock, Loader2, Wallet, CheckCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
 import {
-  forgotPasswordSchema,
-  ForgotPasswordInput,
+  resetPasswordSchema,
+  ResetPasswordInput,
 } from "@/lib/validations/auth";
 import {
   Card,
@@ -21,115 +20,48 @@ import {
 import { FadeIn } from "@/components/FadeIn";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { forgotPasswordAction } from "@/app/actions/auth";
+import { resetPasswordAction } from "@/app/actions/auth";
 
-type ActionResponse = {
-  success?: boolean;
-  error?: string;
-  message?: string;
-};
-
-function ForgotPasswordContent() {
-  const searchParams = useSearchParams();
+export default function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
-  const resendParam = searchParams.get("resend");
-  const emailParam = searchParams.get("email") ?? "";
-
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [sentEmail, setSentEmail] = useState("");
-  const [isSending, setIsSending] = useState(false);
 
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<ForgotPasswordInput>({
-    defaultValues: { email: "" },
+  } = useForm<ResetPasswordInput>({
+    defaultValues: { password: "", confirmPassword: "" },
   });
 
-  // Auto-send when arriving from an expired/superseded reset link
-  useEffect(() => {
-    if (resendParam !== "1" || !emailParam) return;
-
-    setIsSending(true);
-    forgotPasswordAction({ email: emailParam })
-      .then((response) => {
-        const res = response as ActionResponse;
-        if (res.error === "unverified") {
-          router.replace(`/check-email?email=${encodeURIComponent(emailParam)}`);
-        } else if (res.error) {
-          setServerError(res.error ?? "Failed to send reset email.");
-        } else {
-          setSentEmail(emailParam);
-          setIsSuccess(true);
-        }
-      })
-      .catch(() => setServerError("Network error. Please try again."))
-      .finally(() => setIsSending(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const onSubmit = async (data: ForgotPasswordInput) => {
+  const onSubmit = async (data: ResetPasswordInput) => {
     setServerError(null);
 
-    const parsed = forgotPasswordSchema.safeParse(data);
+    const parsed = resetPasswordSchema.safeParse(data);
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
-        setError("email", { message: issue.message });
+        const field = issue.path[0] as keyof ResetPasswordInput;
+        setError(field, { message: issue.message });
       }
       return;
     }
 
     try {
-      const response = (await forgotPasswordAction(parsed.data)) as ActionResponse;
-
-      if (response.error === "unverified") {
-        router.push(`/check-email?email=${encodeURIComponent(parsed.data.email)}`);
-        return;
-      }
+      const response = await resetPasswordAction(token, parsed.data);
 
       if (response.error) {
         setServerError(response.error);
         return;
       }
 
-      setSentEmail(parsed.data.email);
       setIsSuccess(true);
+      setTimeout(() => router.push("/signin"), 3000);
     } catch {
       setServerError("Network error. Please try again.");
     }
   };
-
-  // Loading state while auto-sending
-  if (isSending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-md px-4 z-10">
-          <FadeIn delay={0.1}>
-            <div className="flex flex-col items-center mb-8">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-4 border border-primary/20">
-                <Wallet className="h-10 w-10 text-primary" />
-              </div>
-              <h1 className="text-4xl font-bold tracking-tight text-foreground">
-                Budgify
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                Enterprise Financial Intelligence
-              </p>
-            </div>
-            <Card className="border-border bg-card shadow-lg">
-              <CardContent className="flex flex-col items-center gap-4 py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Sending reset link…</p>
-              </CardContent>
-            </Card>
-          </FadeIn>
-        </div>
-      </div>
-    );
-  }
 
   if (isSuccess) {
     return (
@@ -154,36 +86,21 @@ function ForgotPasswordContent() {
                   <CheckCircle className="h-12 w-12 text-green-500" />
                 </div>
                 <CardTitle className="text-2xl text-foreground">
-                  Check Your Email
+                  Password Reset Successful
                 </CardTitle>
                 <CardDescription className="text-muted-foreground">
-                  We&apos;ve sent a password reset link to{" "}
-                  <span className="font-medium text-foreground">
-                    {sentEmail}
-                  </span>
+                  Your password has been successfully reset. You can now sign in
+                  with your new password.
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <div className="text-sm text-muted-foreground mb-4">
-                  Didn&apos;t receive the email? Check your spam folder or{" "}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsSuccess(false);
-                      window.history.replaceState(null, "", "/forgot-password");
-                    }}
-                    className="text-primary hover:underline"
-                  >
-                    try again
-                  </button>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Redirecting to sign in page...
+                </p>
               </CardContent>
               <CardFooter className="text-center flex justify-center">
-                <Link
-                  href="/signin"
-                  className="text-primary hover:underline text-sm"
-                >
-                  ← Back to sign in
+                <Link href="/signin" className="text-primary hover:underline text-sm">
+                  Go to sign in
                 </Link>
               </CardFooter>
             </Card>
@@ -212,11 +129,10 @@ function ForgotPasswordContent() {
           <Card className="border-border bg-card shadow-lg">
             <CardHeader className="space-y-1 text-center">
               <CardTitle className="text-2xl text-foreground">
-                Forgot Password
+                Reset Password
               </CardTitle>
               <CardDescription className="text-muted-foreground">
-                Enter your email address and we&apos;ll send you a link to reset
-                your password.
+                Enter your new password below.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -229,22 +145,44 @@ function ForgotPasswordContent() {
 
                 <div className="space-y-2">
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                      {...register("email")}
-                      type="email"
-                      placeholder="user@enterprise.com"
+                      {...register("password")}
+                      type="password"
+                      placeholder="New password"
                       className={`pl-10 bg-input/50 border-border text-foreground focus:border-primary ${
-                        errors.email
+                        errors.password
                           ? "border-destructive focus:border-destructive"
                           : ""
                       }`}
                       disabled={isSubmitting}
                     />
                   </div>
-                  {errors.email && (
+                  {errors.password && (
                     <p className="text-xs text-destructive pl-1">
-                      {errors.email.message}
+                      {errors.password.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      {...register("confirmPassword")}
+                      type="password"
+                      placeholder="Confirm new password"
+                      className={`pl-10 bg-input/50 border-border text-foreground focus:border-primary ${
+                        errors.confirmPassword
+                          ? "border-destructive focus:border-destructive"
+                          : ""
+                      }`}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="text-xs text-destructive pl-1">
+                      {errors.confirmPassword.message}
                     </p>
                   )}
                 </div>
@@ -257,19 +195,16 @@ function ForgotPasswordContent() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
+                      Resetting...
                     </>
                   ) : (
-                    "Send Reset Link"
+                    "Reset Password"
                   )}
                 </Button>
               </form>
             </CardContent>
             <CardFooter className="text-center flex justify-center">
-              <Link
-                href="/signin"
-                className="text-primary hover:underline text-sm"
-              >
+              <Link href="/signin" className="text-primary hover:underline text-sm">
                 ← Back to sign in
               </Link>
             </CardFooter>
@@ -277,13 +212,5 @@ function ForgotPasswordContent() {
         </FadeIn>
       </div>
     </div>
-  );
-}
-
-export default function ForgotPasswordPage() {
-  return (
-    <Suspense fallback={null}>
-      <ForgotPasswordContent />
-    </Suspense>
   );
 }

@@ -12,7 +12,12 @@ import {
   changePasswordSchema,
   ChangePasswordInput,
 } from "@/lib/validations/auth";
-import { createUserRecord, deletePartition, docClient, TABLE_NAME } from "@/lib/db";
+import {
+  createUserRecord,
+  deletePartition,
+  docClient,
+  TABLE_NAME,
+} from "@/lib/db";
 import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
 import {
@@ -23,8 +28,14 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { Resource } from "sst";
+import { formatDuration, intervalToDuration } from "date-fns";
 
-const sesClient = new SESClient({ region: process.env.AWS_REGION ?? "us-east-1" });
+const sesClient = new SESClient({
+  region: process.env.AWS_REGION ?? "us-east-1",
+});
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 export async function registerUser(data: SignupInput) {
   try {
@@ -61,7 +72,8 @@ export async function logout() {
 export async function deleteAccount(): Promise<{ error?: string }> {
   try {
     const session = await auth();
-    if (!session?.user?.id || !session.user.email) return { error: "Unauthorized" };
+    if (!session?.user?.id || !session.user.email)
+      return { error: "Unauthorized" };
 
     const { id: userId, email } = session.user;
 
@@ -118,7 +130,8 @@ export async function changePasswordAction(
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
-        UpdateExpression: "SET passwordHash = :password, updatedAt = :updatedAt",
+        UpdateExpression:
+          "SET passwordHash = :password, updatedAt = :updatedAt",
         ExpressionAttributeValues: {
           ":password": hashedPassword,
           ":updatedAt": new Date().toISOString(),
@@ -155,8 +168,15 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
       };
     }
 
+    if (!user.emailVerified) {
+      return { error: "unverified" };
+    }
+
     const resetToken = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+    const expiresInLabel = formatDuration(
+      intervalToDuration({ start: 0, end: RESET_TOKEN_TTL_MS }),
+    );
 
     await docClient.send(
       new PutCommand({
@@ -168,6 +188,15 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
           expiresAt: expiresAt.toISOString(),
           createdAt: new Date().toISOString(),
         },
+      }),
+    );
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
+        UpdateExpression: "SET latestResetToken = :token",
+        ExpressionAttributeValues: { ":token": resetToken },
       }),
     );
 
@@ -190,7 +219,7 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
                   <p style="margin: 30px 0;">
                     <a href="${resetLink}" style="background-color: #a8471f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a>
                   </p>
-                  <p><strong>Important:</strong> This link will expire in 15 minutes for security reasons.</p>
+                  <p><strong>Important:</strong> This link will expire in ${expiresInLabel} for security reasons.</p>
                   <p>If you did not request this password reset, please ignore this email.</p>
                 </div>
               `,
@@ -202,23 +231,22 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
       );
     } catch (emailError) {
       console.error("Failed to send email:", emailError);
-      if (process.env.NODE_ENV !== "production") {
-        return { success: true, resetLink };
-      }
       return { error: "Failed to dispatch email." };
     }
 
-    return {
-      success: true,
-      resetLink: process.env.NODE_ENV !== "production" ? resetLink : undefined,
-    };
+    return { success: true };
   } catch (error) {
     console.error("Forgot password error:", error);
     return { error: "Internal server error" };
   }
 }
 
-export async function validateResetTokenAction(token: string) {
+export async function validateResetTokenAction(token: string): Promise<{
+  success?: true;
+  error?: string;
+  reason?: "invalid" | "expired" | "superseded";
+  email?: string;
+}> {
   try {
     const tokensToTry = [...new Set([token, decodeURIComponent(token)])];
 
@@ -231,12 +259,44 @@ export async function validateResetTokenAction(token: string) {
       );
 
       if (resetToken) {
-        const expiresAt = new Date(resetToken.expiresAt);
-        if (expiresAt < new Date()) return { error: "Reset token has expired" };
+        const email = resetToken.email as string;
+        const expiresAt = new Date(resetToken.expiresAt as string);
+        if (expiresAt < new Date()) {
+          await docClient.send(
+            new DeleteCommand({
+              TableName: TABLE_NAME,
+              Key: { pk: `RESET#${tokenToTry}`, sk: `RESET#${tokenToTry}` },
+            }),
+          );
+          return {
+            error: "Reset token has expired.",
+            reason: "expired",
+            email,
+          };
+        }
+
+        const { Item: user } = await docClient.send(
+          new GetCommand({
+            TableName: TABLE_NAME,
+            Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
+          }),
+        );
+
+        if (!user) return { error: "Account not found.", reason: "invalid" };
+
+        if (user.latestResetToken !== tokenToTry) {
+          return {
+            error:
+              "This reset link has been superseded. Please use the most recent email.",
+            reason: "superseded",
+            email,
+          };
+        }
+
         return { success: true };
       }
     }
-    return { error: "Invalid reset token" };
+    return { error: "Invalid or expired reset token.", reason: "invalid" };
   } catch (error) {
     console.error("Token validation error:", error);
     return { error: "Internal server error" };
@@ -251,32 +311,69 @@ export async function resetPasswordAction(
     const parsed = resetPasswordSchema.safeParse(data);
     if (!parsed.success) return { error: "Invalid input data" };
 
-    const decodedToken = decodeURIComponent(token);
+    const tokensToTry = [...new Set([token, decodeURIComponent(token)])];
+    let resolvedToken: string | null = null;
+    let resetToken: Record<string, unknown> | undefined;
 
-    const { Item: resetToken } = await docClient.send(
+    for (const tokenToTry of tokensToTry) {
+      const { Item } = await docClient.send(
+        new GetCommand({
+          TableName: TABLE_NAME,
+          Key: { pk: `RESET#${tokenToTry}`, sk: `RESET#${tokenToTry}` },
+        }),
+      );
+      if (Item) {
+        resolvedToken = tokenToTry;
+        resetToken = Item as Record<string, unknown>;
+        break;
+      }
+    }
+
+    if (!resetToken || !resolvedToken)
+      return { error: "Invalid or expired reset token" };
+
+    if (new Date(resetToken.expiresAt as string) < new Date()) {
+      await docClient.send(
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            pk: `RESET#${resolvedToken}`,
+            sk: `RESET#${resolvedToken}`,
+          },
+        }),
+      );
+      return { error: "Reset token has expired" };
+    }
+
+    const email = resetToken.email as string;
+
+    const { Item: user } = await docClient.send(
       new GetCommand({
         TableName: TABLE_NAME,
-        Key: { pk: `RESET#${decodedToken}`, sk: `RESET#${decodedToken}` },
+        Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
       }),
     );
 
-    if (!resetToken) return { error: "Invalid or expired reset token" };
-    if (new Date(resetToken.expiresAt) < new Date())
-      return { error: "Reset token has expired" };
+    if (!user) return { error: "Account not found." };
+
+    if (user.latestResetToken !== resolvedToken) {
+      return {
+        error:
+          "This reset link has been superseded. Please use the most recent email.",
+      };
+    }
 
     const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
-    const email = resetToken.email;
 
     await docClient.send(
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
         UpdateExpression:
-          "SET passwordHash = :password, updatedAt = :updatedAt, emailVerified = :verified",
+          "SET passwordHash = :password, updatedAt = :updatedAt REMOVE latestResetToken",
         ExpressionAttributeValues: {
           ":password": hashedPassword,
           ":updatedAt": new Date().toISOString(),
-          ":verified": true,
         },
       }),
     );
@@ -284,7 +381,10 @@ export async function resetPasswordAction(
     await docClient.send(
       new DeleteCommand({
         TableName: TABLE_NAME,
-        Key: { pk: `RESET#${decodedToken}`, sk: `RESET#${decodedToken}` },
+        Key: {
+          pk: `RESET#${resolvedToken}`,
+          sk: `RESET#${resolvedToken}`,
+        },
       }),
     );
 
@@ -297,10 +397,13 @@ export async function resetPasswordAction(
 
 export async function sendVerificationEmail(
   email: string,
-): Promise<{ success?: true; verifyLink?: string; error?: string }> {
+): Promise<{ success?: true; error?: string }> {
   try {
     const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + VERIFY_TOKEN_TTL_MS);
+    const expiresInLabel = formatDuration(
+      intervalToDuration({ start: 0, end: VERIFY_TOKEN_TTL_MS }),
+    );
     const baseUrl =
       process.env.AUTH_URL ||
       process.env.NEXTAUTH_URL ||
@@ -317,6 +420,16 @@ export async function sendVerificationEmail(
           expiresAt: expiresAt.toISOString(),
           createdAt: new Date().toISOString(),
         },
+      }),
+    );
+
+    // Store the latest token on the user profile so old links are invalidated on resend
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
+        UpdateExpression: "SET latestVerifyToken = :token",
+        ExpressionAttributeValues: { ":token": token },
       }),
     );
 
@@ -340,7 +453,7 @@ export async function sendVerificationEmail(
                   <p style="margin: 30px 0;">
                     <a href="${verifyLink}" style="background-color: #a8471f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Verify Email Address</a>
                   </p>
-                  <p><strong>This link expires in 24 hours.</strong></p>
+                  <p><strong>This link expires in ${expiresInLabel}.</strong></p>
                   <p>If you did not create a Budgify account, you can safely ignore this email.</p>
                 </div>
               `,
@@ -352,17 +465,10 @@ export async function sendVerificationEmail(
       );
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError);
-      if (process.env.NODE_ENV !== "production") {
-        return { success: true, verifyLink };
-      }
       return { error: "Failed to send verification email. Please try again." };
     }
 
-    return {
-      success: true,
-      verifyLink:
-        process.env.NODE_ENV !== "production" ? verifyLink : undefined,
-    };
+    return { success: true };
   } catch (error) {
     console.error("Send verification email error:", error);
     return { error: "Internal server error" };
@@ -390,9 +496,12 @@ export async function resendVerificationEmail(
   }
 }
 
-export async function verifyEmailToken(
-  token: string,
-): Promise<{ success?: true; error?: string }> {
+export async function verifyEmailToken(token: string): Promise<{
+  success?: true;
+  error?: string;
+  reason?: "invalid" | "expired" | "superseded";
+  email?: string;
+}> {
   try {
     const { Item } = await docClient.send(
       new GetCommand({
@@ -401,19 +510,48 @@ export async function verifyEmailToken(
       }),
     );
 
-    if (!Item) return { error: "Invalid verification link." };
-    if (new Date(Item.expiresAt) < new Date())
+    if (!Item)
       return {
-        error: "Verification link has expired. Please request a new one.",
+        error:
+          "Verification link not found. It may have expired or already been used.",
+        reason: "invalid",
       };
 
     const email = Item.email as string;
+
+    if (new Date(Item.expiresAt) < new Date()) {
+      return {
+        error: "Verification link has expired. Please request a new one.",
+        reason: "expired",
+        email,
+      };
+    }
+
+    // Reject stale links — only the most recently issued token is valid
+    const { Item: user } = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
+      }),
+    );
+
+    if (!user) return { error: "Account not found.", email };
+
+    if (user.latestVerifyToken !== token) {
+      return {
+        error:
+          "This verification link has been superseded. Please use the most recent email.",
+        reason: "superseded",
+        email,
+      };
+    }
 
     await docClient.send(
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
-        UpdateExpression: "SET emailVerified = :verified, updatedAt = :now",
+        UpdateExpression:
+          "SET emailVerified = :verified, updatedAt = :now REMOVE latestVerifyToken",
         ExpressionAttributeValues: {
           ":verified": true,
           ":now": new Date().toISOString(),

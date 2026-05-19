@@ -18,6 +18,10 @@ export default async function VerifyEmailPage({
     redirect("/signin?verified=true");
   }
 
+  if (result.reason === "invalid") {
+    redirect("/signin?verified=true");
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md px-4">
@@ -45,37 +49,36 @@ export default async function VerifyEmailPage({
           </div>
 
           <Card className="border-border bg-card shadow-xl">
-            <CardHeader className="space-y-1 text-center pt-8 pb-4">
-              <div className="flex justify-center mb-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 border border-destructive/20">
-                  <XCircle className="h-7 w-7 text-destructive" />
+              <CardHeader className="space-y-1 text-center pt-8 pb-4">
+                <div className="flex justify-center mb-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 border border-destructive/20">
+                    <XCircle className="h-7 w-7 text-destructive" />
+                  </div>
                 </div>
-              </div>
-              <CardTitle className="text-2xl font-bold text-foreground">
-                Verification failed
-              </CardTitle>
-              <CardDescription className="text-muted-foreground text-sm leading-relaxed">
-                {result.error ??
-                  "This verification link is invalid or has already been used."}
-              </CardDescription>
-            </CardHeader>
+                <CardTitle className="text-2xl font-bold text-foreground">
+                  Verification failed
+                </CardTitle>
+                <CardDescription className="text-muted-foreground text-sm leading-relaxed">
+                  {result.error ?? "This verification link is invalid or has already been used."}
+                </CardDescription>
+              </CardHeader>
 
-            <CardContent className="flex flex-col gap-3 pb-8">
-              <Link href="/check-email">
-                <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-5">
-                  Request a new verification email
-                </Button>
-              </Link>
-              <Link href="/signin">
-                <Button
-                  variant="outline"
-                  className="w-full border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                >
-                  Back to sign in
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+              <CardContent className="flex flex-col gap-3 pb-8">
+                <Link href={result.email ? `/check-email?email=${encodeURIComponent(result.email)}` : "/check-email"}>
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-5">
+                    Request a new verification email
+                  </Button>
+                </Link>
+                <Link href="/signin">
+                  <Button
+                    variant="outline"
+                    className="w-full border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                  >
+                    Back to sign in
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
         </FadeIn>
       </div>
     </div>
