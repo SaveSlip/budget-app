@@ -179,12 +179,20 @@ function ForgotPasswordContent() {
                 </div>
               </CardContent>
               <CardFooter className="text-center flex justify-center">
-                <Link
-                  href="/signin"
-                  className="text-primary hover:underline text-sm"
-                >
-                  ← Back to sign in
-                </Link>
+                <div className="flex flex-col items-center gap-2">
+                  <Link
+                    href="/signin"
+                    className="text-primary hover:underline text-sm"
+                  >
+                    ← Back to sign in
+                  </Link>
+                  <span className="text-muted-foreground text-sm">
+                    Don&apos;t have an account?{" "}
+                    <Link href="/signup" className="text-primary hover:underline">
+                      Sign up
+                    </Link>
+                  </span>
+                </div>
               </CardFooter>
             </Card>
           </FadeIn>

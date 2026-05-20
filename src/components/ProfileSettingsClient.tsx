@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -115,6 +115,8 @@ export function ProfileSettingsClient({
     if (result?.error) {
       setDeleteError(result.error);
       setIsDeleting(false);
+    } else {
+      await signOut({ callbackUrl: "/signin" });
     }
   };
 

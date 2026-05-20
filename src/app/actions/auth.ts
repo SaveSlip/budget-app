@@ -88,7 +88,7 @@ export async function logout() {
   redirect("/signin");
 }
 
-export async function deleteAccount(): Promise<{ error?: string }> {
+export async function deleteAccount(): Promise<{ error?: string; success?: boolean }> {
   try {
     const session = await auth();
     if (!session?.user?.id || !session.user.email)
@@ -97,6 +97,26 @@ export async function deleteAccount(): Promise<{ error?: string }> {
     const { id: userId, email } = session.user;
 
     await deletePartition(`USER#${userId}`);
+
+    const { Item: profile } = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { pk: `USER#${email}`, sk: `PROFILE#${email}` },
+      }),
+    );
+
+    if (profile?.latestVerifyToken) {
+      await docClient.send(
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            pk: `VERIFY#${profile.latestVerifyToken}`,
+            sk: `VERIFY#${profile.latestVerifyToken}`,
+          },
+        }),
+      );
+    }
+
     await docClient.send(
       new DeleteCommand({
         TableName: TABLE_NAME,
@@ -105,12 +125,11 @@ export async function deleteAccount(): Promise<{ error?: string }> {
     );
 
     await signOut({ redirect: false });
+    return { success: true };
   } catch (error) {
     console.error("Delete account error:", error);
     return { error: "Failed to delete account. Please try again." };
   }
-
-  redirect("/signin");
 }
 
 export async function changePasswordAction(
@@ -540,6 +559,12 @@ export async function verifyEmailToken(token: string): Promise<{
     const email = Item.email as string;
 
     if (new Date(Item.expiresAt) < new Date()) {
+      await docClient.send(
+        new DeleteCommand({
+          TableName: TABLE_NAME,
+          Key: { pk: `VERIFY#${token}`, sk: `VERIFY#${token}` },
+        }),
+      );
       return {
         error: "Verification link has expired. Please request a new one.",
         reason: "expired",
