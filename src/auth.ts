@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { Resource } from "sst";
 import bcrypt from "bcryptjs";
 
@@ -10,6 +10,54 @@ const docClient = DynamoDBDocumentClient.from(client);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
+    Credentials({
+      id: "autologin",
+      credentials: { token: { type: "text" } },
+      async authorize(credentials) {
+        if (typeof credentials.token !== "string") return null;
+        const token = credentials.token;
+
+        try {
+          const { Item } = await docClient.send(
+            new GetCommand({
+              TableName: Resource.BudgifyTable.name,
+              Key: { pk: `AUTOLOGIN#${token}`, sk: `AUTOLOGIN#${token}` },
+            }),
+          );
+
+          if (!Item) return null;
+          if (new Date(Item.expiresAt) < new Date()) return null;
+
+          await docClient.send(
+            new DeleteCommand({
+              TableName: Resource.BudgifyTable.name,
+              Key: { pk: `AUTOLOGIN#${token}`, sk: `AUTOLOGIN#${token}` },
+            }),
+          );
+
+          const { Item: user } = await docClient.send(
+            new GetCommand({
+              TableName: Resource.BudgifyTable.name,
+              Key: {
+                pk: `USER#${Item.email}`,
+                sk: `PROFILE#${Item.email}`,
+              },
+            }),
+          );
+
+          if (!user) return null;
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: (user.name as string) || null,
+          };
+        } catch (error) {
+          console.error("Auto-login authorize error:", error);
+          return null;
+        }
+      },
+    }),
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },

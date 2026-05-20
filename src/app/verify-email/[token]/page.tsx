@@ -1,10 +1,10 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FadeIn } from "@/components/FadeIn";
 import { verifyEmailToken } from "@/app/actions/auth";
+import { VerifyEmailClient } from "./VerifyEmailClient";
 
 export default async function VerifyEmailPage({
   params,
@@ -14,12 +14,12 @@ export default async function VerifyEmailPage({
   const { token } = await params;
   const result = await verifyEmailToken(token);
 
-  if (result.success) {
-    redirect("/signin?verified=true");
+  if (result.success && result.autoLoginToken) {
+    return <VerifyEmailClient autoLoginToken={result.autoLoginToken} />;
   }
 
   if (result.reason === "invalid") {
-    redirect("/signin?verified=true");
+    return <VerifyEmailClient autoLoginToken={null} />;
   }
 
   return (

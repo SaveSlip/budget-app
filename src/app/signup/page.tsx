@@ -6,7 +6,11 @@ import { Lock, Mail, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signupSchema, type SignupInput } from "@/lib/validations/auth";
-import { registerUser, sendVerificationEmail } from "@/app/actions/auth";
+import {
+  registerUser,
+  sendVerificationEmail,
+  resendVerificationEmail,
+} from "@/app/actions/auth";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Suspense } from "react";
 
@@ -24,6 +28,11 @@ import { FadeIn } from "@/components/FadeIn";
 function SignupContent() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendStatus, setResendStatus] = useState<
+    "idle" | "sending" | "sent" | "error"
+  >("idle");
+  const [pendingEmail, setPendingEmail] = useState("");
 
   const {
     register,
@@ -34,8 +43,20 @@ function SignupContent() {
     defaultValues: { email: "", password: "", confirmPassword: "" },
   });
 
+  const handleResend = async () => {
+    setResendStatus("sending");
+    const result = await resendVerificationEmail(pendingEmail);
+    if (result.error) {
+      setResendStatus("error");
+    } else {
+      setResendStatus("sent");
+    }
+  };
+
   const onSubmit = async (data: SignupInput) => {
     setServerError(null);
+    setNeedsVerification(false);
+    setResendStatus("idle");
 
     const parsed = signupSchema.safeParse(data);
     if (!parsed.success) {
@@ -50,6 +71,10 @@ function SignupContent() {
 
     if (response.error) {
       setServerError(response.error);
+      if (response.needsVerification) {
+        setNeedsVerification(true);
+        setPendingEmail(parsed.data.email);
+      }
       return;
     }
 
@@ -98,8 +123,31 @@ function SignupContent() {
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {serverError && (
-                  <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md text-center font-medium">
-                    {serverError}
+                  <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md text-center font-medium space-y-2">
+                    <p>{serverError}</p>
+                    {needsVerification && (
+                      resendStatus === "sent" ? (
+                        <p className="text-xs text-green-500 font-normal">
+                          Verification email sent! Check your inbox.
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResend}
+                          disabled={resendStatus === "sending"}
+                          className="text-xs text-primary underline hover:text-primary/80 font-normal disabled:opacity-50"
+                        >
+                          {resendStatus === "sending"
+                            ? "Sending..."
+                            : "Resend verification email"}
+                        </button>
+                      )
+                    )}
+                    {resendStatus === "error" && (
+                      <p className="text-xs text-destructive font-normal">
+                        Failed to resend. Try again.
+                      </p>
+                    )}
                   </div>
                 )}
 

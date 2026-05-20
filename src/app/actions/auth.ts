@@ -37,7 +37,9 @@ const sesClient = new SESClient({
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
-export async function registerUser(data: SignupInput) {
+export async function registerUser(
+  data: SignupInput,
+): Promise<{ success?: true; error?: string; needsVerification?: true }> {
   try {
     const parsed = signupSchema.safeParse(data);
     if (!parsed.success) {
@@ -54,6 +56,23 @@ export async function registerUser(data: SignupInput) {
     });
 
     if (dbResult.error) {
+      // Check if the existing account is unverified so we can offer resend
+      const { Item: existing } = await docClient.send(
+        new GetCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            pk: `USER#${parsed.data.email}`,
+            sk: `PROFILE#${parsed.data.email}`,
+          },
+        }),
+      );
+      if (existing && !existing.emailVerified) {
+        return {
+          error:
+            "An account with this email already exists but hasn't been verified yet.",
+          needsVerification: true,
+        };
+      }
       return { error: dbResult.error };
     }
 
@@ -498,6 +517,7 @@ export async function resendVerificationEmail(
 
 export async function verifyEmailToken(token: string): Promise<{
   success?: true;
+  autoLoginToken?: string;
   error?: string;
   reason?: "invalid" | "expired" | "superseded";
   email?: string;
@@ -566,7 +586,20 @@ export async function verifyEmailToken(token: string): Promise<{
       }),
     );
 
-    return { success: true };
+    const autoLoginToken = crypto.randomUUID();
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          pk: `AUTOLOGIN#${autoLoginToken}`,
+          sk: `AUTOLOGIN#${autoLoginToken}`,
+          email,
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        },
+      }),
+    );
+
+    return { success: true, autoLoginToken };
   } catch (error) {
     console.error("Verify email token error:", error);
     return { error: "Internal server error" };
