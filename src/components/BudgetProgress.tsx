@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { deleteCategory, updateCategory, updateUniversalCategoryLimit } from "@/app/actions/categories";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface BudgetProgressProps {
   spent: number;
@@ -124,15 +130,29 @@ export function BudgetProgress({
       <div className="absolute top-2 right-2">
         {isUniversal ? (
           <>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-muted-foreground/40 hover:text-foreground"
-              disabled={isPending}
-              onClick={handleUniversalEditOpen}
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
+            <div className="flex items-center gap-0.5">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center justify-center h-6 w-6 text-muted-foreground/40 cursor-default">
+                      <Lock className="h-3 w-3" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    Universal categories can&apos;t be deleted
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground/40 hover:text-foreground"
+                disabled={isPending}
+                onClick={handleUniversalEditOpen}
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+            </div>
             <Dialog open={universalEditOpen} onOpenChange={setUniversalEditOpen}>
               <DialogContent className="sm:max-w-90">
                 <DialogHeader>

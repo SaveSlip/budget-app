@@ -131,22 +131,36 @@ export async function listCategories() {
       ),
     ]);
 
-    const customCategories = (Items ?? []) as Array<{ id: string; name: string; limit: number; type: string; createdAt: string }>;
+    const customCategories = (Items ?? []) as Array<{ id: string; name: string; limit: number; type: string; createdAt: string; categoryType?: "INCOME" | "EXPENSE" }>;
     const universalLimitOverrides = new Map<string, number>(
       (limitItems ?? []).map((item) => [item.id as string, item.limit as number])
     );
 
-    const universalCategories = UNIVERSAL_CATEGORIES.map((uc) => ({
+    const universalExpenseCategories = UNIVERSAL_CATEGORIES.map((uc) => ({
       id: uc.id,
       name: uc.name,
       limit: universalLimitOverrides.get(uc.id) ?? 0,
       type: "CATEGORY",
       createdAt: "",
       isUniversal: true,
+      categoryType: "EXPENSE" as const,
+    }));
+
+    const universalIncomeCategories = UNIVERSAL_INCOME_CATEGORIES.map((uc) => ({
+      id: uc.id,
+      name: uc.name,
+      limit: 0,
+      type: "CATEGORY",
+      createdAt: "",
+      isUniversal: true,
+      categoryType: "INCOME" as const,
     }));
 
     // Merge: universal categories first, then custom (skip any custom whose name matches a universal)
-    const universalNames = new Set(UNIVERSAL_CATEGORIES.map((uc) => uc.name.toLowerCase()));
+    const universalNames = new Set([
+      ...UNIVERSAL_CATEGORIES.map((uc) => uc.name.toLowerCase()),
+      ...UNIVERSAL_INCOME_CATEGORIES.map((uc) => uc.name.toLowerCase()),
+    ]);
     const filteredCustom = customCategories.filter(
       (c) => !universalNames.has(c.name.toLowerCase())
     );
@@ -154,8 +168,9 @@ export async function listCategories() {
     return {
       success: true,
       categories: [
-        ...universalCategories,
-        ...filteredCustom.map((c) => ({ ...c, isUniversal: false })),
+        ...universalExpenseCategories,
+        ...universalIncomeCategories,
+        ...filteredCustom.map((c) => ({ ...c, isUniversal: false, categoryType: (c.categoryType ?? "EXPENSE") as "INCOME" | "EXPENSE" })),
       ],
     };
   } catch (error) {

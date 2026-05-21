@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { DataTable } from "@/app/dashboard/transactions/data-table";
-import { columns } from "@/app/dashboard/transactions/columns";
+import { getColumns } from "@/app/dashboard/transactions/columns";
 import { RecurringList } from "@/components/RecurringList";
 import { RecurringTransactionForm } from "@/components/RecurringTransactionForm";
 import type { Transaction } from "@/app/dashboard/transactions/columns";
@@ -49,7 +49,7 @@ export function TransactionsTabView({ transactions, recurring, categories, accou
 
       <CardContent className="pt-6">
         {activeTab === "ledger" ? (
-          <DataTable columns={columns} data={transactions} embedded />
+          <DataTable columns={getColumns(categories, accounts)} data={transactions} embedded />
         ) : (
           <div className="space-y-8">
             {recurring.length > 0 && (

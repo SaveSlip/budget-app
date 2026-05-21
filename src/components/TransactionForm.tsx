@@ -70,7 +70,7 @@ export default function TransactionForm({
         <div className="flex rounded-md border border-border overflow-hidden">
           <button
             type="button"
-            onClick={() => setFormData({ ...formData, transactionType: "EXPENSE" })}
+            onClick={() => setFormData({ ...formData, transactionType: "EXPENSE", category: "" })}
             className={`flex-1 py-2 text-sm font-medium transition-colors ${
               formData.transactionType === "EXPENSE"
                 ? "bg-primary/15 text-primary"
@@ -81,7 +81,7 @@ export default function TransactionForm({
           </button>
           <button
             type="button"
-            onClick={() => setFormData({ ...formData, transactionType: "INCOME" })}
+            onClick={() => setFormData({ ...formData, transactionType: "INCOME", category: "" })}
             className={`flex-1 py-2 text-sm font-medium transition-colors ${
               formData.transactionType === "INCOME"
                 ? "bg-success/15 text-success"
@@ -161,15 +161,20 @@ export default function TransactionForm({
           <option value="" disabled>
             Select a category...
           </option>
-          {categories.length === 0 ? (
-            <option disabled>No categories yet — add one above</option>
-          ) : (
-            categories.map((cat) => (
-              <option key={cat.id} value={cat.name}>
-                {cat.name}
-              </option>
-            ))
-          )}
+          {(() => {
+            const visibleCategories = categories.filter(
+              (c) => !c.categoryType || c.categoryType === formData.transactionType
+            );
+            return visibleCategories.length === 0 ? (
+              <option disabled>No categories yet — add one above</option>
+            ) : (
+              visibleCategories.map((cat) => (
+                <option key={cat.id} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))
+            );
+          })()}
         </select>
       </div>
 

@@ -8,14 +8,16 @@ import {
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Transaction } from "@/lib/data/budget";
+import type { Transaction, Category, Account } from "@/lib/data/budget";
 import { TransactionActions } from "@/components/TransactionActions";
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
+  categories?: Category[];
+  accounts?: Account[];
 }
 
-export function RecentTransactions({ transactions }: RecentTransactionsProps) {
+export function RecentTransactions({ transactions, categories = [], accounts = [] }: RecentTransactionsProps) {
   return (
     <div className="rounded-md border border-border">
       <Table>
@@ -75,7 +77,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                   })}
                 </TableCell>
                 <TableCell className="text-right">
-                  <TransactionActions transaction={tx as any} />
+                  <TransactionActions transaction={tx as any} initialCategories={categories} initialAccounts={accounts} />
                 </TableCell>
               </TableRow>
             ))

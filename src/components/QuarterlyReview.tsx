@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateCategoryLimit } from "@/app/actions/categories";
+import { updateCategoryLimit, updateUniversalCategoryLimit } from "@/app/actions/categories";
 import { cn } from "@/lib/utils";
 import type { CategoryReviewSuggestion } from "@/lib/data/budget";
 
@@ -20,7 +20,9 @@ export function QuarterlyReview({ suggestions }: QuarterlyReviewProps) {
   const handleApply = (suggestion: CategoryReviewSuggestion) => {
     setApplyError(null);
     startTransition(async () => {
-      const result = await updateCategoryLimit(suggestion.categoryId, suggestion.suggestedLimit);
+      const result = suggestion.isUniversal
+        ? await updateUniversalCategoryLimit(suggestion.categoryId, suggestion.suggestedLimit)
+        : await updateCategoryLimit(suggestion.categoryId, suggestion.suggestedLimit);
       if (result?.error) {
         setApplyError(result.error);
       } else {

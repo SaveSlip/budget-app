@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { MoreHorizontal, Edit, Trash, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,8 +32,6 @@ import {
   updateTransaction,
   deleteTransaction,
 } from "@/app/actions/transactions";
-import { listCategories } from "@/app/actions/categories";
-import { listAccounts } from "@/app/actions/accounts";
 import type { Account, Category } from "@/lib/data/budget";
 
 type Transaction = {
@@ -49,16 +47,15 @@ type Transaction = {
 
 interface TransactionActionsProps {
   transaction: Transaction;
+  initialCategories: Category[];
+  initialAccounts: Account[];
 }
 
-export function TransactionActions({ transaction }: TransactionActionsProps) {
+export function TransactionActions({ transaction, initialCategories, initialAccounts }: TransactionActionsProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
   const [formData, setFormData] = useState({
     description: transaction.description,
@@ -69,34 +66,6 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
     accountId: transaction.accountId ?? "",
   });
 
-  useEffect(() => {
-    setFormData({
-      description: transaction.description,
-      amount: transaction.amount.toString(),
-      date: transaction.date,
-      category: transaction.category,
-      transactionType: (transaction.transactionType ?? "EXPENSE") as "INCOME" | "EXPENSE",
-      accountId: transaction.accountId ?? "",
-    });
-    setCategories([]);
-  }, [transaction.id]);
-
-  useEffect(() => {
-    if (isEditOpen && categories.length === 0) {
-      const fetchData = async () => {
-        setIsLoadingCategories(true);
-        const [catRes, accRes] = await Promise.all([listCategories(), listAccounts()]);
-        if (catRes.success && catRes.categories) {
-          setCategories(catRes.categories as Category[]);
-        }
-        if (accRes.success && accRes.accounts) {
-          setAccounts(accRes.accounts as Account[]);
-        }
-        setIsLoadingCategories(false);
-      };
-      fetchData();
-    }
-  }, [isEditOpen, categories.length]);
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,7 +132,10 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
             <div className="flex rounded-md border border-border overflow-hidden">
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, transactionType: "EXPENSE" })}
+                onClick={() => {
+                  if (formData.transactionType !== "EXPENSE")
+                    setFormData({ ...formData, transactionType: "EXPENSE", category: "" });
+                }}
                 className={`flex-1 py-2 text-sm font-medium transition-colors ${
                   formData.transactionType === "EXPENSE"
                     ? "bg-red-500/15 text-red-500"
@@ -174,7 +146,10 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
               </button>
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, transactionType: "INCOME" })}
+                onClick={() => {
+                  if (formData.transactionType !== "INCOME")
+                    setFormData({ ...formData, transactionType: "INCOME", category: "" });
+                }}
                 className={`flex-1 py-2 text-sm font-medium transition-colors ${
                   formData.transactionType === "INCOME"
                     ? "bg-green-500/15 text-green-500"
@@ -245,23 +220,15 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
                   setFormData({ ...formData, category: e.target.value })
                 }
                 className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
-                disabled={isLoadingCategories}
               >
-                <option value="" disabled>
-                  Select a category...
-                </option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.name}>
-                    {cat.name}
-                  </option>
-                ))}
-                {/* Always include the current category in case it was deleted */}
-                {!categories.find((c) => c.name === formData.category) &&
-                  formData.category && (
-                    <option value={formData.category}>
-                      {formData.category} (Current)
+                <option value="" disabled>Select a category...</option>
+                {initialCategories
+                  .filter((c) => (c.categoryType ?? "EXPENSE") === formData.transactionType)
+                  .map((cat) => (
+                    <option key={cat.id} value={cat.name}>
+                      {cat.name}
                     </option>
-                  )}
+                  ))}
               </select>
             </div>
             <div>
@@ -276,7 +243,7 @@ export function TransactionActions({ transaction }: TransactionActionsProps) {
                 className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
               >
                 <option value="">No account</option>
-                {accounts.map((acc) => (
+                {initialAccounts.map((acc) => (
                   <option key={acc.id} value={acc.id}>
                     {acc.name}
                   </option>

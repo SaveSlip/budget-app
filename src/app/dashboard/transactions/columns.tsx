@@ -7,6 +7,7 @@ import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TransactionActions } from "@/components/TransactionActions";
+import type { Category, Account } from "@/lib/data/budget";
 
 export type Transaction = {
   id: string;
@@ -27,7 +28,8 @@ function HeaderLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const columns: ColumnDef<Transaction>[] = [
+export function getColumns(initialCategories: Category[], initialAccounts: Account[]): ColumnDef<Transaction>[] {
+  return [
   {
     id: "select",
     header: ({ table }) => (
@@ -127,9 +129,10 @@ export const columns: ColumnDef<Transaction>[] = [
       const transaction = row.original;
       return (
         <div className="flex justify-end">
-          <TransactionActions transaction={transaction} />
+          <TransactionActions transaction={transaction} initialCategories={initialCategories} initialAccounts={initialAccounts} />
         </div>
       );
     },
   },
-];
+  ];
+}

@@ -57,7 +57,7 @@ export function DataTable<TData, TValue>({
   data,
   embedded = false,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: "date", desc: true }])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})

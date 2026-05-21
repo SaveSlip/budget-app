@@ -192,6 +192,7 @@ export interface CategoryReviewSuggestion {
   avgMonthlySpend: number;
   suggestedLimit: number;
   action: "increase" | "decrease";
+  isUniversal: boolean;
 }
 
 function getPreviousMonth(month: string): string {
@@ -305,6 +306,7 @@ export async function getQuarterlyReview(
         avgMonthlySpend: Math.round(avg * 100) / 100,
         suggestedLimit,
         action,
+        isUniversal: cat.isUniversal ?? false,
       });
     }
   }
@@ -322,7 +324,11 @@ export async function getTransactionTrend(
 
   try {
     const results = await Promise.all(months.map((m) => getMonthlyData(m)));
-    return results.flat();
+    return results.flat().sort((a, b) => {
+      const dateDiff = b.date.localeCompare(a.date);
+      if (dateDiff !== 0) return dateDiff;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
   } catch (error) {
     console.error("[DAL] Trend fetch failed:", error);
     return [];

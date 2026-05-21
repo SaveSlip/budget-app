@@ -17,7 +17,12 @@ export default async function TransactionsPage() {
     listRecurringTransactions(),
   ]);
 
-  const transactions = (transactionsResponse.transactions || []) as Transaction[];
+  const transactions = ((transactionsResponse.transactions || []) as Transaction[])
+    .sort((a, b) => {
+      const dateDiff = b.date.localeCompare(a.date);
+      if (dateDiff !== 0) return dateDiff;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
 
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 pt-4">
