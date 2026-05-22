@@ -369,8 +369,18 @@ export function DataTable<TData, TValue>({
       </div>
 
       {!exhausted && (
-        <div ref={sentinelRef} className="flex justify-center py-4 min-h-10">
-          {isFetching && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+        <div ref={sentinelRef} className="flex flex-col items-center justify-center py-6 gap-2 min-h-16">
+          {isFetching ? (
+            <div className="animate-fade-in flex flex-col items-center gap-2">
+              <div className="relative flex items-center justify-center">
+                <div className="h-8 w-8 rounded-full border-2 border-muted animate-pulse" />
+                <Loader2 className="h-5 w-5 animate-spin text-primary absolute" />
+              </div>
+              <span className="text-xs text-muted-foreground animate-pulse">Loading more…</span>
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground/50 select-none">↓ scroll for more</span>
+          )}
         </div>
       )}
 
