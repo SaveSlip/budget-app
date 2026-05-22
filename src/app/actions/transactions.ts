@@ -139,6 +139,50 @@ export async function getTransactions(month?: string) {
   }
 }
 
+export async function getTransactionsBatch(
+  cursor?: string,
+  limit: number = 25,
+): Promise<{ transactions: any[]; nextCursor: string | null }> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error("Unauthorized");
+
+  const safeLimit = Math.min(limit, 100);
+  const exclusiveStartKey = cursor
+    ? JSON.parse(Buffer.from(cursor, "base64url").toString())
+    : undefined;
+
+  try {
+    const response = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+        ExpressionAttributeValues: {
+          ":pk": `USER#${userId}`,
+          ":skPrefix": "TX#",
+        },
+        ScanIndexForward: false,
+        Limit: safeLimit,
+        ExclusiveStartKey: exclusiveStartKey,
+      }),
+    );
+
+    const nextCursor = response.LastEvaluatedKey
+      ? Buffer.from(JSON.stringify(response.LastEvaluatedKey)).toString(
+          "base64url",
+        )
+      : null;
+
+    return {
+      transactions: response.Items ?? [],
+      nextCursor,
+    };
+  } catch (error) {
+    console.error("Failed to fetch transaction batch:", error);
+    throw new Error("Failed to retrieve transactions.");
+  }
+}
+
 export async function getAllTransactions() {
   const session = await auth();
   const userId = session?.user?.id;
@@ -225,6 +269,46 @@ export async function batchDeleteTransactions(
   } catch (error) {
     console.error("[DB] Failed to batch delete transactions:", error);
     return { error: "Failed to delete transactions" };
+  }
+}
+
+export async function deleteAllTransactions() {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) return { error: "Unauthorized" }
+
+  try {
+    const allResult = await getAllTransactions()
+    if ("error" in allResult) return { error: allResult.error }
+
+    const items = (allResult.transactions as any[]).map((tx) => ({
+      date: tx.date as string,
+      id: tx.id as string,
+    }))
+
+    if (items.length === 0) return { success: true, count: 0 }
+
+    for (let i = 0; i < items.length; i += 25) {
+      const chunk = items.slice(i, i + 25)
+      await docClient.send(
+        new BatchWriteCommand({
+          RequestItems: {
+            [TABLE_NAME]: chunk.map(({ date, id }) => ({
+              DeleteRequest: {
+                Key: { pk: `USER#${userId}`, sk: `TX#${date}#${id}` },
+              },
+            })),
+          },
+        }),
+      )
+    }
+
+    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/transactions")
+    return { success: true, count: items.length }
+  } catch (error) {
+    console.error("[DB] Failed to delete all transactions:", error)
+    return { error: "Failed to delete all transactions" }
   }
 }
 

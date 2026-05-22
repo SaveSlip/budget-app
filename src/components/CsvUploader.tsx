@@ -53,20 +53,29 @@ export default function CsvUploader() {
                 normalizedRow.memo ||
                 "Imported Transaction";
               const rawAmount = Number(
-                (normalizedRow.amount || normalizedRow.value || "0").replace(
-                  /[^0-9.-]+/g,
-                  "",
-                ),
+                (
+                  normalizedRow.amount ||
+                  normalizedRow.value ||
+                  normalizedRow["cad$"] ||
+                  normalizedRow["usd$"] ||
+                  "0"
+                ).replace(/[^0-9.-]+/g, ""),
               );
               const transactionType: "EXPENSE" | "INCOME" = rawAmount < 0 ? "EXPENSE" : "INCOME";
+
+              const rawDate =
+                normalizedRow.date ||
+                normalizedRow["transaction date"] ||
+                new Date().toISOString().split("T")[0];
+              const dateMatch = rawDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+              const date = dateMatch
+                ? `${dateMatch[3]}-${dateMatch[1]}-${dateMatch[2]}`
+                : rawDate;
 
               return {
                 description,
                 amount: Math.abs(rawAmount),
-                date:
-                  normalizedRow.date ||
-                  normalizedRow["transaction date"] ||
-                  new Date().toISOString().split("T")[0],
+                date,
                 category: normalizedRow.category || "Uncategorized",
                 transactionType,
               };

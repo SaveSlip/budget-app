@@ -9,7 +9,6 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
@@ -35,9 +34,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Download, Loader2, Trash2 } from "lucide-react"
+import { AlertTriangle, Download, Loader2, Trash2 } from "lucide-react"
 import Papa from "papaparse"
-import { batchDeleteTransactions } from "@/app/actions/transactions"
+import { batchDeleteTransactions, deleteAllTransactions, getTransactionsBatch } from "@/app/actions/transactions"
 import {
   Select,
   SelectContent,
@@ -46,65 +45,196 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+const PAGE_SIZE = 25
+const PREFETCH_SIZE = 50
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  initialCursor: string | null
   embedded?: boolean
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  initialCursor,
   embedded = false,
 }: DataTableProps<TData, TValue>) {
+  const [visibleData, setVisibleData] = React.useState<TData[]>(data)
+  // IDs of rows just appended — cleared after one frame so animation fires once
+  const [newRowIds, setNewRowIds] = React.useState<Set<string>>(new Set())
+
+  const bufferRef = React.useRef<TData[]>([])
+  const cursorRef = React.useRef<string | null>(initialCursor)
+  const hasLoadedAllRef = React.useRef(initialCursor === null)
+  const isRevealingRef = React.useRef(false)
+
+  const [isFetching, setIsFetching] = React.useState(false)
+  const [isLoadingAll, setIsLoadingAll] = React.useState(false)
+  const [exhausted, setExhausted] = React.useState(initialCursor === null)
+
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "date", desc: true }])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 10 })
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = React.useState(false)
+  const [isDeletingAll, setIsDeletingAll] = React.useState(false)
   const [monthFilter, setMonthFilter] = React.useState<string>("all")
+
+  const sentinelRef = React.useRef<HTMLDivElement>(null)
+
+  // Reset everything when the server re-renders after a mutation
+  React.useEffect(() => {
+    bufferRef.current = []
+    cursorRef.current = initialCursor
+    hasLoadedAllRef.current = initialCursor === null
+    isRevealingRef.current = false
+    setVisibleData(data)
+    setNewRowIds(new Set())
+    setExhausted(initialCursor === null)
+    setIsFetching(false)
+  }, [data, initialCursor])
+
+  const prefetchIntoBuffer = React.useCallback(async () => {
+    if (isFetching || hasLoadedAllRef.current) return
+    const cursor = cursorRef.current
+    if (!cursor) return
+    setIsFetching(true)
+    try {
+      const result = await getTransactionsBatch(cursor, PREFETCH_SIZE)
+      bufferRef.current = [...bufferRef.current, ...result.transactions as TData[]]
+      cursorRef.current = result.nextCursor
+      if (!result.nextCursor) hasLoadedAllRef.current = true
+    } finally {
+      setIsFetching(false)
+    }
+  }, [isFetching])
+
+  // Kick off first prefetch on mount so buffer is ready before first scroll
+  React.useEffect(() => {
+    if (!exhausted && bufferRef.current.length === 0) {
+      prefetchIntoBuffer()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const revealNextPage = React.useCallback(() => {
+    if (isRevealingRef.current) return
+    if (bufferRef.current.length === 0) {
+      if (hasLoadedAllRef.current) setExhausted(true)
+      return
+    }
+
+    isRevealingRef.current = true
+    const next = bufferRef.current.slice(0, PAGE_SIZE)
+    bufferRef.current = bufferRef.current.slice(PAGE_SIZE)
+
+    const ids = new Set(next.map((row) => (row as { id?: string }).id ?? ""))
+
+    setVisibleData((prev) => [...prev, ...next])
+    setNewRowIds(ids)
+
+    // Clear the animation markers after one frame — prevents re-animation on re-render
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setNewRowIds(new Set())
+        isRevealingRef.current = false
+      })
+    })
+
+    if (hasLoadedAllRef.current && bufferRef.current.length === 0) {
+      setExhausted(true)
+    }
+
+    if (!hasLoadedAllRef.current && bufferRef.current.length < PAGE_SIZE) {
+      prefetchIntoBuffer()
+    }
+  }, [prefetchIntoBuffer])
+
+  // IntersectionObserver: trigger reveal when sentinel enters viewport
+  React.useEffect(() => {
+    const el = sentinelRef.current
+    if (!el || exhausted) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) revealNextPage() },
+      { threshold: 0.1 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [revealNextPage, exhausted])
+
+  // Load all remaining pages at once for search / filter accuracy
+  const loadAllRemaining = React.useCallback(async () => {
+    if (isLoadingAll) return
+    setIsLoadingAll(true)
+    try {
+      const accumulated: TData[] = [...bufferRef.current]
+      bufferRef.current = []
+      let currentCursor = cursorRef.current
+      while (currentCursor) {
+        const result = await getTransactionsBatch(currentCursor, 100)
+        accumulated.push(...result.transactions as TData[])
+        currentCursor = result.nextCursor
+      }
+      cursorRef.current = null
+      hasLoadedAllRef.current = true
+      setVisibleData((prev) => [...prev, ...accumulated])
+      setExhausted(true)
+    } finally {
+      setIsLoadingAll(false)
+    }
+  }, [isLoadingAll])
 
   const availableMonths = React.useMemo(() => {
     const months = new Set<string>()
-    data.forEach((row) => {
+    visibleData.forEach((row) => {
       const d = (row as { date?: string }).date
       if (d && d.length >= 7) months.add(d.slice(0, 7))
     })
     return Array.from(months).sort((a, b) => b.localeCompare(a))
-  }, [data])
+  }, [visibleData])
 
   const filteredData = React.useMemo(() => {
-    if (monthFilter === "all") return data
-    return data.filter((row) => {
+    if (monthFilter === "all") return visibleData
+    return visibleData.filter((row) => {
       const d = (row as { date?: string }).date
       return d?.startsWith(monthFilter)
     })
-  }, [data, monthFilter])
+  }, [visibleData, monthFilter])
 
   const table = useReactTable({
     data: filteredData,
     columns,
     enableRowSelection: true,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
-    onPaginationChange: setPagination,
     onRowSelectionChange: setRowSelection,
     autoResetPageIndex: false,
-    state: {
-      sorting,
-      columnFilters,
-      pagination,
-      rowSelection,
-    },
+    state: { sorting, columnFilters, rowSelection },
   })
+
+  const descriptionFilter = (table.getColumn("description")?.getFilterValue() as string) ?? ""
+  React.useEffect(() => {
+    if ((descriptionFilter || monthFilter !== "all") && !exhausted) {
+      loadAllRemaining()
+    }
+  }, [descriptionFilter, monthFilter, exhausted, loadAllRemaining])
 
   const selectedRows = table.getSelectedRowModel().rows
   const selectedCount = selectedRows.length
+
+  async function handleDeleteAll() {
+    setIsDeletingAll(true)
+    await deleteAllTransactions()
+    setRowSelection({})
+    setIsDeletingAll(false)
+    setShowDeleteAllConfirm(false)
+  }
 
   async function handleBulkDelete() {
     setIsDeleting(true)
@@ -151,10 +281,7 @@ export function DataTable<TData, TValue>({
         />
         <Select
           value={monthFilter}
-          onValueChange={(val) => {
-            setMonthFilter(val)
-            setPagination((p) => ({ ...p, pageIndex: 0 }))
-          }}
+          onValueChange={(val) => setMonthFilter(val)}
         >
           <SelectTrigger className="w-40">
             <SelectValue placeholder="All months" />
@@ -179,11 +306,19 @@ export function DataTable<TData, TValue>({
             Delete {selectedCount} selected
           </Button>
         )}
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => setShowDeleteAllConfirm(true)}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete All
+        </Button>
         <span className="ml-auto text-xs text-muted-foreground">
           {table.getFilteredRowModel().rows.length} record(s)
         </span>
         {embedded && (
-          <Button variant="outline" size="sm" onClick={handleExport}>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={isLoadingAll}>
             <Download className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
@@ -206,15 +341,22 @@ export function DataTable<TData, TValue>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const rowId = (row.original as { id?: string }).id ?? ""
+                return (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className={newRowIds.has(rowId) ? "animate-tx-row-in" : undefined}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                )
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center text-sm text-muted-foreground">
@@ -225,48 +367,22 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end gap-2 pt-4">
-        <span className="text-xs text-muted-foreground mr-auto">
-          Page {pagination.pageIndex + 1} of {table.getPageCount() || 1}
+
+      {!exhausted && (
+        <div ref={sentinelRef} className="flex justify-center py-4 min-h-10">
+          {isFetching && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-2">
+        <span className="text-xs text-muted-foreground">
+          {isLoadingAll
+            ? "Loading all transactions for search…"
+            : exhausted
+            ? `${table.getFilteredRowModel().rows.length} record(s)`
+            : `${visibleData.length} loaded — scroll for more`}
         </span>
-        <span className="text-xs text-muted-foreground">Rows per page</span>
-        <Select
-          value={pagination.pageSize === Number.MAX_SAFE_INTEGER ? "all" : String(pagination.pageSize)}
-          onValueChange={(val) => {
-            const size = val === "all" ? Number.MAX_SAFE_INTEGER : Number(val)
-            setPagination({ pageIndex: 0, pageSize: size })
-          }}
-        >
-          <SelectTrigger className="w-24">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {[10, 25, 50, 100].map((n) => (
-              <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-            ))}
-            <SelectItem value="all">All</SelectItem>
-          </SelectContent>
-        </Select>
-        {pagination.pageSize !== Number.MAX_SAFE_INTEGER && (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              Next
-            </Button>
-          </>
-        )}
+        {isLoadingAll && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       </div>
     </>
   )
@@ -279,7 +395,7 @@ export function DataTable<TData, TValue>({
         <Card className="border-border bg-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-foreground">Transactions</CardTitle>
-            <Button variant="outline" size="sm" onClick={handleExport}>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={isLoadingAll}>
               <Download className="mr-2 h-4 w-4" />
               Export CSV
             </Button>
@@ -287,6 +403,45 @@ export function DataTable<TData, TValue>({
           <CardContent>{tableContent}</CardContent>
         </Card>
       )}
+
+      <AlertDialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2 text-destructive mb-1">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <span className="text-sm font-semibold uppercase tracking-wide">Warning</span>
+            </div>
+            <AlertDialogTitle className="text-xl">Delete all transactions?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 pt-1">
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  This action is <strong>permanent and irreversible.</strong> Every transaction in your account will be deleted from the database — including records not currently visible on screen.
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Your account balance history, spending trends, and all categorized entries will be lost. There is no way to recover this data after deletion.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-2">
+            <AlertDialogCancel disabled={isDeletingAll}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAll}
+              disabled={isDeletingAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingAll ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Yes, delete everything"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>

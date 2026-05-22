@@ -14,12 +14,13 @@ type Tab = "ledger" | "recurring";
 
 interface Props {
   transactions: Transaction[];
+  initialCursor: string | null;
   recurring: RecurringTransaction[];
   categories: Category[];
   accounts: Account[];
 }
 
-export function TransactionsTabView({ transactions, recurring, categories, accounts }: Props) {
+export function TransactionsTabView({ transactions, initialCursor, recurring, categories, accounts }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("ledger");
 
   return (
@@ -49,7 +50,7 @@ export function TransactionsTabView({ transactions, recurring, categories, accou
 
       <CardContent className="pt-6">
         {activeTab === "ledger" ? (
-          <DataTable columns={getColumns(categories, accounts)} data={transactions} embedded />
+          <DataTable columns={getColumns(categories, accounts)} data={transactions} initialCursor={initialCursor} embedded />
         ) : (
           <div className="space-y-8">
             {recurring.length > 0 && (
