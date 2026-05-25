@@ -44,6 +44,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { TransactionActions } from "@/components/TransactionActions"
+import type { Category, Account } from "@/lib/data/budget"
 
 const PAGE_SIZE = 25
 const PREFETCH_SIZE = 50
@@ -53,6 +56,8 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   initialCursor: string | null
   embedded?: boolean
+  initialCategories?: Category[]
+  initialAccounts?: Account[]
 }
 
 export function DataTable<TData, TValue>({
@@ -60,6 +65,8 @@ export function DataTable<TData, TValue>({
   data,
   initialCursor,
   embedded = false,
+  initialCategories = [],
+  initialAccounts = [],
 }: DataTableProps<TData, TValue>) {
   const [visibleData, setVisibleData] = React.useState<TData[]>(data)
   // IDs of rows just appended — cleared after one frame so animation fires once
@@ -270,62 +277,86 @@ export function DataTable<TData, TValue>({
 
   const tableContent = (
     <>
-      <div className="flex items-center gap-2 pb-4">
-        <Input
-          placeholder="Filter descriptions..."
-          value={(table.getColumn("description")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("description")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
-        <Select
-          value={monthFilter}
-          onValueChange={(val) => setMonthFilter(val)}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="All months" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All months</SelectItem>
-            {availableMonths.map((m) => (
-              <SelectItem key={m} value={m}>
-                {new Date(m + "-02").toLocaleString("default", { month: "long", year: "numeric" })}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {selectedCount > 0 && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setShowDeleteConfirm(true)}
-            className="ml-2"
+      <div className="flex flex-col gap-2 pb-4 lg:flex-row lg:items-center lg:gap-x-3">
+        {/* Filters — top row / left on desktop */}
+        <div className="flex items-center gap-2 lg:flex-1">
+          <Input
+            placeholder="Filter descriptions..."
+            value={(table.getColumn("description")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              table.getColumn("description")?.setFilterValue(event.target.value)
+            }
+            className="flex-1 min-w-0"
+          />
+          <Select
+            value={monthFilter}
+            onValueChange={(val) => setMonthFilter(val)}
           >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete {selectedCount} selected
-          </Button>
+            <SelectTrigger className="w-28 sm:w-36 shrink-0">
+              <SelectValue placeholder="All months" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All months</SelectItem>
+              {availableMonths.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {new Date(m + "-02").toLocaleString("default", { month: "long", year: "numeric" })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Delete Selected — own right-aligned row on mobile/tablet only */}
+        {selectedCount > 0 && (
+          <div className="flex justify-end lg:hidden">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-destructive text-destructive hover:bg-destructive/10"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              Delete Selected ({selectedCount})
+            </Button>
+          </div>
         )}
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => setShowDeleteAllConfirm(true)}
-        >
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete All
-        </Button>
-        <span className="ml-auto text-xs text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} record(s)
-        </span>
-        {embedded && (
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={isLoadingAll}>
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
+
+        {/* Record count + actions — bottom row / right on desktop */}
+        <div className="flex items-center gap-2 justify-end">
+          {selectedCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden lg:flex border-destructive text-destructive hover:bg-destructive/10"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              Delete Selected ({selectedCount})
+            </Button>
+          )}
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {table.getFilteredRowModel().rows.length} record(s)
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-destructive text-destructive hover:bg-destructive/10"
+            onClick={() => setShowDeleteAllConfirm(true)}
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+            Delete All
           </Button>
-        )}
+          {embedded && (
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={isLoadingAll}>
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              <span className="hidden sm:inline">Export CSV</span>
+            </Button>
+          )}
+        </div>
       </div>
       <div className="rounded-md border border-border">
-        <Table>
+        {/* Desktop table */}
+        <Table className="hidden md:table">
           <TableHeader className="bg-muted/50">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent border-border">
@@ -366,6 +397,68 @@ export function DataTable<TData, TValue>({
             )}
           </TableBody>
         </Table>
+
+        {/* Mobile stacked list */}
+        <div className="md:hidden flex items-center gap-3 px-4 py-2 bg-muted/50 border-b border-border text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-border cursor-pointer accent-primary shrink-0"
+            checked={table.getIsAllPageRowsSelected()}
+            ref={(el) => { if (el) el.indeterminate = table.getIsSomePageRowsSelected() }}
+            onChange={table.getToggleAllPageRowsSelectedHandler()}
+            aria-label="Select all"
+          />
+          <div className="flex-1 min-w-0">Description</div>
+          <div className="shrink-0 text-right">Amount</div>
+        </div>
+        <div className="md:hidden divide-y divide-border">
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => {
+              const tx = row.original as { id: string; date: string; description: string; category: string; amount: number; transactionType?: "INCOME" | "EXPENSE"; createdAt: string; accountId?: string }
+              const rowId = tx.id
+              const isIncome = tx.transactionType === "INCOME"
+              const amount = Math.abs(tx.amount)
+              const formatted = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount)
+              const date = new Date(tx.date).toLocaleDateString("en-US", { timeZone: "UTC" })
+              return (
+                <div
+                  key={row.id}
+                  className={`flex items-start gap-3 px-4 py-3 ${newRowIds.has(rowId) ? "animate-tx-row-in" : ""} ${row.getIsSelected() ? "bg-muted/50" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-border cursor-pointer accent-primary shrink-0 self-center"
+                    checked={row.getIsSelected()}
+                    disabled={!row.getCanSelect()}
+                    onChange={row.getToggleSelectedHandler()}
+                    aria-label="Select row"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{tx.description}</p>
+                    <div className="flex flex-col gap-0.5 mt-1">
+                      <span className="text-xs text-muted-foreground">{date}</span>
+                      <Badge variant="secondary" className="text-xs w-fit">{tx.category}</Badge>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className={`font-mono text-sm font-semibold tracking-tighter ${isIncome ? "text-green-500" : "text-red-500"}`}>
+                      {isIncome ? "+" : "-"}{formatted}
+                    </span>
+                    <TransactionActions
+                      transaction={tx}
+                      initialCategories={initialCategories}
+                      initialAccounts={initialAccounts}
+                    />
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">
+              No results.
+            </div>
+          )}
+        </div>
       </div>
 
       {!exhausted && (
@@ -406,8 +499,8 @@ export function DataTable<TData, TValue>({
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-foreground">Transactions</CardTitle>
             <Button variant="outline" size="sm" onClick={handleExport} disabled={isLoadingAll}>
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline ml-2">Export CSV</span>
             </Button>
           </CardHeader>
           <CardContent>{tableContent}</CardContent>

@@ -5,29 +5,27 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { DataTable } from "@/app/dashboard/transactions/data-table";
 import { getColumns } from "@/app/dashboard/transactions/columns";
-import { RecurringList } from "@/components/RecurringList";
-import { RecurringTransactionForm } from "@/components/RecurringTransactionForm";
+import { LogPanel } from "@/components/LogPanel";
 import type { Transaction } from "@/app/dashboard/transactions/columns";
-import type { RecurringTransaction, Category, Account } from "@/lib/data/budget";
+import type { Category, Account } from "@/lib/data/budget";
 
-type Tab = "ledger" | "recurring";
+type Tab = "ledger" | "add";
 
 interface Props {
   transactions: Transaction[];
   initialCursor: string | null;
-  recurring: RecurringTransaction[];
   categories: Category[];
   accounts: Account[];
 }
 
-export function TransactionsTabView({ transactions, initialCursor, recurring, categories, accounts }: Props) {
+export function TransactionsTabView({ transactions, initialCursor, categories, accounts }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("ledger");
 
   return (
     <Card className="border-border bg-card/80 backdrop-blur-sm">
       {/* Tab navigation */}
       <div className="flex border-b border-border px-6 pt-4">
-        {(["ledger", "recurring"] as Tab[]).map((tab) => (
+        {(["ledger", "add"] as Tab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -38,31 +36,16 @@ export function TransactionsTabView({ transactions, initialCursor, recurring, ca
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {tab === "ledger" ? "Transaction Ledger" : "Recurring Transactions"}
-            {tab === "recurring" && recurring.length > 0 && (
-              <span className="ml-1.5 text-xs bg-primary/15 text-primary rounded-full px-1.5 py-0.5">
-                {recurring.length}
-              </span>
-            )}
+            {tab === "ledger" ? "Transaction Ledger" : "Add Transaction"}
           </button>
         ))}
       </div>
 
       <CardContent className="pt-6">
         {activeTab === "ledger" ? (
-          <DataTable columns={getColumns(categories, accounts)} data={transactions} initialCursor={initialCursor} embedded />
+          <DataTable columns={getColumns(categories, accounts)} data={transactions} initialCursor={initialCursor} embedded initialCategories={categories} initialAccounts={accounts} />
         ) : (
-          <div className="space-y-8">
-            {recurring.length > 0 && (
-              <RecurringList recurring={recurring} categories={categories} accounts={accounts} />
-            )}
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-                Add Recurring Transaction
-              </h3>
-              <RecurringTransactionForm categories={categories} accounts={accounts} />
-            </div>
-          </div>
+          <LogPanel categories={categories} accounts={accounts} />
         )}
       </CardContent>
     </Card>

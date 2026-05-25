@@ -5,17 +5,17 @@ import {
   getMonthlyBalance,
   getCategories,
   getTransactionTrend,
-  getAccounts,
   getQuarterlyReview,
 } from "@/lib/data/budget";
 import { SummaryCard } from "@/components/SummaryCard";
-import { BudgetProgress } from "@/components/BudgetProgress";
+import { BudgetBenchmarking } from "@/components/BudgetBenchmarking";
 import { GlassCard } from "@/components/GlassCard";
 import { MonthlyChart } from "@/components/MonthlyChart";
 import { DashboardFilters } from "@/components/DashboardFilters";
-import { LogPanel } from "@/components/LogPanel";
 import { QuarterlyReview } from "@/components/QuarterlyReview";
 import { AddCategoryDialog } from "@/components/AddCategoryDialog";
+import { RecentTransactions } from "@/components/RecentTransactions";
+import Link from "next/link";
 import { format } from "date-fns";
 
 interface PageProps {
@@ -30,11 +30,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const q = resolvedParams.q || "";
   const activeMonth = resolvedParams.month || format(new Date(), "yyyy-MM");
 
-  const [categories, monthlyBalance, trendItems, accounts, quarterlyReview] = await Promise.all([
+  const [categories, monthlyBalance, trendItems, quarterlyReview] = await Promise.all([
     getCategories(),
     getMonthlyBalance(activeMonth),
     getTransactionTrend(12),
-    getAccounts(),
     getQuarterlyReview(activeMonth),
   ]);
 
@@ -85,38 +84,53 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </AnimateSection>
       )}
 
-      {/* Row 2: Budget Benchmarking (left) & Log Transaction (right) */}
+      {/* Row 2: Budget Benchmarking */}
       <AnimateSection delay={0.16}>
-        <div className="grid gap-6 lg:grid-cols-2 items-start">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-xl font-semibold text-foreground">
-                Budget Benchmarking
-              </h3>
-              <AddCategoryDialog />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              {categories.filter((category) => category.categoryType !== "INCOME").map((category) => (
-                <BudgetProgress
-                  key={category.id}
-                  categoryName={category.name}
-                  limit={category.limit || 0}
-                  adjustedLimit={adjustedCategoryLimits[category.name] ?? category.limit ?? 0}
-                  rolloverDelta={rolloverDeltas[category.name] ?? 0}
-                  spent={spendingMap[category.name] || 0}
-                  isUniversal={category.isUniversal}
-                  categoryId={category.id}
-                />
-              ))}
-            </div>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xl font-semibold text-foreground">
+              Budget Benchmarking
+            </h3>
+            <AddCategoryDialog />
           </div>
-
-          <div className="sticky top-8">
-            <GlassCard title="Log Transaction">
-              <LogPanel categories={categories} accounts={accounts} />
-            </GlassCard>
-          </div>
+          <BudgetBenchmarking
+            categories={categories
+              .filter((c) => c.categoryType !== "INCOME")
+              .sort((a, b) => {
+                const spentA = spendingMap[a.name] || 0;
+                const spentB = spendingMap[b.name] || 0;
+                const limitA = adjustedCategoryLimits[a.name] ?? a.limit ?? 0;
+                const limitB = adjustedCategoryLimits[b.name] ?? b.limit ?? 0;
+                const pctA = limitA > 0 ? spentA / limitA : spentA > 0 ? Infinity : 0;
+                const pctB = limitB > 0 ? spentB / limitB : spentB > 0 ? Infinity : 0;
+                return pctB - pctA;
+              })}
+            spendingMap={spendingMap}
+            adjustedCategoryLimits={adjustedCategoryLimits}
+            rolloverDeltas={rolloverDeltas}
+          />
         </div>
+      </AnimateSection>
+
+      {/* Recent Transactions */}
+      <AnimateSection delay={0.20}>
+        <GlassCard>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-foreground">Recent Transactions</h3>
+            <Link
+              href="/dashboard/transactions"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              View all →
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <RecentTransactions
+              transactions={trendItems.slice(0, 8)}
+              categories={categories}
+            />
+          </div>
+        </GlassCard>
       </AnimateSection>
 
       {/* Row 3: 12-Month Spending Activity */}

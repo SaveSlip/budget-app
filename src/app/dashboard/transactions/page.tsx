@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getTransactionsBatch } from "@/app/actions/transactions";
-import { listRecurringTransactions } from "@/app/actions/recurring";
 import { getCategories, getAccounts } from "@/lib/data/budget";
 import { type Transaction } from "./columns";
 import { TransactionsTabView } from "@/components/TransactionsTabView";
@@ -10,11 +9,10 @@ export default async function TransactionsPage() {
   const session = await auth();
   if (!session?.user) redirect("/signin");
 
-  const [batchResponse, categories, accounts, recurring] = await Promise.all([
+  const [batchResponse, categories, accounts] = await Promise.all([
     getTransactionsBatch(undefined, 25),
     getCategories(),
     getAccounts(),
-    listRecurringTransactions(),
   ]);
 
   const transactions = (batchResponse.transactions || []) as Transaction[];
@@ -33,7 +31,6 @@ export default async function TransactionsPage() {
       <TransactionsTabView
         transactions={transactions}
         initialCursor={batchResponse.nextCursor}
-        recurring={recurring}
         categories={categories}
         accounts={accounts}
       />

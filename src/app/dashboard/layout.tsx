@@ -1,6 +1,6 @@
 import Link from "next/link";
 import UserNav from "@/components/UserNav";
-import { DashboardNav } from "@/components/DashboardNav";
+import { DashboardNav, MobileNav } from "@/components/DashboardNav";
 import { auth } from "@/auth";
 import { getUserProfile } from "@/lib/db";
 import { redirect } from "next/navigation";
@@ -48,8 +48,9 @@ export default async function DashboardLayout({
           <DashboardNav />
 
           {/* Right Aligned Actions */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <UserNav />
+            <MobileNav />
           </div>
         </div>
       </nav>

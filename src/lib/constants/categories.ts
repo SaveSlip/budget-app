@@ -94,6 +94,11 @@ export const UNIVERSAL_INCOME_CATEGORIES: UniversalCategory[] = [
     keywords: ["business income", "revenue", "sales", "profit", "business deposit"],
   },
   {
+    id: "income-internal-transfer",
+    name: "Internal Transfer",
+    keywords: ["transfer", "internal transfer", "payment from", "credit card payment", "account transfer", "interac transfer", "e-transfer"],
+  },
+  {
     id: "income-other",
     name: "Other Income",
     keywords: ["refund", "rebate", "gift", "bonus", "tax return", "cashback", "transfer in"],

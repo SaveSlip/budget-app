@@ -9,11 +9,12 @@ import type { Account, Category } from "@/lib/data/budget";
 interface LogPanelProps {
   categories: Category[];
   accounts: Account[];
+  onSuccess?: () => void;
 }
 
 type Tab = "EXPENSE" | "INCOME";
 
-export function LogPanel({ categories, accounts }: LogPanelProps) {
+export function LogPanel({ categories, accounts, onSuccess }: LogPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("EXPENSE");
 
   const incomeCategories: Category[] = UNIVERSAL_INCOME_CATEGORIES.map((uc) => ({
@@ -60,6 +61,7 @@ export function LogPanel({ categories, accounts }: LogPanelProps) {
         accounts={accounts}
         initialType={activeTab}
         hideTypeToggle
+        onSuccess={onSuccess}
       />
       <div className="pt-4 border-t border-border">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">

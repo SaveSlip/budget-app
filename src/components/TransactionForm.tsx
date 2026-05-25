@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createTransaction } from "@/app/actions/transactions";
+import { createRecurringTransaction } from "@/app/actions/recurring";
 import { Loader2 } from "lucide-react";
 import type { Account, Category } from "@/lib/data/budget";
 
@@ -10,6 +11,7 @@ interface TransactionFormProps {
   accounts: Account[];
   initialType?: "INCOME" | "EXPENSE";
   hideTypeToggle?: boolean;
+  onSuccess?: () => void;
 }
 
 export default function TransactionForm({
@@ -17,10 +19,14 @@ export default function TransactionForm({
   accounts = [],
   initialType = "EXPENSE",
   hideTypeToggle = false,
+  onSuccess,
 }: TransactionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<"DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY">("MONTHLY");
+  const [dayOfMonth, setDayOfMonth] = useState("");
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -40,20 +46,35 @@ export default function TransactionForm({
     setSuccess(false);
 
     try {
-      const result = await createTransaction({
-        description: formData.description,
-        amount: Number(formData.amount),
-        date: formData.date,
-        category: formData.category,
-        transactionType: formData.transactionType,
-        accountId: formData.accountId || undefined,
-      });
+      const result = isRecurring
+        ? await createRecurringTransaction({
+            description: formData.description,
+            amount: Number(formData.amount),
+            category: formData.category,
+            transactionType: formData.transactionType,
+            accountId: formData.accountId || undefined,
+            frequency,
+            dayOfMonth: frequency === "MONTHLY" && dayOfMonth ? parseInt(dayOfMonth, 10) : undefined,
+            isActive: true,
+          })
+        : await createTransaction({
+            description: formData.description,
+            amount: Number(formData.amount),
+            date: formData.date,
+            category: formData.category,
+            transactionType: formData.transactionType,
+            accountId: formData.accountId || undefined,
+          });
 
       if (result.error) {
         setError(result.error);
       } else {
         setSuccess(true);
         setFormData({ description: "", amount: "", date: today, category: "", transactionType: initialType, accountId: "" });
+        setIsRecurring(false);
+        setFrequency("MONTHLY");
+        setDayOfMonth("");
+        onSuccess?.();
         setTimeout(() => setSuccess(false), 3000);
       }
     } catch {
@@ -198,10 +219,61 @@ export default function TransactionForm({
         </select>
       </div>
 
+      <div className="flex items-center gap-2 pt-1">
+        <input
+          id="recurring-toggle"
+          type="checkbox"
+          checked={isRecurring}
+          onChange={(e) => setIsRecurring(e.target.checked)}
+          className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+        />
+        <label htmlFor="recurring-toggle" className="text-sm font-medium text-muted-foreground cursor-pointer">
+          Make this a recurring transaction
+        </label>
+      </div>
+
+      {isRecurring && (
+        <div className="space-y-3 pl-6 border-l-2 border-primary/20">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium leading-none text-muted-foreground">
+                Frequency
+              </label>
+              <select
+                value={frequency}
+                onChange={(e) => setFrequency(e.target.value as typeof frequency)}
+                className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+              >
+                <option value="DAILY">Daily</option>
+                <option value="WEEKLY">Weekly</option>
+                <option value="MONTHLY">Monthly</option>
+                <option value="YEARLY">Yearly</option>
+              </select>
+            </div>
+            {frequency === "MONTHLY" && (
+              <div>
+                <label className="text-sm font-medium leading-none text-muted-foreground">
+                  Day of Month <span className="text-muted-foreground/60">(optional, 1–28)</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={28}
+                  placeholder="e.g., 1"
+                  value={dayOfMonth}
+                  onChange={(e) => setDayOfMonth(e.target.value)}
+                  className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {error && <p className="text-sm text-destructive">{error}</p>}
       {success && (
         <p className="text-sm text-success">
-          Transaction recorded successfully.
+          {isRecurring ? "Recurring transaction added." : "Transaction recorded successfully."}
         </p>
       )}
 
@@ -212,6 +284,8 @@ export default function TransactionForm({
       >
         {isSubmitting ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        ) : isRecurring ? (
+          "Add Recurring Transaction"
         ) : (
           "Record Transaction"
         )}

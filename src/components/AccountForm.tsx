@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 import { createAccount } from "@/app/actions/accounts";
 
 const ACCOUNT_TYPES = [
-  { value: "CHECKING", label: "Checking" },
+  { value: "CHECKING", label: "Chequing" },
   { value: "SAVINGS", label: "Savings" },
   { value: "CREDIT", label: "Credit Card" },
   { value: "CASH", label: "Cash" },
@@ -20,7 +20,7 @@ export function AccountForm() {
 
   const [formData, setFormData] = useState({
     name: "",
-    type: "CHECKING" as (typeof ACCOUNT_TYPES)[number]["value"],
+    type: "" as string,
     initialBalance: "0",
   });
 
@@ -30,9 +30,15 @@ export function AccountForm() {
     setError(null);
     setSuccess(false);
 
+    if (!formData.type) {
+      setError("Please select an account type.");
+      setIsSubmitting(false);
+      return;
+    }
+
     const result = await createAccount({
       name: formData.name,
-      type: formData.type,
+      type: formData.type as (typeof ACCOUNT_TYPES)[number]["value"],
       initialBalance: Number(formData.initialBalance),
     });
 
@@ -42,7 +48,7 @@ export function AccountForm() {
       setError(result.error);
     } else {
       setSuccess(true);
-      setFormData({ name: "", type: "CHECKING", initialBalance: "0" });
+      setFormData({ name: "", type: "", initialBalance: "0" });
       setTimeout(() => setSuccess(false), 3000);
     }
   };
@@ -73,11 +79,12 @@ export function AccountForm() {
             onChange={(e) =>
               setFormData({
                 ...formData,
-                type: e.target.value as (typeof ACCOUNT_TYPES)[number]["value"],
+                type: e.target.value,
               })
             }
             className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
           >
+            <option value="" disabled>Select account type</option>
             {ACCOUNT_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}

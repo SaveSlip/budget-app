@@ -25,7 +25,6 @@ import {
   Sun,
   Monitor,
   Save,
-  CreditCard,
   AlertTriangle,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
@@ -146,14 +145,6 @@ export function ProfileSettingsClient({
                   className="w-full justify-start bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
                 >
                   <User className="w-4 h-4 mr-2" /> Profile
-                </Button>
-              </Link>
-              <Link href="/dashboard/settings/accounts">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                >
-                  <CreditCard className="w-4 h-4 mr-2" /> Accounts
                 </Button>
               </Link>
             </div>
