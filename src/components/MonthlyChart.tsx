@@ -24,27 +24,40 @@ import type { Transaction } from "@/lib/data/budget";
 
 interface MonthlyChartProps {
   transactions: Transaction[];
+  year?: string;
 }
 
-export function MonthlyChart({ transactions }: MonthlyChartProps) {
+export function MonthlyChart({ transactions, year }: MonthlyChartProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeMonth = searchParams.get("month") || format(new Date(), "yyyy-MM");
 
   const chartData = useMemo(() => {
-    const months = Array.from({ length: 12 })
-      .map((_, i) => {
-        const date = subMonths(new Date(), i);
-        return {
-          label: format(date, "MMM"),
-          monthValue: format(date, "yyyy-MM"),
-          start: startOfMonth(date),
-          end: endOfMonth(date),
-          expense: 0,
-          income: 0,
-        };
-      })
-      .reverse();
+    const months = year
+      ? Array.from({ length: 12 }, (_, i) => {
+          const date = new Date(Number(year), i, 1);
+          return {
+            label: format(date, "MMM"),
+            monthValue: format(date, "yyyy-MM"),
+            start: startOfMonth(date),
+            end: endOfMonth(date),
+            expense: 0,
+            income: 0,
+          };
+        })
+      : Array.from({ length: 12 })
+          .map((_, i) => {
+            const date = subMonths(new Date(), i);
+            return {
+              label: format(date, "MMM"),
+              monthValue: format(date, "yyyy-MM"),
+              start: startOfMonth(date),
+              end: endOfMonth(date),
+              expense: 0,
+              income: 0,
+            };
+          })
+          .reverse();
 
     transactions.forEach((tx) => {
       const txDate = new Date(tx.date + "T00:00:00");
@@ -60,10 +73,10 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
     });
 
     return months;
-  }, [transactions]);
+  }, [transactions, year]);
 
   function handleBarClick(data: { monthValue: string }) {
-    if (!data?.monthValue) return;
+    if (year || !data?.monthValue) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", data.monthValue);
     router.push(`/dashboard?${params.toString()}`, { scroll: false });
@@ -114,9 +127,9 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
             radius={[4, 4, 0, 0]}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onClick={(data: any) => handleBarClick(data)}
-            style={{ cursor: "pointer" }}
+            style={{ cursor: year ? "default" : "pointer" }}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            shape={(props: any) => <Rectangle {...props} fillOpacity={props.monthValue === activeMonth ? 1 : 0.5} />}
+            shape={(props: any) => <Rectangle {...props} fillOpacity={year ? 1 : props.monthValue === activeMonth ? 1 : 0.5} />}
           />
           <Bar
             dataKey="expense"
@@ -125,9 +138,9 @@ export function MonthlyChart({ transactions }: MonthlyChartProps) {
             radius={[4, 4, 0, 0]}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onClick={(data: any) => handleBarClick(data)}
-            style={{ cursor: "pointer" }}
+            style={{ cursor: year ? "default" : "pointer" }}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            shape={(props: any) => <Rectangle {...props} fillOpacity={props.monthValue === activeMonth ? 1 : 0.5} />}
+            shape={(props: any) => <Rectangle {...props} fillOpacity={year ? 1 : props.monthValue === activeMonth ? 1 : 0.5} />}
           />
         </BarChart>
       </ResponsiveContainer>

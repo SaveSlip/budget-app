@@ -12,6 +12,16 @@ import {
 } from "@/components/ui/select";
 import { format, subMonths } from "date-fns";
 
+function setStoredFilter(val: { month: string; year: string; view: string }) {
+  if (typeof window === "undefined") return;
+  try { sessionStorage.setItem("budgify-filter", JSON.stringify(val)); } catch {}
+}
+
+function getStoredFilter(): { month: string; year: string; view: string } | null {
+  if (typeof window === "undefined") return null;
+  try { return JSON.parse(sessionStorage.getItem("budgify-filter") ?? "null"); } catch { return null; }
+}
+
 export function DashboardFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,12 +36,18 @@ export function DashboardFilters() {
     };
   });
 
+  const view = searchParams.get("view") === "yearly" ? "yearly" : "monthly";
+  const currentYear = format(new Date(), "yyyy");
+  const activeYear = searchParams.get("year") || currentYear;
+  const years = [0, 1, 2, 3].map((i) => String(Number(currentYear) - i));
+
   const currentMonth =
     searchParams.get("month") || format(new Date(), "yyyy-MM");
   const currentQuery = searchParams.get("q") || "";
 
   const prevMonth = useRef(currentMonth);
   const [highlighted, setHighlighted] = useState(false);
+  const hasMounted = useRef(false);
 
   useEffect(() => {
     if (prevMonth.current !== currentMonth) {
@@ -41,6 +57,38 @@ export function DashboardFilters() {
       return () => clearTimeout(t);
     }
   }, [currentMonth]);
+
+  // On first arrival at /dashboard with no filter params, restore last session filter from sessionStorage
+  useEffect(() => {
+    if (hasMounted.current) return;
+    hasMounted.current = true;
+    const hasParams = searchParams.get("month") || searchParams.get("year") || searchParams.get("view");
+    if (hasParams) return;
+    const stored = getStoredFilter();
+    if (!stored) return;
+    const params = new URLSearchParams();
+    if (stored.view === "yearly") {
+      params.set("view", "yearly");
+      if (stored.year && stored.year !== format(new Date(), "yyyy")) params.set("year", stored.year);
+    } else if (stored.month && stored.month !== format(new Date(), "yyyy-MM")) {
+      params.set("month", stored.month);
+    }
+    if (params.toString()) router.replace(`/dashboard?${params.toString()}`);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep sessionStorage in sync with the current dashboard filter
+  useEffect(() => {
+    setStoredFilter({ month: currentMonth, year: activeYear, view });
+  }, [currentMonth, activeYear, view]);
+
+  function toggleView() {
+    if (view === "monthly") {
+      updateFilters({ view: "yearly", month: "", year: activeYear });
+    } else {
+      updateFilters({ view: "", year: "", month: format(new Date(), "yyyy-MM") });
+    }
+  }
 
   function updateFilters(updates: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -71,25 +119,45 @@ export function DashboardFilters() {
       </div>
 
       <div className="shrink-0">
-        <Select
-          value={currentMonth}
-          onValueChange={(val) => updateFilters({ month: val })}
-        >
-          <SelectTrigger
-            className={`w-56 bg-background/70 border-2 border-border text-foreground font-semibold text-base tracking-wide transition-all duration-300 ${
-              highlighted ? "shadow-[0_0_12px_3px_rgba(255,255,255,0.25)] border-white/40" : ""
-            }`}
+        {view === "monthly" ? (
+          <Select
+            value={currentMonth}
+            onValueChange={(val) => updateFilters({ month: val })}
           >
-            <SelectValue placeholder="Select Month" />
-          </SelectTrigger>
-          <SelectContent className="bg-popover border-border text-popover-foreground">
-            {months.map((m) => (
-              <SelectItem key={m.value} value={m.value}>
-                {m.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            <SelectTrigger
+              className={`w-56 bg-background/70 border-2 border-border text-foreground font-semibold text-base tracking-wide transition-all duration-300 ${
+                highlighted ? "shadow-[0_0_12px_3px_rgba(255,255,255,0.25)] border-white/40" : ""
+              }`}
+            >
+              <SelectValue placeholder="Select Month" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="bg-popover border-border text-popover-foreground">
+              {months.map((m) => (
+                <SelectItem key={m.value} value={m.value}>
+                  {m.label}
+                </SelectItem>
+              ))}
+              <SelectItem value="all">All months</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <Select
+            value={activeYear}
+            onValueChange={(val) => updateFilters({ year: val })}
+          >
+            <SelectTrigger className="w-56 bg-background/70 border-2 border-border text-foreground font-semibold text-base tracking-wide">
+              <SelectValue placeholder="Select Year" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="bg-popover border-border text-popover-foreground">
+              {years.map((y) => (
+                <SelectItem key={y} value={y}>
+                  {y}
+                </SelectItem>
+              ))}
+              <SelectItem value="all">All years</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="md:flex-1 flex justify-end items-center gap-3">
@@ -98,9 +166,18 @@ export function DashboardFilters() {
             Syncing...
           </span>
         )}
-        <span className="text-sm font-semibold text-muted-foreground tracking-wide uppercase">
-          Monthly Overview
-        </span>
+        <button
+          onClick={toggleView}
+          className="text-sm font-semibold tracking-wide uppercase transition-colors focus-visible:outline-none"
+        >
+          <span className={view === "monthly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}>
+            Monthly
+          </span>
+          <span className="text-muted-foreground mx-1.5">/</span>
+          <span className={view === "yearly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}>
+            Yearly
+          </span>
+        </button>
       </div>
     </div>
   );

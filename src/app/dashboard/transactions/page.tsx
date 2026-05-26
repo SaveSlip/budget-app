@@ -5,14 +5,19 @@ import { getCategories, getAccounts } from "@/lib/data/budget";
 import { type Transaction } from "./columns";
 import { TransactionsTabView } from "@/components/TransactionsTabView";
 
-export default async function TransactionsPage() {
+interface PageProps {
+  searchParams: Promise<{ month?: string; view?: string; year?: string }>;
+}
+
+export default async function TransactionsPage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user) redirect("/signin");
 
-  const [batchResponse, categories, accounts] = await Promise.all([
+  const [batchResponse, categories, accounts, resolvedParams] = await Promise.all([
     getTransactionsBatch(undefined, 25),
     getCategories(),
     getAccounts(),
+    searchParams,
   ]);
 
   const transactions = (batchResponse.transactions || []) as Transaction[];
@@ -33,6 +38,9 @@ export default async function TransactionsPage() {
         initialCursor={batchResponse.nextCursor}
         categories={categories}
         accounts={accounts}
+        initialMonth={resolvedParams.month}
+        initialView={resolvedParams.view}
+        initialYear={resolvedParams.year}
       />
     </div>
   );

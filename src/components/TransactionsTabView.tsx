@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { DataTable } from "@/app/dashboard/transactions/data-table";
-import { getColumns } from "@/app/dashboard/transactions/columns";
 import { LogPanel } from "@/components/LogPanel";
 import type { Transaction } from "@/app/dashboard/transactions/columns";
 import type { Category, Account } from "@/lib/data/budget";
@@ -16,9 +15,12 @@ interface Props {
   initialCursor: string | null;
   categories: Category[];
   accounts: Account[];
+  initialMonth?: string;
+  initialView?: string;
+  initialYear?: string;
 }
 
-export function TransactionsTabView({ transactions, initialCursor, categories, accounts }: Props) {
+export function TransactionsTabView({ transactions, initialCursor, categories, accounts, initialMonth, initialView, initialYear }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("ledger");
 
   return (
@@ -43,7 +45,7 @@ export function TransactionsTabView({ transactions, initialCursor, categories, a
 
       <CardContent className="pt-6">
         {activeTab === "ledger" ? (
-          <DataTable columns={getColumns(categories, accounts)} data={transactions} initialCursor={initialCursor} embedded initialCategories={categories} initialAccounts={accounts} />
+          <DataTable data={transactions} initialCursor={initialCursor} embedded initialCategories={categories} initialAccounts={accounts} initialMonth={initialMonth} initialView={initialView} initialYear={initialYear} />
         ) : (
           <LogPanel categories={categories} accounts={accounts} />
         )}

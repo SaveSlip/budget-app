@@ -3,9 +3,15 @@ import { redirect } from "next/navigation";
 import { AnimateSection } from "@/components/AnimateSection";
 import {
   getMonthlyBalance,
+  getAllMonthsBalance,
   getCategories,
   getTransactionTrend,
   getQuarterlyReview,
+  getYearlyBalance,
+  getAllYearsBalance,
+  type Transaction,
+  type Category,
+  type CategoryReviewSuggestion,
 } from "@/lib/data/budget";
 import { SummaryCard } from "@/components/SummaryCard";
 import { BudgetBenchmarking } from "@/components/BudgetBenchmarking";
@@ -19,7 +25,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 
 interface PageProps {
-  searchParams: Promise<{ month?: string; q?: string }>;
+  searchParams: Promise<{ month?: string; q?: string; view?: string; year?: string }>;
 }
 
 export default async function DashboardPage({ searchParams }: PageProps) {
@@ -29,22 +35,57 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
   const q = resolvedParams.q || "";
   const activeMonth = resolvedParams.month || format(new Date(), "yyyy-MM");
+  const view = resolvedParams.view === "yearly" ? "yearly" : "monthly";
+  const activeYear = resolvedParams.year || format(new Date(), "yyyy");
 
-  const [categories, monthlyBalance, trendItems, quarterlyReview] = await Promise.all([
-    getCategories(),
-    getMonthlyBalance(activeMonth),
-    getTransactionTrend(12),
-    getQuarterlyReview(activeMonth),
-  ]);
+  let categories: Category[];
+  let totalIncome: number;
+  let totalExpenses: number;
+  let netCashFlow: number;
+  let spendingMap: Record<string, number>;
+  let adjustedCategoryLimits: Record<string, number>;
+  let rolloverDeltas: Record<string, number>;
+  let trendItems: Transaction[];
+  let quarterlyReview: CategoryReviewSuggestion[];
 
-  const {
-    totalIncome,
-    totalExpenses,
-    balance: netCashFlow,
-    categorySpending: spendingMap,
-    adjustedCategoryLimits,
-    rolloverDeltas,
-  } = monthlyBalance;
+  if (view === "yearly") {
+    const [cats, yearlyBalance] = await Promise.all([
+      getCategories(),
+      activeYear === "all" ? getAllYearsBalance() : getYearlyBalance(activeYear),
+    ]);
+    categories = cats;
+    totalIncome = yearlyBalance.totalIncome;
+    totalExpenses = yearlyBalance.totalExpenses;
+    netCashFlow = yearlyBalance.balance;
+    spendingMap = yearlyBalance.categorySpending;
+    adjustedCategoryLimits = Object.fromEntries(
+      cats.map((c) => [c.name, (c.limit || 0) * (activeYear === "all" ? 48 : 12)])
+    );
+    rolloverDeltas = {};
+    trendItems = yearlyBalance.transactions;
+    quarterlyReview = [];
+  } else {
+    const [cats, monthlyBalance, trend, quarterly] = await Promise.all([
+      getCategories(),
+      activeMonth === "all" ? getAllMonthsBalance() : getMonthlyBalance(activeMonth),
+      getTransactionTrend(12),
+      activeMonth === "all" ? Promise.resolve([]) : getQuarterlyReview(activeMonth),
+    ]);
+    categories = cats;
+    totalIncome = monthlyBalance.totalIncome;
+    totalExpenses = monthlyBalance.totalExpenses;
+    netCashFlow = monthlyBalance.balance;
+    spendingMap = monthlyBalance.categorySpending;
+    adjustedCategoryLimits = monthlyBalance.adjustedCategoryLimits;
+    rolloverDeltas = monthlyBalance.rolloverDeltas;
+    trendItems = trend;
+    quarterlyReview = quarterly;
+  }
+
+  const periodLabel =
+    view === "yearly"
+      ? activeYear === "all" ? "across all years" : `in ${activeYear}`
+      : activeMonth === "all" ? "across all months" : "this period";
 
   return (
     <div className="flex-1 w-full max-w-[1600px] mx-auto space-y-8">
@@ -59,13 +100,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           <SummaryCard
             title="Total Income"
             value={`$${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            description={q ? `Results for "${q}"` : "Income this period"}
+            description={q ? `Results for "${q}"` : `Income ${periodLabel}`}
             type="income"
           />
           <SummaryCard
             title="Total Expenses"
             value={`$${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            description={q ? `Results for "${q}"` : "Expenses this period"}
+            description={q ? `Results for "${q}"` : `Expenses ${periodLabel}`}
             type="expense"
           />
           <SummaryCard
@@ -118,7 +159,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-foreground">Recent Transactions</h3>
             <Link
-              href="/dashboard/transactions"
+              href={`/dashboard/transactions?month=${activeMonth}&view=${view}&year=${activeYear}`}
               className="text-sm font-medium text-primary hover:underline"
             >
               View all →
@@ -133,11 +174,11 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </GlassCard>
       </AnimateSection>
 
-      {/* Row 3: 12-Month Spending Activity */}
+      {/* Row 3: Spending Activity Chart */}
       <AnimateSection delay={0.24}>
-        <GlassCard title="12-Month Spending Activity">
+        <GlassCard title={view === "yearly" ? `Monthly Breakdown — ${activeYear}` : "12-Month Spending Activity"}>
           <div className="w-full">
-            <MonthlyChart transactions={trendItems} />
+            <MonthlyChart transactions={trendItems} year={view === "yearly" ? activeYear : undefined} />
           </div>
         </GlassCard>
       </AnimateSection>

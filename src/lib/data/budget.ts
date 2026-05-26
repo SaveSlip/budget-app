@@ -366,6 +366,124 @@ export async function getQuarterlyReview(
   return suggestions;
 }
 
+export interface YearlyBalance {
+  year: string;
+  totalIncome: number;
+  totalExpenses: number;
+  balance: number;
+  categorySpending: Record<string, number>;
+  transactions: Transaction[];
+}
+
+export async function getYearlyBalance(year: string): Promise<YearlyBalance> {
+  const months = Array.from({ length: 12 }, (_, i) =>
+    `${year}-${String(i + 1).padStart(2, "0")}`
+  );
+  const results = await Promise.all(months.map(getMonthlyData));
+  const allTransactions = results.flat().sort((a, b) => b.date.localeCompare(a.date));
+
+  let totalIncome = 0;
+  let totalExpenses = 0;
+  const categorySpending: Record<string, number> = {};
+
+  for (const tx of allTransactions) {
+    const amount = Math.abs(Number(tx.amount) || 0);
+    if (tx.transactionType === "INCOME") {
+      totalIncome += amount;
+    } else {
+      totalExpenses += amount;
+      if (tx.category) {
+        categorySpending[tx.category] = (categorySpending[tx.category] || 0) + amount;
+      }
+    }
+  }
+
+  return {
+    year,
+    totalIncome,
+    totalExpenses,
+    balance: totalIncome - totalExpenses,
+    categorySpending,
+    transactions: allTransactions,
+  };
+}
+
+export async function getAllMonthsBalance(): Promise<MonthlyBalance> {
+  const now = new Date();
+  const months = Array.from({ length: 12 }, (_, i) => format(subMonths(now, i), "yyyy-MM"));
+  const [results, categories] = await Promise.all([
+    Promise.all(months.map(getMonthlyData)),
+    getCategories(),
+  ]);
+  const allTransactions = results.flat();
+
+  let totalIncome = 0;
+  let totalExpenses = 0;
+  const categorySpending: Record<string, number> = {};
+
+  for (const tx of allTransactions) {
+    const amount = Math.abs(Number(tx.amount) || 0);
+    if (tx.transactionType === "INCOME") {
+      totalIncome += amount;
+    } else {
+      totalExpenses += amount;
+      if (tx.category) {
+        categorySpending[tx.category] = (categorySpending[tx.category] || 0) + amount;
+      }
+    }
+  }
+
+  const adjustedCategoryLimits: Record<string, number> = {};
+  for (const cat of categories) {
+    adjustedCategoryLimits[cat.name] = cat.limit || 0;
+  }
+
+  const totalAllocated = categories.reduce((sum, c) => sum + (c.limit || 0), 0);
+
+  return {
+    month: "all",
+    totalIncome,
+    totalExpenses,
+    balance: totalIncome - totalExpenses,
+    categorySpending,
+    totalAllocated,
+    unallocated: totalIncome - totalAllocated,
+    adjustedCategoryLimits,
+    rolloverDeltas: {},
+  };
+}
+
+export async function getAllYearsBalance(): Promise<YearlyBalance> {
+  const currentYear = Number(format(new Date(), "yyyy"));
+  const years = [0, 1, 2, 3].map((i) => String(currentYear - i));
+  const results = await Promise.all(years.map(getYearlyBalance));
+
+  let totalIncome = 0;
+  let totalExpenses = 0;
+  const categorySpending: Record<string, number> = {};
+  const allTransactions: Transaction[] = [];
+
+  for (const r of results) {
+    totalIncome += r.totalIncome;
+    totalExpenses += r.totalExpenses;
+    for (const [cat, amount] of Object.entries(r.categorySpending)) {
+      categorySpending[cat] = (categorySpending[cat] || 0) + amount;
+    }
+    allTransactions.push(...r.transactions);
+  }
+
+  allTransactions.sort((a, b) => b.date.localeCompare(a.date));
+
+  return {
+    year: "all",
+    totalIncome,
+    totalExpenses,
+    balance: totalIncome - totalExpenses,
+    categorySpending,
+    transactions: allTransactions,
+  };
+}
+
 export async function getTransactionTrend(
   monthsBack: number = 6,
 ): Promise<Transaction[]> {

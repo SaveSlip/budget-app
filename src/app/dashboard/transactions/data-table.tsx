@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { AlertTriangle, Download, Loader2, Trash2 } from "lucide-react"
+import Link from "next/link"
 import Papa from "papaparse"
 import { batchDeleteTransactions, deleteAllTransactions, getTransactionsBatch } from "@/app/actions/transactions"
 import { getColumns } from "@/app/dashboard/transactions/columns"
@@ -53,12 +54,25 @@ import type { Transaction } from "@/app/dashboard/transactions/columns"
 const PAGE_SIZE = 25
 const PREFETCH_SIZE = 50
 
+function getStoredFilter(): { month: string; year: string; view: string } | null {
+  if (typeof window === "undefined") return null
+  try { return JSON.parse(sessionStorage.getItem("budgify-filter") ?? "null") } catch { return null }
+}
+
+function setStoredFilter(val: { month: string; year: string; view: string }) {
+  if (typeof window === "undefined") return
+  try { sessionStorage.setItem("budgify-filter", JSON.stringify(val)) } catch {}
+}
+
 interface DataTableProps {
   data: Transaction[]
   initialCursor: string | null
   embedded?: boolean
   initialCategories?: Category[]
   initialAccounts?: Account[]
+  initialMonth?: string
+  initialView?: string
+  initialYear?: string
 }
 
 export function DataTable({
@@ -67,6 +81,9 @@ export function DataTable({
   embedded = false,
   initialCategories = [],
   initialAccounts = [],
+  initialMonth,
+  initialView,
+  initialYear,
 }: DataTableProps) {
   const handleCategoryUpdate = React.useCallback((txId: string, category: string) => {
     setVisibleData((prev) =>
@@ -100,7 +117,19 @@ export function DataTable({
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = React.useState(false)
   const [isDeletingAll, setIsDeletingAll] = React.useState(false)
-  const [monthFilter, setMonthFilter] = React.useState<string>("all")
+  const [monthFilter, setMonthFilter] = React.useState<string>(
+    () => `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
+  )
+
+  // Sync month filter from URL props (highest priority) or sessionStorage on mount/navigation.
+  // Must be a useEffect — lazy initializer only runs once and misses client-side navigation updates.
+  React.useEffect(() => {
+    if (initialView === "yearly") { setMonthFilter("all"); return }
+    if (initialMonth) { setMonthFilter(initialMonth); return }
+    const stored = getStoredFilter()
+    if (stored?.view === "yearly") { setMonthFilter("all"); return }
+    if (stored?.month) setMonthFilter(stored.month)
+  }, [initialMonth, initialView])
 
   const sentinelRef = React.useRef<HTMLDivElement>(null)
 
@@ -239,12 +268,11 @@ export function DataTable({
     state: { sorting, columnFilters, rowSelection },
   })
 
-  const descriptionFilter = (table.getColumn("description")?.getFilterValue() as string) ?? ""
   React.useEffect(() => {
-    if ((descriptionFilter || monthFilter !== "all") && !exhausted) {
+    if (!exhausted) {
       loadAllRemaining()
     }
-  }, [descriptionFilter, monthFilter, exhausted, loadAllRemaining])
+  }, [exhausted, loadAllRemaining])
 
   const selectedRows = table.getSelectedRowModel().rows
   const selectedCount = selectedRows.length
@@ -304,18 +332,25 @@ export function DataTable({
           />
           <Select
             value={monthFilter}
-            onValueChange={(val) => setMonthFilter(val)}
+            onValueChange={(val) => {
+              setMonthFilter(val)
+              setStoredFilter({
+                month: val,
+                year: initialYear || new Date().getFullYear().toString(),
+                view: "monthly",
+              })
+            }}
           >
             <SelectTrigger className="w-28 sm:w-36 shrink-0">
               <SelectValue placeholder="All months" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All months</SelectItem>
               {availableMonths.map((m) => (
                 <SelectItem key={m} value={m}>
                   {new Date(m + "-02").toLocaleString("default", { month: "long", year: "numeric" })}
                 </SelectItem>
               ))}
+              <SelectItem value="all">All months</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -365,6 +400,16 @@ export function DataTable({
               <Download className="h-3.5 w-3.5 mr-1.5" />
               <span className="hidden sm:inline">Export CSV</span>
             </Button>
+          )}
+          {!embedded && (
+            <Link
+              href={monthFilter === "all"
+                ? `/dashboard?view=yearly&year=${initialYear || new Date().getFullYear()}`
+                : `/dashboard?month=${monthFilter}`}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              ← Overview
+            </Link>
           )}
         </div>
       </div>
