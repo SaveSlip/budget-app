@@ -37,7 +37,7 @@ import {
 import { AlertTriangle, Download, Loader2, Trash2 } from "lucide-react"
 import Link from "next/link"
 import Papa from "papaparse"
-import { batchDeleteTransactions, deleteAllTransactions, getTransactionsBatch } from "@/app/actions/transactions"
+import { batchDeleteTransactions, deleteAllTransactions, getTransactionsBatch, getTransactionsByMonth } from "@/app/actions/transactions"
 import { getColumns } from "@/app/dashboard/transactions/columns"
 import {
   Select,
@@ -73,6 +73,7 @@ interface DataTableProps {
   initialMonth?: string
   initialView?: string
   initialYear?: string
+  initialAvailableMonths?: string[]
 }
 
 export function DataTable({
@@ -84,6 +85,7 @@ export function DataTable({
   initialMonth,
   initialView,
   initialYear,
+  initialAvailableMonths,
 }: DataTableProps) {
   const handleCategoryUpdate = React.useCallback((txId: string, category: string) => {
     setVisibleData((prev) =>
@@ -91,9 +93,13 @@ export function DataTable({
     )
   }, [])
 
+  const handleRowDelete = React.useCallback((txId: string) => {
+    setVisibleData((prev) => prev.filter((row) => row.id !== txId))
+  }, [])
+
   const columns = React.useMemo(
-    () => getColumns(initialCategories, initialAccounts, handleCategoryUpdate),
-    [initialCategories, initialAccounts, handleCategoryUpdate],
+    () => getColumns(initialCategories, initialAccounts, handleCategoryUpdate, handleRowDelete),
+    [initialCategories, initialAccounts, handleCategoryUpdate, handleRowDelete],
   )
 
   const [visibleData, setVisibleData] = React.useState<Transaction[]>(data)
@@ -105,9 +111,16 @@ export function DataTable({
   const hasLoadedAllRef = React.useRef(initialCursor === null)
   const isRevealingRef = React.useRef(false)
 
+  // Snapshot of "all months" scroll state so switching back to "all" restores it
+  const allModeDataRef = React.useRef<Transaction[]>(data)
+  const allModeCursorRef = React.useRef<string | null>(initialCursor)
+  const allModeExhaustedRef = React.useRef(initialCursor === null)
+  const allModeBufferRef = React.useRef<Transaction[]>([])
+
   const isFetchingRef = React.useRef(false)
   const [isFetching, setIsFetching] = React.useState(false)
   const [isLoadingAll, setIsLoadingAll] = React.useState(false)
+  const [isMonthLoading, setIsMonthLoading] = React.useState(false)
   const [exhausted, setExhausted] = React.useState(initialCursor === null)
 
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "date", desc: true }])
@@ -121,30 +134,62 @@ export function DataTable({
     () => `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
   )
 
-  // Sync month filter from URL props (highest priority) or sessionStorage on mount/navigation.
-  // Must be a useEffect — lazy initializer only runs once and misses client-side navigation updates.
+  // Generation counter — incremented on every new fetch so stale responses are ignored
+  const fetchGenRef = React.useRef(0)
+
+  const fetchMonthData = React.useCallback(async (month: string) => {
+    const gen = ++fetchGenRef.current
+    setIsMonthLoading(true)
+    try {
+      const result = await getTransactionsByMonth(month)
+      if (gen !== fetchGenRef.current) return
+      setVisibleData(result.transactions as Transaction[])
+      bufferRef.current = []
+      cursorRef.current = null
+      hasLoadedAllRef.current = true
+      setExhausted(true)
+    } finally {
+      if (gen === fetchGenRef.current) setIsMonthLoading(false)
+    }
+  }, [])
+
+  // Effect A: derive monthFilter from URL props / sessionStorage — state only, no fetches
   React.useEffect(() => {
     if (initialView === "yearly") { setMonthFilter("all"); return }
     if (initialMonth) { setMonthFilter(initialMonth); return }
     const stored = getStoredFilter()
     if (stored?.view === "yearly") { setMonthFilter("all"); return }
-    if (stored?.month) setMonthFilter(stored.month)
+    const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
+    setMonthFilter(stored?.month ?? currentMonth)
   }, [initialMonth, initialView])
 
   const sentinelRef = React.useRef<HTMLDivElement>(null)
 
-  // Reset everything when the server re-renders after a mutation
+  // Unified effect: re-runs whenever the desired month or server data changes.
+  // Generation counter in fetchMonthData ensures only the latest fetch wins (handles
+  // Strict Mode double-invoke, rapid filter changes, and post-mutation races).
   React.useEffect(() => {
+    allModeDataRef.current = data
+    allModeCursorRef.current = initialCursor
+    allModeExhaustedRef.current = initialCursor === null
+    allModeBufferRef.current = []
     bufferRef.current = []
     cursorRef.current = initialCursor
     hasLoadedAllRef.current = initialCursor === null
     isRevealingRef.current = false
     isFetchingRef.current = false
-    setVisibleData(data)
     setNewRowIds(new Set())
-    setExhausted(initialCursor === null)
     setIsFetching(false)
-  }, [data, initialCursor])
+
+    if (monthFilter === "all") {
+      setVisibleData(data)
+      setExhausted(initialCursor === null)
+    } else {
+      setExhausted(true)
+      fetchMonthData(monthFilter)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthFilter, data, initialCursor])
 
   const prefetchIntoBuffer = React.useCallback(async () => {
     if (isFetchingRef.current || hasLoadedAllRef.current) return
@@ -157,23 +202,21 @@ export function DataTable({
       bufferRef.current = [...bufferRef.current, ...result.transactions as Transaction[]]
       cursorRef.current = result.nextCursor
       if (!result.nextCursor) hasLoadedAllRef.current = true
+      // Keep all-mode snapshot cursor in sync
+      allModeCursorRef.current = result.nextCursor
+      allModeExhaustedRef.current = !result.nextCursor
+      allModeBufferRef.current = bufferRef.current
     } finally {
       isFetchingRef.current = false
       setIsFetching(false)
     }
   }, [])
 
-  // Kick off prefetch whenever buffer is empty and there's more to load (mount + after resets)
-  React.useEffect(() => {
-    if (!exhausted && bufferRef.current.length === 0) {
-      prefetchIntoBuffer()
-    }
-  }, [exhausted, prefetchIntoBuffer])
-
   const revealNextPage = React.useCallback(() => {
     if (isRevealingRef.current) return
     if (bufferRef.current.length === 0) {
       if (hasLoadedAllRef.current) setExhausted(true)
+      else prefetchIntoBuffer()
       return
     }
 
@@ -183,7 +226,11 @@ export function DataTable({
 
     const ids = new Set(next.map((row) => (row as { id?: string }).id ?? ""))
 
-    setVisibleData((prev) => [...prev, ...next])
+    setVisibleData((prev) => {
+      const updated = [...prev, ...next]
+      allModeDataRef.current = updated
+      return updated
+    })
     setNewRowIds(ids)
 
     // Clear the animation markers after one frame — prevents re-animation on re-render
@@ -238,13 +285,13 @@ export function DataTable({
   }, [isLoadingAll])
 
   const availableMonths = React.useMemo(() => {
-    const months = new Set<string>()
+    const months = new Set<string>(initialAvailableMonths ?? [])
     visibleData.forEach((row) => {
       const d = (row as { date?: string }).date
       if (d && d.length >= 7) months.add(d.slice(0, 7))
     })
     return Array.from(months).sort((a, b) => b.localeCompare(a))
-  }, [visibleData])
+  }, [visibleData, initialAvailableMonths])
 
   const filteredData = React.useMemo(() => {
     if (monthFilter === "all") return visibleData
@@ -267,12 +314,6 @@ export function DataTable({
     autoResetPageIndex: false,
     state: { sorting, columnFilters, rowSelection },
   })
-
-  React.useEffect(() => {
-    if (!exhausted) {
-      loadAllRemaining()
-    }
-  }, [exhausted, loadAllRemaining])
 
   const selectedRows = table.getSelectedRowModel().rows
   const selectedCount = selectedRows.length
@@ -430,7 +471,16 @@ export function DataTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isMonthLoading ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading transactions…</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => {
                 const rowId = (row.original as { id?: string }).id ?? ""
                 return (
@@ -471,11 +521,16 @@ export function DataTable({
           <div className="shrink-0 text-right">Amount</div>
         </div>
         <div className="md:hidden divide-y divide-border">
-          {table.getRowModel().rows?.length ? (
+          {isMonthLoading ? (
+            <div className="h-24 flex items-center justify-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading transactions…</span>
+            </div>
+          ) : table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => {
               const tx = row.original as { id: string; date: string; description: string; category: string; amount: number; transactionType?: "INCOME" | "EXPENSE"; createdAt: string; accountId?: string }
               const rowId = tx.id
-              const isIncome = tx.transactionType === "INCOME"
+              const isIncome = (tx.transactionType ?? "EXPENSE") === "INCOME"
               const amount = Math.abs(tx.amount)
               const formatted = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount)
               const date = new Date(tx.date).toLocaleDateString("en-US", { timeZone: "UTC" })
@@ -507,6 +562,7 @@ export function DataTable({
                       transaction={tx}
                       initialCategories={initialCategories}
                       initialAccounts={initialAccounts}
+                      onDelete={handleRowDelete}
                     />
                   </div>
                 </div>
@@ -520,7 +576,7 @@ export function DataTable({
         </div>
       </div>
 
-      {!exhausted && (
+      {!exhausted && !isMonthLoading && (
         <div ref={sentinelRef} className="flex flex-col items-center justify-center py-6 gap-2 min-h-16">
           {isFetching ? (
             <div className="animate-fade-in flex flex-col items-center gap-2">
@@ -538,13 +594,15 @@ export function DataTable({
 
       <div className="flex items-center justify-between pt-2">
         <span className="text-xs text-muted-foreground">
-          {isLoadingAll
+          {isMonthLoading
+            ? "Loading…"
+            : isLoadingAll
             ? "Loading all transactions for search…"
             : exhausted
             ? `${table.getFilteredRowModel().rows.length} record(s)`
             : `${visibleData.length} loaded — scroll for more`}
         </span>
-        {isLoadingAll && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+        {(isLoadingAll || isMonthLoading) && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       </div>
     </>
   )

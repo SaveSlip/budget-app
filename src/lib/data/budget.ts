@@ -46,19 +46,28 @@ export async function getMonthlyData(month: string): Promise<Transaction[]> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Unauthorized");
 
+  const transactions: Transaction[] = [];
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
+
   try {
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
-        ExpressionAttributeValues: {
-          ":pk": `USER#${userId}`,
-          ":skPrefix": `TX#${month}`,
-        },
-        ScanIndexForward: false,
-      }),
-    );
-    return (result.Items ?? []) as Transaction[];
+    do {
+      const result = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+          ExpressionAttributeValues: {
+            ":pk": `USER#${userId}`,
+            ":skPrefix": `TX#${month}`,
+          },
+          ScanIndexForward: false,
+          ExclusiveStartKey: lastEvaluatedKey,
+        }),
+      );
+      if (result.Items) transactions.push(...result.Items as Transaction[]);
+      lastEvaluatedKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+    } while (lastEvaluatedKey);
+
+    return transactions;
   } catch (error) {
     console.error("[DAL] Monthly data fetch failed:", error);
     return [];
@@ -256,7 +265,7 @@ async function batchGetItems(
 function computeCategorySpending(transactions: Transaction[]): Record<string, number> {
   const spending: Record<string, number> = {};
   for (const tx of transactions) {
-    if (tx.transactionType !== "INCOME" && tx.category) {
+    if (tx.transactionType === "EXPENSE" && tx.category) {
       const amount = Math.abs(Number(tx.amount) || 0);
       spending[tx.category] = (spending[tx.category] || 0) + amount;
     }
@@ -279,7 +288,8 @@ export async function getMonthlyBalance(month: string): Promise<MonthlyBalance> 
   let totalExpenses = 0;
   for (const tx of transactions) {
     const amount = Math.abs(Number(tx.amount) || 0);
-    if (tx.transactionType === "INCOME") {
+    const txType = tx.transactionType ?? "EXPENSE";
+    if (txType === "INCOME") {
       totalIncome += amount;
     } else {
       totalExpenses += amount;
@@ -388,7 +398,8 @@ export async function getYearlyBalance(year: string): Promise<YearlyBalance> {
 
   for (const tx of allTransactions) {
     const amount = Math.abs(Number(tx.amount) || 0);
-    if (tx.transactionType === "INCOME") {
+    const txType = tx.transactionType ?? "EXPENSE";
+    if (txType === "INCOME") {
       totalIncome += amount;
     } else {
       totalExpenses += amount;
@@ -423,7 +434,8 @@ export async function getAllMonthsBalance(): Promise<MonthlyBalance> {
 
   for (const tx of allTransactions) {
     const amount = Math.abs(Number(tx.amount) || 0);
-    if (tx.transactionType === "INCOME") {
+    const txType = tx.transactionType ?? "EXPENSE";
+    if (txType === "INCOME") {
       totalIncome += amount;
     } else {
       totalExpenses += amount;

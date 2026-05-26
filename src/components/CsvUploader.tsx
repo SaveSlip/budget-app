@@ -72,7 +72,9 @@ export default function CsvUploader() {
               const dateMatch = rawDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
               const date = dateMatch
                 ? `${dateMatch[3]}-${dateMatch[1]}-${dateMatch[2]}`
-                : rawDate;
+                : rawDate.length > 10 && rawDate.includes("T")
+                  ? rawDate.split("T")[0]
+                  : rawDate;
 
               return {
                 description,

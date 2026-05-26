@@ -181,15 +181,6 @@ export function BudgetProgress({
           </>
         ) : categoryId ? (
           <div className="flex items-center gap-0.5">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-muted-foreground/40 hover:text-foreground"
-              disabled={isPending}
-              onClick={handleEditOpen}
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
             <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
               <AlertDialogTrigger asChild>
                 <Button
@@ -220,6 +211,15 @@ export function BudgetProgress({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground/40 hover:text-foreground"
+              disabled={isPending}
+              onClick={handleEditOpen}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
 
             <Dialog open={editOpen} onOpenChange={setEditOpen}>
               <DialogContent className="sm:max-w-90">

@@ -32,6 +32,7 @@ export function getColumns(
   initialCategories: Category[],
   initialAccounts: Account[],
   onCategoryUpdate?: (txId: string, category: string) => void,
+  onDelete?: (txId: string) => void,
 ): ColumnDef<Transaction>[] {
   return [
   {
@@ -114,7 +115,7 @@ export function getColumns(
     ),
     cell: ({ row }) => {
       const amount = Math.abs(parseFloat(row.getValue("amount")));
-      const isIncome = row.original.transactionType === "INCOME";
+      const isIncome = (row.original.transactionType ?? "EXPENSE") === "INCOME";
       const formatted = new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: "USD",
@@ -133,7 +134,7 @@ export function getColumns(
       const transaction = row.original;
       return (
         <div className="flex justify-end">
-          <TransactionActions transaction={transaction} initialCategories={initialCategories} initialAccounts={initialAccounts} onCategoryUpdate={onCategoryUpdate} />
+          <TransactionActions transaction={transaction} initialCategories={initialCategories} initialAccounts={initialAccounts} onCategoryUpdate={onCategoryUpdate} onDelete={onDelete} />
         </div>
       );
     },

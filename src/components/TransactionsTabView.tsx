@@ -18,9 +18,10 @@ interface Props {
   initialMonth?: string;
   initialView?: string;
   initialYear?: string;
+  initialAvailableMonths?: string[];
 }
 
-export function TransactionsTabView({ transactions, initialCursor, categories, accounts, initialMonth, initialView, initialYear }: Props) {
+export function TransactionsTabView({ transactions, initialCursor, categories, accounts, initialMonth, initialView, initialYear, initialAvailableMonths }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("ledger");
 
   return (
@@ -45,7 +46,7 @@ export function TransactionsTabView({ transactions, initialCursor, categories, a
 
       <CardContent className="pt-6">
         {activeTab === "ledger" ? (
-          <DataTable data={transactions} initialCursor={initialCursor} embedded initialCategories={categories} initialAccounts={accounts} initialMonth={initialMonth} initialView={initialView} initialYear={initialYear} />
+          <DataTable data={transactions} initialCursor={initialCursor} embedded initialCategories={categories} initialAccounts={accounts} initialMonth={initialMonth} initialView={initialView} initialYear={initialYear} initialAvailableMonths={initialAvailableMonths} />
         ) : (
           <LogPanel categories={categories} accounts={accounts} />
         )}

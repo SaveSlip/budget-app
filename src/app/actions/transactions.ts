@@ -139,6 +139,32 @@ export async function getTransactions(month?: string) {
   }
 }
 
+export async function getTransactionsByMonth(
+  month: string,
+): Promise<{ transactions: any[] }> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error("Unauthorized");
+
+  try {
+    const { Items } = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+        ExpressionAttributeValues: {
+          ":pk": `USER#${userId}`,
+          ":skPrefix": `TX#${month}`,
+        },
+        ScanIndexForward: false,
+      }),
+    );
+    return { transactions: Items ?? [] };
+  } catch (error) {
+    console.error("Failed to fetch transactions by month:", error);
+    throw new Error("Failed to retrieve transactions.");
+  }
+}
+
 export async function getTransactionsBatch(
   cursor?: string,
   limit: number = 25,
@@ -214,6 +240,81 @@ export async function getAllTransactions() {
   } catch (error) {
     console.error("Failed to fetch all transactions:", error);
     return { error: "Failed to retrieve financial data." };
+  }
+}
+
+export async function getAvailableMonths(): Promise<string[]> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error("Unauthorized");
+
+  const months = new Set<string>();
+  let lastEvaluatedKey: Record<string, unknown> | undefined;
+
+  do {
+    const response = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+        ExpressionAttributeValues: {
+          ":pk": `USER#${userId}`,
+          ":skPrefix": "TX#",
+        },
+        ProjectionExpression: "sk",
+        ExclusiveStartKey: lastEvaluatedKey,
+      }),
+    );
+    for (const item of response.Items ?? []) {
+      const sk = (item as { sk: string }).sk;
+      const match = sk.match(/^TX#(\d{4}-\d{2})/);
+      if (match) months.add(match[1]);
+    }
+    lastEvaluatedKey = response.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (lastEvaluatedKey);
+
+  return Array.from(months).sort((a, b) => b.localeCompare(a));
+}
+
+export async function countTransactionsByDescription(
+  description: string,
+  transactionType: "EXPENSE" | "INCOME",
+): Promise<{ count?: number; error?: string }> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { error: "Unauthorized" };
+
+  const normalizedDesc = description.toLowerCase();
+  const transactions: any[] = [];
+  let lastEvaluatedKey: Record<string, any> | undefined = undefined;
+
+  try {
+    do {
+      const response = (await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+          ExpressionAttributeValues: {
+            ":pk": `USER#${userId}`,
+            ":skPrefix": "TX#",
+          },
+          ScanIndexForward: false,
+          ExclusiveStartKey: lastEvaluatedKey,
+        }),
+      )) as any;
+      if (response.Items) transactions.push(...response.Items);
+      lastEvaluatedKey = response.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    const count = transactions.filter(
+      (tx) =>
+        tx.description?.toLowerCase() === normalizedDesc &&
+        tx.transactionType === transactionType,
+    ).length;
+
+    return { count };
+  } catch (error) {
+    console.error("Failed to count transactions:", error);
+    return { error: "Failed to count transactions." };
   }
 }
 

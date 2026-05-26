@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { getAvailableMonths } from "@/app/actions/transactions";
 import { AnimateSection } from "@/components/AnimateSection";
 import {
   getMonthlyBalance,
@@ -32,8 +33,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user) redirect("/signin");
 
-  const resolvedParams = await searchParams;
-  const q = resolvedParams.q || "";
+  const [resolvedParams, availableMonths] = await Promise.all([searchParams, getAvailableMonths()]);
   const activeMonth = resolvedParams.month || format(new Date(), "yyyy-MM");
   const view = resolvedParams.view === "yearly" ? "yearly" : "monthly";
   const activeYear = resolvedParams.year || format(new Date(), "yyyy");
@@ -91,7 +91,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     <div className="flex-1 w-full max-w-[1600px] mx-auto space-y-8">
       {/* Header & Global Filters */}
       <AnimateSection delay={0}>
-        <DashboardFilters />
+        <DashboardFilters availableMonths={availableMonths} />
       </AnimateSection>
 
       {/* Row 1: Stats */}
@@ -100,13 +100,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           <SummaryCard
             title="Total Income"
             value={`$${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            description={q ? `Results for "${q}"` : `Income ${periodLabel}`}
+            description={`Income ${periodLabel}`}
             type="income"
           />
           <SummaryCard
             title="Total Expenses"
             value={`$${totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            description={q ? `Results for "${q}"` : `Expenses ${periodLabel}`}
+            description={`Expenses ${periodLabel}`}
             type="expense"
           />
           <SummaryCard
@@ -178,7 +178,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <AnimateSection delay={0.24}>
         <GlassCard title={view === "yearly" ? `Monthly Breakdown — ${activeYear}` : "12-Month Spending Activity"}>
           <div className="w-full">
-            <MonthlyChart transactions={trendItems} year={view === "yearly" ? activeYear : undefined} />
+            <MonthlyChart transactions={trendItems} year={view === "yearly" && activeYear !== "all" ? activeYear : undefined} />
           </div>
         </GlassCard>
       </AnimateSection>

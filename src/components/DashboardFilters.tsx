@@ -22,19 +22,16 @@ function getStoredFilter(): { month: string; year: string; view: string } | null
   try { return JSON.parse(sessionStorage.getItem("budgify-filter") ?? "null"); } catch { return null; }
 }
 
-export function DashboardFilters() {
+export function DashboardFilters({ availableMonths: propMonths }: { availableMonths?: string[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  // Generate the last 12 months for the dropdown
-  const months = Array.from({ length: 12 }).map((_, i) => {
-    const date = subMonths(new Date(), i);
-    return {
-      label: format(date, "MMMM yyyy"),
-      value: format(date, "yyyy-MM"),
-    };
-  });
+  const months = (propMonths ?? Array.from({ length: 12 }, (_, i) => format(subMonths(new Date(), i), "yyyy-MM")))
+    .map((value) => ({
+      label: format(new Date(value + "-02"), "MMMM yyyy"),
+      value,
+    }));
 
   const view = searchParams.get("view") === "yearly" ? "yearly" : "monthly";
   const currentYear = format(new Date(), "yyyy");

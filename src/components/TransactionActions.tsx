@@ -52,9 +52,10 @@ interface TransactionActionsProps {
   initialCategories: Category[];
   initialAccounts: Account[];
   onCategoryUpdate?: (txId: string, category: string) => void;
+  onDelete?: (txId: string) => void;
 }
 
-export function TransactionActions({ transaction, initialCategories, initialAccounts, onCategoryUpdate }: TransactionActionsProps) {
+export function TransactionActions({ transaction, initialCategories, initialAccounts, onCategoryUpdate, onDelete }: TransactionActionsProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isCategorizeOpen, setIsCategorizeOpen] = useState(false);
@@ -64,6 +65,7 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
   const [categorizeData, setCategorizeData] = useState({
     category: transaction.category,
     saveRule: true,
+    updateExisting: true,
   });
 
   const [formData, setFormData] = useState({
@@ -104,6 +106,7 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
     await deleteTransaction(transaction.date, transaction.id);
     setIsSubmitting(false);
     setIsDeleteOpen(false);
+    onDelete?.(transaction.id);
   };
 
   const handleCategorize = async (e: React.FormEvent) => {
@@ -111,16 +114,33 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
     setIsSubmitting(true);
     setError(null);
 
-    const result = await recategorizeByDescription(
-      transaction.description,
-      categorizeData.category,
-      transaction.transactionType ?? "EXPENSE",
-    );
+    if (categorizeData.updateExisting) {
+      const result = await recategorizeByDescription(
+        transaction.description,
+        categorizeData.category,
+        transaction.transactionType ?? "EXPENSE",
+      );
 
-    if (result.error) {
-      setError(result.error);
-      setIsSubmitting(false);
-      return;
+      if (result.error) {
+        setError(result.error);
+        setIsSubmitting(false);
+        return;
+      }
+    } else {
+      const result = await updateTransaction(transaction.date, transaction.id, {
+        description: transaction.description,
+        amount: transaction.amount,
+        date: transaction.date,
+        category: categorizeData.category,
+        transactionType: transaction.transactionType ?? "EXPENSE",
+        accountId: transaction.accountId,
+      });
+
+      if (result.error) {
+        setError(result.error);
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     if (categorizeData.saveRule) {
@@ -307,7 +327,10 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isCategorizeOpen} onOpenChange={(open) => { setIsCategorizeOpen(open); setError(null); }}>
+      <Dialog open={isCategorizeOpen} onOpenChange={(open) => {
+        setIsCategorizeOpen(open);
+        setError(null);
+      }}>
         <DialogContent className="sm:max-w-90">
           <DialogHeader>
             <DialogTitle>Set Category</DialogTitle>
@@ -342,6 +365,15 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
                 className="h-4 w-4 rounded border-border accent-primary"
               />
               <span className="text-sm text-muted-foreground">Remember for future imports</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={categorizeData.updateExisting}
+                onChange={(e) => setCategorizeData({ ...categorizeData, updateExisting: e.target.checked })}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              <span className="text-sm text-muted-foreground">Update all existing transactions</span>
             </label>
             {error && <p className="text-sm text-red-500">{error}</p>}
             <DialogFooter>
