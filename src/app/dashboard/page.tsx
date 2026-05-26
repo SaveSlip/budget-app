@@ -34,7 +34,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   if (!session?.user) redirect("/signin");
 
   const [resolvedParams, availableMonths] = await Promise.all([searchParams, getAvailableMonths()]);
-  const activeMonth = resolvedParams.month || format(new Date(), "yyyy-MM");
+
+  const todayMonth = format(new Date(), "yyyy-MM");
+  if (!resolvedParams.month && availableMonths.length > 0 && !availableMonths.includes(todayMonth)) {
+    redirect(`/dashboard?month=${availableMonths[0]}`);
+  }
+
+  const activeMonth = resolvedParams.month || todayMonth;
   const view = resolvedParams.view === "yearly" ? "yearly" : "monthly";
   const activeYear = resolvedParams.year || format(new Date(), "yyyy");
 

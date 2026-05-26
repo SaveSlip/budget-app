@@ -6,6 +6,12 @@ import { UploadCloud, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { batchCreateTransactions } from "@/app/actions/transactions";
 import { getCategoryRules, type CategoryRule } from "@/app/actions/categoryRules";
 import { applyUserRules, autoMatchCategory } from "@/lib/constants/categories";
+import { CsvColumnMapper, autoDetectMapping, type ColumnMapping } from "@/components/CsvColumnMapper";
+import {
+  CsvImportPreview,
+  validatePreviewRow,
+  type PreviewRow,
+} from "@/components/CsvImportPreview";
 
 function filterCsvFiles(files: FileList | File[]): { valid: File[]; rejected: string[] } {
   const arr = Array.from(files);
@@ -16,13 +22,123 @@ function filterCsvFiles(files: FileList | File[]): { valid: File[]; rejected: st
   return { valid, rejected };
 }
 
-type UploadState = "idle" | "dragging" | "processing" | "success" | "error";
+function extractHeaders(file: File): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    Papa.parse(file, {
+      header: true,
+      preview: 1,
+      skipEmptyLines: true,
+      complete: (results) => resolve(results.meta.fields ?? []),
+      error: (err) => reject(new Error(err.message)),
+    });
+  });
+}
+
+function extractPreviewRows(
+  file: File,
+  rules: CategoryRule[],
+  mapping: ColumnMapping,
+  idOffset: number,
+): Promise<PreviewRow[]> {
+  return new Promise((resolve, reject) => {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        let id = idOffset;
+        const rows: PreviewRow[] = results.data.map((row: unknown) => {
+          const normalizedRow: Record<string, string> = {};
+          for (const key in row as Record<string, string>) {
+            normalizedRow[key.toLowerCase().trim()] = (row as Record<string, string>)[key];
+          }
+
+          const descKey = mapping.description.toLowerCase().trim();
+          const amtKey = mapping.amount.toLowerCase().trim();
+          const dateKey = mapping.date.toLowerCase().trim();
+
+          const description = normalizedRow[descKey]?.trim() ?? "";
+          const rawAmount = Number(
+            (normalizedRow[amtKey] || "0").replace(/[^0-9.-]+/g, ""),
+          );
+          const amountStr = rawAmount === 0 ? "0" : Math.abs(rawAmount).toString();
+
+          let transactionType: "EXPENSE" | "INCOME";
+          if (mapping.type === "auto") {
+            transactionType = rawAmount < 0 ? "EXPENSE" : "INCOME";
+          } else {
+            const typeVal = (normalizedRow[mapping.type.toLowerCase().trim()] ?? "").toLowerCase();
+            transactionType =
+              typeVal.includes("debit") || typeVal.includes("expense") ? "EXPENSE" : "INCOME";
+          }
+
+          const rawDate = normalizedRow[dateKey] || "";
+          const dateMatch = rawDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+          const date = dateMatch
+            ? `${dateMatch[3]}-${dateMatch[1]}-${dateMatch[2]}`
+            : rawDate.length > 10 && rawDate.includes("T")
+              ? rawDate.split("T")[0]
+              : rawDate;
+
+          const category = normalizedRow.category?.trim()
+            ? normalizedRow.category.trim()
+            : (applyUserRules(description, transactionType, rules) ??
+              autoMatchCategory(description, transactionType));
+
+          const partial: PreviewRow = {
+            id: id++,
+            description,
+            amount: amountStr,
+            date,
+            category,
+            transactionType,
+            errors: {},
+            isSkipped: false,
+            editingField: null,
+          };
+          partial.errors = validatePreviewRow(partial);
+          return partial;
+        });
+
+        resolve(rows);
+      },
+      error: (error) => {
+        reject(new Error(`Failed to parse CSV: ${error.message}`));
+      },
+    });
+  });
+}
+
+async function importValidRows(rows: PreviewRow[]): Promise<number> {
+  const toImport = rows.filter(
+    (r) => !r.isSkipped && Object.keys(r.errors).length === 0,
+  );
+  if (toImport.length === 0) return 0;
+
+  const transactions = toImport.map((r) => ({
+    description: r.description,
+    amount: Number(r.amount),
+    date: r.date,
+    category: r.category,
+    transactionType: r.transactionType,
+  }));
+
+  const result = await batchCreateTransactions(transactions);
+  if (result.error) throw new Error(result.error);
+  return result.count ?? 0;
+}
+
+type UploadState = "idle" | "dragging" | "processing" | "mapping" | "preview" | "success" | "error";
 
 export default function CsvUploader() {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [fileProgress, setFileProgress] = useState<string | null>(null);
   const [skippedWarning, setSkippedWarning] = useState<string | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingRejected, setPendingRejected] = useState<string[]>([]);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null);
+  const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -33,74 +149,6 @@ export default function CsvUploader() {
   const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (uploadState !== "processing") setUploadState("idle");
-  };
-
-  // Returns count of imported transactions or throws
-  const parseSingleFile = (file: File, rules: CategoryRule[]): Promise<number> => {
-    return new Promise((resolve, reject) => {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-          const mappedTransactions = results.data
-            .map((row: any) => {
-              const normalizedRow: Record<string, string> = {};
-              for (const key in row) {
-                normalizedRow[key.toLowerCase().trim()] = row[key];
-              }
-
-              const description =
-                normalizedRow.description ||
-                normalizedRow.name ||
-                normalizedRow.memo ||
-                "Imported Transaction";
-              const rawAmount = Number(
-                (
-                  normalizedRow.amount ||
-                  normalizedRow.value ||
-                  normalizedRow["cad$"] ||
-                  normalizedRow["usd$"] ||
-                  "0"
-                ).replace(/[^0-9.-]+/g, ""),
-              );
-              const transactionType: "EXPENSE" | "INCOME" = rawAmount < 0 ? "EXPENSE" : "INCOME";
-
-              const rawDate =
-                normalizedRow.date ||
-                normalizedRow["transaction date"] ||
-                new Date().toISOString().split("T")[0];
-              const dateMatch = rawDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-              const date = dateMatch
-                ? `${dateMatch[3]}-${dateMatch[1]}-${dateMatch[2]}`
-                : rawDate.length > 10 && rawDate.includes("T")
-                  ? rawDate.split("T")[0]
-                  : rawDate;
-
-              return {
-                description,
-                amount: Math.abs(rawAmount),
-                date,
-                category: normalizedRow.category?.trim()
-                  ? normalizedRow.category.trim()
-                  : (applyUserRules(description, transactionType, rules) ??
-                    autoMatchCategory(description, transactionType)),
-                transactionType,
-              };
-            })
-            .filter((tx) => tx.amount !== 0);
-
-          const result = await batchCreateTransactions(mappedTransactions);
-          if (result.error) {
-            reject(new Error(result.error));
-          } else {
-            resolve(result.count ?? 0);
-          }
-        },
-        error: (error) => {
-          reject(new Error(`Failed to parse CSV: ${error.message}`));
-        },
-      });
-    });
   };
 
   const processFiles = async (files: FileList | File[]) => {
@@ -120,37 +168,74 @@ export default function CsvUploader() {
       return;
     }
 
+    try {
+      const headers = await extractHeaders(valid[0]);
+      const detected = autoDetectMapping(headers);
+      setPendingFiles(valid);
+      setPendingRejected(rejected);
+      setCsvHeaders(headers);
+      setColumnMapping(detected);
+      setUploadState("mapping");
+    } catch {
+      setUploadState("error");
+      setMessage("Could not read CSV headers.");
+      setTimeout(() => { setUploadState("idle"); setMessage(null); }, 3000);
+    }
+  };
+
+  const handleMappingConfirm = async (mapping: ColumnMapping) => {
     setUploadState("processing");
-    setSkippedWarning(null);
+    setMessage("Parsing rows…");
     setFileProgress(null);
 
-    let totalImported = 0;
-    const errors: string[] = [];
+    try {
+      const rules = await getCategoryRules();
+      const allRows: PreviewRow[] = [];
+      let idCounter = 0;
 
-    const rules = await getCategoryRules();
-
-    for (let i = 0; i < valid.length; i++) {
-      const file = valid[i];
-      setFileProgress(
-        valid.length > 1 ? `File ${i + 1} of ${valid.length}: ${file.name}` : null,
-      );
-      setMessage(`Parsing ${file.name}...`);
-
-      try {
-        const count = await parseSingleFile(file, rules);
-        totalImported += count;
-      } catch (err: any) {
-        errors.push(`${file.name}: ${err.message}`);
+      for (let i = 0; i < pendingFiles.length; i++) {
+        const file = pendingFiles[i];
+        if (pendingFiles.length > 1) {
+          setFileProgress(`Parsing file ${i + 1} of ${pendingFiles.length}: ${file.name}`);
+        }
+        const rows = await extractPreviewRows(file, rules, mapping, idCounter);
+        idCounter += rows.length;
+        allRows.push(...rows);
       }
-    }
 
-    if (errors.length > 0 && totalImported === 0) {
+      setPreviewRows(allRows);
+      setColumnMapping(mapping);
+      setUploadState("preview");
+      setMessage(null);
+      setFileProgress(null);
+    } catch (err: unknown) {
       setUploadState("error");
-      setMessage(errors[0]);
-    } else {
+      setMessage(err instanceof Error ? err.message : "Failed to parse CSV.");
+      setTimeout(() => { setUploadState("idle"); setMessage(null); }, 3000);
+    }
+  };
+
+  const handlePreviewConfirm = async (finalRows: PreviewRow[]) => {
+    setUploadState("processing");
+    setMessage("Importing transactions…");
+    setFileProgress(null);
+    setSkippedWarning(null);
+
+    try {
+      const count = await importValidRows(finalRows);
+      const skipped = finalRows.filter((r) => r.isSkipped || Object.keys(r.errors).length > 0).length;
+      const rejected = pendingRejected;
+
+      setPendingFiles([]);
+      setPendingRejected([]);
+      setPreviewRows([]);
+
       setUploadState("success");
-      const fileLabel = valid.length > 1 ? `${valid.length} files` : valid[0].name;
-      setMessage(`Successfully imported ${totalImported} transactions from ${fileLabel}.`);
+      setMessage(
+        skipped > 0
+          ? `Imported ${count} transaction${count !== 1 ? "s" : ""}. ${skipped} row${skipped !== 1 ? "s" : ""} skipped.`
+          : `Successfully imported ${count} transaction${count !== 1 ? "s" : ""}.`,
+      );
 
       if (rejected.length > 0) {
         const names = rejected.join(", ");
@@ -165,9 +250,21 @@ export default function CsvUploader() {
         setFileProgress(null);
         setSkippedWarning(null);
       }, 4000);
+    } catch (err: unknown) {
+      setUploadState("error");
+      setMessage(err instanceof Error ? err.message : "Import failed.");
+      setTimeout(() => { setUploadState("idle"); setMessage(null); }, 3000);
     }
+  };
 
-    setFileProgress(null);
+  const handleMappingCancel = () => {
+    setPendingFiles([]);
+    setPendingRejected([]);
+    setCsvHeaders([]);
+    setColumnMapping(null);
+    setPreviewRows([]);
+    setUploadState("idle");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -179,15 +276,40 @@ export default function CsvUploader() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       processFiles(e.target.files);
-      // Reset so the same files can be re-selected if needed
       e.target.value = "";
     }
   };
+
+  if (uploadState === "mapping" && columnMapping) {
+    return (
+      <CsvColumnMapper
+        filename={pendingFiles[0]?.name ?? ""}
+        csvHeaders={csvHeaders}
+        initialMapping={columnMapping}
+        onConfirm={handleMappingConfirm}
+        onCancel={handleMappingCancel}
+      />
+    );
+  }
+
+  if (uploadState === "preview") {
+    return (
+      <CsvImportPreview
+        rows={previewRows}
+        filename={pendingFiles[0]?.name ?? ""}
+        onConfirmImport={handlePreviewConfirm}
+        onCancel={() => setUploadState("mapping")}
+        onChange={setPreviewRows}
+      />
+    );
+  }
 
   const borderClass = {
     idle: "border-border hover:border-primary/50 hover:bg-accent",
     dragging: "border-primary bg-primary/10 scale-[1.02]",
     processing: "border-info bg-info/5 cursor-wait",
+    mapping: "border-border",
+    preview: "border-border",
     success: "border-success bg-success/10",
     error: "border-destructive bg-destructive/10",
   }[uploadState];
@@ -196,6 +318,8 @@ export default function CsvUploader() {
     idle: "text-muted-foreground",
     dragging: "text-primary",
     processing: "text-info animate-spin",
+    mapping: "text-muted-foreground",
+    preview: "text-muted-foreground",
     success: "text-success",
     error: "text-destructive",
   }[uploadState];
@@ -213,6 +337,8 @@ export default function CsvUploader() {
     idle: "Drag & drop your bank CSV files",
     dragging: "Drop them here!",
     processing: "Processing Data...",
+    mapping: "Mapping columns…",
+    preview: "Reviewing import…",
     success: "Import Complete",
     error: "Import Failed",
   }[uploadState];
