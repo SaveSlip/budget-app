@@ -37,6 +37,7 @@ import {
 import { AlertTriangle, Download, Loader2, Trash2 } from "lucide-react"
 import Papa from "papaparse"
 import { batchDeleteTransactions, deleteAllTransactions, getTransactionsBatch } from "@/app/actions/transactions"
+import { getColumns } from "@/app/dashboard/transactions/columns"
 import {
   Select,
   SelectContent,
@@ -47,36 +48,47 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { TransactionActions } from "@/components/TransactionActions"
 import type { Category, Account } from "@/lib/data/budget"
+import type { Transaction } from "@/app/dashboard/transactions/columns"
 
 const PAGE_SIZE = 25
 const PREFETCH_SIZE = 50
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
+interface DataTableProps {
+  data: Transaction[]
   initialCursor: string | null
   embedded?: boolean
   initialCategories?: Category[]
   initialAccounts?: Account[]
 }
 
-export function DataTable<TData, TValue>({
-  columns,
+export function DataTable({
   data,
   initialCursor,
   embedded = false,
   initialCategories = [],
   initialAccounts = [],
-}: DataTableProps<TData, TValue>) {
-  const [visibleData, setVisibleData] = React.useState<TData[]>(data)
+}: DataTableProps) {
+  const handleCategoryUpdate = React.useCallback((txId: string, category: string) => {
+    setVisibleData((prev) =>
+      prev.map((row) => (row.id === txId ? { ...row, category } : row))
+    )
+  }, [])
+
+  const columns = React.useMemo(
+    () => getColumns(initialCategories, initialAccounts, handleCategoryUpdate),
+    [initialCategories, initialAccounts, handleCategoryUpdate],
+  )
+
+  const [visibleData, setVisibleData] = React.useState<Transaction[]>(data)
   // IDs of rows just appended — cleared after one frame so animation fires once
   const [newRowIds, setNewRowIds] = React.useState<Set<string>>(new Set())
 
-  const bufferRef = React.useRef<TData[]>([])
+  const bufferRef = React.useRef<Transaction[]>([])
   const cursorRef = React.useRef<string | null>(initialCursor)
   const hasLoadedAllRef = React.useRef(initialCursor === null)
   const isRevealingRef = React.useRef(false)
 
+  const isFetchingRef = React.useRef(false)
   const [isFetching, setIsFetching] = React.useState(false)
   const [isLoadingAll, setIsLoadingAll] = React.useState(false)
   const [exhausted, setExhausted] = React.useState(initialCursor === null)
@@ -98,6 +110,7 @@ export function DataTable<TData, TValue>({
     cursorRef.current = initialCursor
     hasLoadedAllRef.current = initialCursor === null
     isRevealingRef.current = false
+    isFetchingRef.current = false
     setVisibleData(data)
     setNewRowIds(new Set())
     setExhausted(initialCursor === null)
@@ -105,27 +118,28 @@ export function DataTable<TData, TValue>({
   }, [data, initialCursor])
 
   const prefetchIntoBuffer = React.useCallback(async () => {
-    if (isFetching || hasLoadedAllRef.current) return
+    if (isFetchingRef.current || hasLoadedAllRef.current) return
     const cursor = cursorRef.current
     if (!cursor) return
+    isFetchingRef.current = true
     setIsFetching(true)
     try {
       const result = await getTransactionsBatch(cursor, PREFETCH_SIZE)
-      bufferRef.current = [...bufferRef.current, ...result.transactions as TData[]]
+      bufferRef.current = [...bufferRef.current, ...result.transactions as Transaction[]]
       cursorRef.current = result.nextCursor
       if (!result.nextCursor) hasLoadedAllRef.current = true
     } finally {
+      isFetchingRef.current = false
       setIsFetching(false)
     }
-  }, [isFetching])
+  }, [])
 
-  // Kick off first prefetch on mount so buffer is ready before first scroll
+  // Kick off prefetch whenever buffer is empty and there's more to load (mount + after resets)
   React.useEffect(() => {
     if (!exhausted && bufferRef.current.length === 0) {
       prefetchIntoBuffer()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [exhausted, prefetchIntoBuffer])
 
   const revealNextPage = React.useCallback(() => {
     if (isRevealingRef.current) return
@@ -177,12 +191,12 @@ export function DataTable<TData, TValue>({
     if (isLoadingAll) return
     setIsLoadingAll(true)
     try {
-      const accumulated: TData[] = [...bufferRef.current]
+      const accumulated: Transaction[] = [...bufferRef.current]
       bufferRef.current = []
       let currentCursor = cursorRef.current
       while (currentCursor) {
         const result = await getTransactionsBatch(currentCursor, 100)
-        accumulated.push(...result.transactions as TData[])
+        accumulated.push(...result.transactions as Transaction[])
         currentCursor = result.nextCursor
       }
       cursorRef.current = null

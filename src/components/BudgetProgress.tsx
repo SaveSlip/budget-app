@@ -273,16 +273,35 @@ export function BudgetProgress({
         ) : null}
       </div>
 
-      <div className="flex justify-between items-end text-sm pr-6">
+      <div className="flex flex-col gap-1 text-sm pr-6">
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
             Category
           </span>
-          <span className="font-bold text-lg leading-none">{categoryName}</span>
+          <span className="font-bold text-lg leading-tight">{categoryName}</span>
+        </div>
+
+        <div className="flex items-baseline gap-1">
+          <span
+            className={cn(
+              "text-lg font-mono font-bold",
+              isOverBudget ? "text-destructive" : "text-foreground",
+            )}
+          >
+            ${spent.toLocaleString()}
+          </span>
+          <span className="text-muted-foreground text-xs">
+            / ${effectiveLimit.toLocaleString()}
+          </span>
+          {showRollover && (
+            <span className="text-[10px] text-muted-foreground">
+              base ${limit.toLocaleString()}
+            </span>
+          )}
           {showRollover && (
             <span
               className={cn(
-                "text-[10px] font-semibold",
+                "text-[10px] font-semibold ml-auto",
                 rolloverDelta > 0 ? "text-emerald-500" : "text-destructive",
               )}
             >
@@ -292,25 +311,6 @@ export function BudgetProgress({
               })}{" "}
               rolled over
             </span>
-          )}
-        </div>
-
-        <div className="text-right">
-          <span
-            className={cn(
-              "text-lg font-mono font-bold",
-              isOverBudget ? "text-destructive" : "text-foreground",
-            )}
-          >
-            ${spent.toLocaleString()}
-          </span>
-          <span className="text-muted-foreground text-xs ml-1">
-            / ${effectiveLimit.toLocaleString()}
-          </span>
-          {showRollover && (
-            <p className="text-[10px] text-muted-foreground">
-              base ${limit.toLocaleString()}
-            </p>
           )}
         </div>
       </div>

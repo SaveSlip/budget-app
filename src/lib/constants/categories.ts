@@ -31,14 +31,14 @@ export const UNIVERSAL_CATEGORIES: UniversalCategory[] = [
     keywords: ["electricity", "water", "internet", "phone", "hydro", "cable", "broadband", "gas bill", "sewer", "wifi", "cell", "mobile plan"],
   },
   {
-    id: "dining-out",
-    name: "Dining Out",
-    keywords: ["restaurant", "takeout", "take out", "delivery", "coffee", "cafe", "fast food", "doordash", "ubereats", "grubhub", "skip the dishes", "bar", "pub", "brunch", "dining"],
+    id: "entertainment-dining",
+    name: "Entertainment & Dining",
+    keywords: ["restaurant", "takeout", "take out", "delivery", "coffee", "cafe", "fast food", "doordash", "ubereats", "grubhub", "skip the dishes", "bar", "pub", "brunch", "dining", "movies", "games", "concert", "music", "cinema", "theater", "theatre", "recreation"],
   },
   {
-    id: "entertainment",
-    name: "Entertainment",
-    keywords: ["netflix", "spotify", "movies", "games", "concert", "streaming", "disney", "hulu", "apple tv", "youtube premium", "music", "cinema", "theater", "theatre", "recreation"],
+    id: "subscriptions",
+    name: "Subscriptions",
+    keywords: ["netflix", "spotify", "hulu", "disney", "apple tv", "youtube premium", "youtube", "subscription", "membership", "patreon", "twitch", "streaming", "prime video", "amazon prime", "apple one", "peacock", "paramount"],
   },
   {
     id: "shopping",
@@ -51,11 +51,6 @@ export const UNIVERSAL_CATEGORIES: UniversalCategory[] = [
     keywords: ["tuition", "books", "courses", "school", "college", "university", "student", "textbooks", "udemy", "coursera", "learning", "classes"],
   },
   {
-    id: "personal-care",
-    name: "Personal Care",
-    keywords: ["haircut", "gym", "salon", "spa", "fitness", "beauty", "barber", "hair", "nails", "massage", "yoga", "pilates", "workout"],
-  },
-  {
     id: "savings-investments",
     name: "Savings & Investments",
     keywords: ["savings", "investment", "etf", "stocks", "rrsp", "tfsa", "401k", "roth", "ira", "mutual fund", "brokerage", "crypto", "pension", "retirement"],
@@ -64,6 +59,11 @@ export const UNIVERSAL_CATEGORIES: UniversalCategory[] = [
     id: "insurance",
     name: "Insurance",
     keywords: ["insurance", "life insurance", "auto insurance", "home insurance", "tenant insurance", "renters insurance", "coverage", "premium", "policy"],
+  },
+  {
+    id: "miscellaneous",
+    name: "Miscellaneous",
+    keywords: ["misc", "miscellaneous", "other", "general"],
   },
 ];
 
@@ -110,4 +110,31 @@ export function findUniversalCategory(name: string): UniversalCategory | undefin
   return UNIVERSAL_CATEGORIES.find((uc) =>
     uc.keywords.some((kw) => normalized.includes(kw) || kw.includes(normalized))
   );
+}
+
+export function applyUserRules(
+  description: string,
+  transactionType: "EXPENSE" | "INCOME",
+  rules: { merchantKeyword: string; categoryName: string; transactionType: string }[]
+): string | null {
+  const normalized = description.toLowerCase();
+  const match = rules.find(
+    (r) => r.transactionType === transactionType && normalized.includes(r.merchantKeyword)
+  );
+  return match ? match.categoryName : null;
+}
+
+export function autoMatchCategory(
+  description: string,
+  transactionType: "EXPENSE" | "INCOME"
+): string {
+  const normalized = description.toLowerCase().trim();
+  const pool =
+    transactionType === "INCOME" ? UNIVERSAL_INCOME_CATEGORIES : UNIVERSAL_CATEGORIES;
+
+  const match = pool.find((uc) =>
+    uc.keywords.some((kw) => normalized.includes(kw))
+  );
+
+  return match ? match.name : "Uncategorized";
 }

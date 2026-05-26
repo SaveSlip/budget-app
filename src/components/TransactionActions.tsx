@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal, Edit, Trash, Loader2 } from "lucide-react";
+import { MoreHorizontal, Edit, Trash, Loader2, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,7 +31,9 @@ import {
 import {
   updateTransaction,
   deleteTransaction,
+  recategorizeByDescription,
 } from "@/app/actions/transactions";
+import { saveCategoryRule } from "@/app/actions/categoryRules";
 import type { Account, Category } from "@/lib/data/budget";
 
 type Transaction = {
@@ -49,13 +51,20 @@ interface TransactionActionsProps {
   transaction: Transaction;
   initialCategories: Category[];
   initialAccounts: Account[];
+  onCategoryUpdate?: (txId: string, category: string) => void;
 }
 
-export function TransactionActions({ transaction, initialCategories, initialAccounts }: TransactionActionsProps) {
+export function TransactionActions({ transaction, initialCategories, initialAccounts, onCategoryUpdate }: TransactionActionsProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isCategorizeOpen, setIsCategorizeOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [categorizeData, setCategorizeData] = useState({
+    category: transaction.category,
+    saveRule: true,
+  });
 
   const [formData, setFormData] = useState({
     description: transaction.description,
@@ -97,6 +106,36 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
     setIsDeleteOpen(false);
   };
 
+  const handleCategorize = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    const result = await recategorizeByDescription(
+      transaction.description,
+      categorizeData.category,
+      transaction.transactionType ?? "EXPENSE",
+    );
+
+    if (result.error) {
+      setError(result.error);
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (categorizeData.saveRule) {
+      await saveCategoryRule(
+        transaction.description,
+        categorizeData.category,
+        transaction.transactionType ?? "EXPENSE",
+      );
+    }
+
+    onCategoryUpdate?.(transaction.id, categorizeData.category);
+    setIsSubmitting(false);
+    setIsCategorizeOpen(false);
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -113,6 +152,10 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
             <Edit className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsCategorizeOpen(true)}>
+            <Tag className="mr-2 h-4 w-4" />
+            Categorize
+          </DropdownMenuItem>
           <DropdownMenuItem
             className="text-red-600 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/20"
             onClick={() => setIsDeleteOpen(true)}
@@ -124,7 +167,7 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
       </DropdownMenu>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-106.25">
           <DialogHeader>
             <DialogTitle>Edit Transaction</DialogTitle>
           </DialogHeader>
@@ -258,6 +301,52 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
                 ) : (
                   "Save changes"
                 )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCategorizeOpen} onOpenChange={(open) => { setIsCategorizeOpen(open); setError(null); }}>
+        <DialogContent className="sm:max-w-90">
+          <DialogHeader>
+            <DialogTitle>Set Category</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground truncate">{transaction.description}</p>
+          <form onSubmit={handleCategorize} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium leading-none text-muted-foreground">
+                Category
+              </label>
+              <select
+                required
+                value={categorizeData.category}
+                onChange={(e) => setCategorizeData({ ...categorizeData, category: e.target.value })}
+                className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+              >
+                <option value="" disabled>Select a category...</option>
+                {initialCategories
+                  .filter((c) => (c.categoryType ?? "EXPENSE") === (transaction.transactionType ?? "EXPENSE"))
+                  .map((cat) => (
+                    <option key={cat.id} value={cat.name}>
+                      {cat.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={categorizeData.saveRule}
+                onChange={(e) => setCategorizeData({ ...categorizeData, saveRule: e.target.checked })}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              <span className="text-sm text-muted-foreground">Remember for future imports</span>
+            </label>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <DialogFooter>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Save"}
               </Button>
             </DialogFooter>
           </form>

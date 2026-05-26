@@ -1,5 +1,5 @@
 import { docClient, TABLE_NAME } from "@/lib/db";
-import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { QueryCommand, BatchGetCommand } from "@aws-sdk/lib-dynamodb";
 import { auth } from "@/auth";
 import { UNIVERSAL_CATEGORIES, UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
 import { format, subMonths } from "date-fns";
@@ -65,38 +65,60 @@ export async function getMonthlyData(month: string): Promise<Transaction[]> {
   }
 }
 
-export async function getCategories(): Promise<Category[]> {
+export async function getCategories(month?: string): Promise<Category[]> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Unauthorized");
 
+  const quarter = monthToQuarter(month ?? format(new Date(), "yyyy-MM"));
+
   try {
-    const [categoryResult, limitResult] = await Promise.all([
-      docClient.send(
-        new QueryCommand({
-          TableName: TABLE_NAME,
-          KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
-          ExpressionAttributeValues: {
-            ":pk": `USER#${userId}`,
-            ":skPrefix": "CATEGORY#",
-          },
-        }),
-      ),
-      docClient.send(
-        new QueryCommand({
-          TableName: TABLE_NAME,
-          KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
-          ExpressionAttributeValues: {
-            ":pk": `USER#${userId}`,
-            ":skPrefix": "UNIVERSAL_LIMIT#",
-          },
-        }),
-      ),
-    ]);
+    const categoryResult = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+        ExpressionAttributeValues: {
+          ":pk": `USER#${userId}`,
+          ":skPrefix": "CATEGORY#",
+        },
+      }),
+    );
 
     const customCategories = (categoryResult.Items ?? []).filter((item) => item.name) as Category[];
-    const universalLimitOverrides = new Map<string, number>(
-      (limitResult.Items ?? []).map((item) => [item.id as string, item.limit as number])
-    );
+
+    // Fetch quarter-scoped and base limit records in one batch
+    const universalIds = UNIVERSAL_CATEGORIES.map((uc) => uc.id);
+    const customIds = customCategories.map((c) => c.id);
+
+    const batchKeys = [
+      ...universalIds.flatMap((id) => [
+        { pk: `USER#${userId}`, sk: `UNIVERSAL_LIMIT#${id}#${quarter}` },
+        { pk: `USER#${userId}`, sk: `UNIVERSAL_LIMIT#${id}` },
+      ]),
+      ...customIds.map((id) => ({ pk: `USER#${userId}`, sk: `CATEGORY_LIMIT#${id}#${quarter}` })),
+    ];
+
+    const batchItems = await batchGetItems(batchKeys);
+
+    const universalQuarterLimits = new Map<string, number>();
+    const universalBaseLimits = new Map<string, number>();
+    const customQuarterLimits = new Map<string, number>();
+
+    for (const item of batchItems) {
+      const sk = item.sk as string;
+      const id = item.id as string;
+      const limit = item.limit as number;
+      if (sk.startsWith("UNIVERSAL_LIMIT#")) {
+        // Quarter record has two '#' separators; base record has one
+        const parts = sk.split("#");
+        if (parts.length === 3) {
+          universalQuarterLimits.set(id, limit);
+        } else {
+          universalBaseLimits.set(id, limit);
+        }
+      } else if (sk.startsWith("CATEGORY_LIMIT#")) {
+        customQuarterLimits.set(id, limit);
+      }
+    }
 
     const universalNames = new Set(UNIVERSAL_CATEGORIES.map((uc) => uc.name.toLowerCase()));
     const filteredCustom = customCategories.filter(
@@ -106,7 +128,7 @@ export async function getCategories(): Promise<Category[]> {
     const universals: Category[] = UNIVERSAL_CATEGORIES.map((uc) => ({
       id: uc.id,
       name: uc.name,
-      limit: universalLimitOverrides.get(uc.id) ?? 0,
+      limit: universalQuarterLimits.get(uc.id) ?? universalBaseLimits.get(uc.id) ?? 0,
       type: "CATEGORY",
       createdAt: "",
       isUniversal: true,
@@ -126,7 +148,12 @@ export async function getCategories(): Promise<Category[]> {
     return [
       ...universals,
       ...universalIncome,
-      ...filteredCustom.map((c) => ({ ...c, isUniversal: false, categoryType: (c.categoryType ?? "EXPENSE") as "INCOME" | "EXPENSE" })),
+      ...filteredCustom.map((c) => ({
+        ...c,
+        limit: customQuarterLimits.get(c.id) ?? c.limit ?? 0,
+        isUniversal: false,
+        categoryType: (c.categoryType ?? "EXPENSE") as "INCOME" | "EXPENSE",
+      })),
     ];
   } catch (error) {
     console.error("[DAL] Categories fetch failed:", error);
@@ -201,6 +228,31 @@ function getPreviousMonth(month: string): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+export function monthToQuarter(month: string): string {
+  const [year, m] = month.split("-").map(Number);
+  return `${year}-Q${Math.ceil(m / 3)}`;
+}
+
+export function currentQuarter(): string {
+  return monthToQuarter(format(new Date(), "yyyy-MM"));
+}
+
+async function batchGetItems(
+  keys: Array<{ pk: string; sk: string }>
+): Promise<Record<string, unknown>[]> {
+  if (keys.length === 0) return [];
+  const chunks: Array<typeof keys> = [];
+  for (let i = 0; i < keys.length; i += 100) chunks.push(keys.slice(i, i + 100));
+  const results = await Promise.all(
+    chunks.map((chunk) =>
+      docClient.send(
+        new BatchGetCommand({ RequestItems: { [TABLE_NAME]: { Keys: chunk } } })
+      )
+    )
+  );
+  return results.flatMap((r) => r.Responses?.[TABLE_NAME] ?? []) as Record<string, unknown>[];
+}
+
 function computeCategorySpending(transactions: Transaction[]): Record<string, number> {
   const spending: Record<string, number> = {};
   for (const tx of transactions) {
@@ -217,7 +269,7 @@ export async function getMonthlyBalance(month: string): Promise<MonthlyBalance> 
   const [transactions, prevTransactions, categories] = await Promise.all([
     getMonthlyData(month),
     getMonthlyData(prevMonth),
-    getCategories(),
+    getCategories(month),
   ]);
 
   const categorySpending = computeCategorySpending(transactions);

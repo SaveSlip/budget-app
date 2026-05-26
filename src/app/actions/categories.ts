@@ -13,6 +13,7 @@ import { auth } from "@/auth";
 
 import { z } from "zod";
 import { UNIVERSAL_CATEGORIES, UNIVERSAL_INCOME_CATEGORIES, findUniversalCategory } from "@/lib/constants/categories";
+import { currentQuarter } from "@/lib/data/budget";
 
 const limitSchema = z.coerce.number().nonnegative("Limit must be 0 or greater");
 
@@ -186,23 +187,40 @@ export async function updateCategoryLimit(id: string, limit: number) {
   const parsed = limitSchema.safeParse(limit);
   if (!parsed.success) return { error: "Invalid limit value" };
 
+  const quarter = currentQuarter();
+
   try {
-    await docClient.send(
-      new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: {
-          pk: `USER#${session.user.id}`,
-          sk: `CATEGORY#${id}`,
-        },
-        UpdateExpression: "SET #limit = :limit",
-        ExpressionAttributeNames: {
-          "#limit": "limit",
-        },
-        ExpressionAttributeValues: {
-          ":limit": parsed.data,
-        },
-      }),
-    );
+    await Promise.all([
+      docClient.send(
+        new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            pk: `USER#${session.user.id}`,
+            sk: `CATEGORY#${id}`,
+          },
+          UpdateExpression: "SET #limit = :limit",
+          ExpressionAttributeNames: {
+            "#limit": "limit",
+          },
+          ExpressionAttributeValues: {
+            ":limit": parsed.data,
+          },
+        }),
+      ),
+      docClient.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            pk: `USER#${session.user.id}`,
+            sk: `CATEGORY_LIMIT#${id}#${quarter}`,
+            id,
+            limit: parsed.data,
+            quarter,
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      ),
+    ]);
 
     revalidatePath("/dashboard");
     return { success: true };
@@ -258,19 +276,36 @@ export async function updateUniversalCategoryLimit(id: string, limit: number) {
   const parsed = limitSchema.safeParse(limit);
   if (!parsed.success) return { error: "Invalid limit value" };
 
+  const quarter = currentQuarter();
+
   try {
-    await docClient.send(
-      new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          pk: `USER#${session.user.id}`,
-          sk: `UNIVERSAL_LIMIT#${id}`,
-          id,
-          limit: parsed.data,
-          updatedAt: new Date().toISOString(),
-        },
-      }),
-    );
+    await Promise.all([
+      docClient.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            pk: `USER#${session.user.id}`,
+            sk: `UNIVERSAL_LIMIT#${id}`,
+            id,
+            limit: parsed.data,
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      ),
+      docClient.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            pk: `USER#${session.user.id}`,
+            sk: `UNIVERSAL_LIMIT#${id}#${quarter}`,
+            id,
+            limit: parsed.data,
+            quarter,
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      ),
+    ]);
 
     revalidatePath("/dashboard");
     return { success: true };
@@ -287,26 +322,42 @@ export async function updateCategory(
   const session = await auth();
   if (!session?.user?.id) return { error: "Unauthorized" };
 
+  const quarter = currentQuarter();
 
   try {
-    await docClient.send(
-      new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: {
-          pk: `USER#${session.user.id}`,
-          sk: `CATEGORY#${id}`,
-        },
-        UpdateExpression: "SET #name = :name, #limit = :limit",
-        ExpressionAttributeNames: {
-          "#name": "name",
-          "#limit": "limit",
-        },
-        ExpressionAttributeValues: {
-          ":name": data.name,
-          ":limit": data.limit ?? 0,
-        },
-      }),
-    );
+    await Promise.all([
+      docClient.send(
+        new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            pk: `USER#${session.user.id}`,
+            sk: `CATEGORY#${id}`,
+          },
+          UpdateExpression: "SET #name = :name, #limit = :limit",
+          ExpressionAttributeNames: {
+            "#name": "name",
+            "#limit": "limit",
+          },
+          ExpressionAttributeValues: {
+            ":name": data.name,
+            ":limit": data.limit ?? 0,
+          },
+        }),
+      ),
+      docClient.send(
+        new PutCommand({
+          TableName: TABLE_NAME,
+          Item: {
+            pk: `USER#${session.user.id}`,
+            sk: `CATEGORY_LIMIT#${id}#${quarter}`,
+            id,
+            limit: data.limit ?? 0,
+            quarter,
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      ),
+    ]);
 
     revalidatePath("/dashboard/settings/categories");
     revalidatePath("/dashboard");

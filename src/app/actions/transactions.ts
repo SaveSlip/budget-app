@@ -217,6 +217,67 @@ export async function getAllTransactions() {
   }
 }
 
+export async function recategorizeByDescription(
+  description: string,
+  categoryName: string,
+  transactionType: "EXPENSE" | "INCOME",
+): Promise<{ success?: boolean; count?: number; error?: string }> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { error: "Unauthorized" };
+
+  const normalizedDesc = description.toLowerCase();
+  const transactions: any[] = [];
+  let lastEvaluatedKey: Record<string, any> | undefined = undefined;
+
+  try {
+    do {
+      const response = (await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+          ExpressionAttributeValues: {
+            ":pk": `USER#${userId}`,
+            ":skPrefix": "TX#",
+          },
+          ScanIndexForward: false,
+          ExclusiveStartKey: lastEvaluatedKey,
+        }),
+      )) as any;
+      if (response.Items) transactions.push(...response.Items);
+      lastEvaluatedKey = response.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    const matches = transactions.filter(
+      (tx) =>
+        tx.description?.toLowerCase() === normalizedDesc &&
+        tx.transactionType === transactionType,
+    );
+
+    if (matches.length === 0) return { success: true, count: 0 };
+
+    const putRequests = matches.map((tx) => ({
+      PutRequest: {
+        Item: { ...tx, category: categoryName },
+      },
+    }));
+
+    for (let i = 0; i < putRequests.length; i += 25) {
+      await docClient.send(
+        new BatchWriteCommand({
+          RequestItems: { [TABLE_NAME]: putRequests.slice(i, i + 25) },
+        }),
+      );
+    }
+
+    revalidatePath("/dashboard");
+    return { success: true, count: matches.length };
+  } catch (error) {
+    console.error("Failed to recategorize transactions:", error);
+    return { error: "Failed to recategorize transactions." };
+  }
+}
+
 export async function deleteTransaction(date: string, txId: string) {
   const session = await auth();
   const userId = session?.user?.id;

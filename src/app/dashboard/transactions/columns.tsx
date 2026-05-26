@@ -28,7 +28,11 @@ function HeaderLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function getColumns(initialCategories: Category[], initialAccounts: Account[]): ColumnDef<Transaction>[] {
+export function getColumns(
+  initialCategories: Category[],
+  initialAccounts: Account[],
+  onCategoryUpdate?: (txId: string, category: string) => void,
+): ColumnDef<Transaction>[] {
   return [
   {
     id: "select",
@@ -129,7 +133,7 @@ export function getColumns(initialCategories: Category[], initialAccounts: Accou
       const transaction = row.original;
       return (
         <div className="flex justify-end">
-          <TransactionActions transaction={transaction} initialCategories={initialCategories} initialAccounts={initialAccounts} />
+          <TransactionActions transaction={transaction} initialCategories={initialCategories} initialAccounts={initialAccounts} onCategoryUpdate={onCategoryUpdate} />
         </div>
       );
     },

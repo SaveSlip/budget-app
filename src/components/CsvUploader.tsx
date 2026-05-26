@@ -4,6 +4,8 @@ import { useState, DragEvent, useRef } from "react";
 import Papa from "papaparse";
 import { UploadCloud, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { batchCreateTransactions } from "@/app/actions/transactions";
+import { getCategoryRules, type CategoryRule } from "@/app/actions/categoryRules";
+import { applyUserRules, autoMatchCategory } from "@/lib/constants/categories";
 
 function filterCsvFiles(files: FileList | File[]): { valid: File[]; rejected: string[] } {
   const arr = Array.from(files);
@@ -34,7 +36,7 @@ export default function CsvUploader() {
   };
 
   // Returns count of imported transactions or throws
-  const parseSingleFile = (file: File): Promise<number> => {
+  const parseSingleFile = (file: File, rules: CategoryRule[]): Promise<number> => {
     return new Promise((resolve, reject) => {
       Papa.parse(file, {
         header: true,
@@ -76,7 +78,10 @@ export default function CsvUploader() {
                 description,
                 amount: Math.abs(rawAmount),
                 date,
-                category: normalizedRow.category || "Uncategorized",
+                category: normalizedRow.category?.trim()
+                  ? normalizedRow.category.trim()
+                  : (applyUserRules(description, transactionType, rules) ??
+                    autoMatchCategory(description, transactionType)),
                 transactionType,
               };
             })
@@ -120,6 +125,8 @@ export default function CsvUploader() {
     let totalImported = 0;
     const errors: string[] = [];
 
+    const rules = await getCategoryRules();
+
     for (let i = 0; i < valid.length; i++) {
       const file = valid[i];
       setFileProgress(
@@ -128,7 +135,7 @@ export default function CsvUploader() {
       setMessage(`Parsing ${file.name}...`);
 
       try {
-        const count = await parseSingleFile(file);
+        const count = await parseSingleFile(file, rules);
         totalImported += count;
       } catch (err: any) {
         errors.push(`${file.name}: ${err.message}`);
