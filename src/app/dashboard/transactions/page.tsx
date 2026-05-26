@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getTransactionsBatch, getAvailableMonths } from "@/app/actions/transactions";
+import { listRecurringTransactions } from "@/app/actions/recurring";
 import { getCategories, getAccounts } from "@/lib/data/budget";
 import { type Transaction } from "./columns";
 import { TransactionsTabView } from "@/components/TransactionsTabView";
@@ -13,12 +14,13 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user) redirect("/signin");
 
-  const [batchResponse, categories, accounts, resolvedParams, availableMonths] = await Promise.all([
+  const [batchResponse, categories, accounts, resolvedParams, availableMonths, recurring] = await Promise.all([
     getTransactionsBatch(undefined, 25),
     getCategories(),
     getAccounts(),
     searchParams,
     getAvailableMonths(),
+    listRecurringTransactions(),
   ]);
 
   const transactions = (batchResponse.transactions || []) as Transaction[];
@@ -43,6 +45,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
         initialView={resolvedParams.view}
         initialYear={resolvedParams.year}
         initialAvailableMonths={availableMonths}
+        recurring={recurring}
       />
     </div>
   );

@@ -204,6 +204,9 @@ export interface RecurringTransaction {
   accountId?: string;
   frequency: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
   dayOfMonth?: number;
+  dayOfWeek?: number;
+  monthOfYear?: number;
+  dayOfYear?: number;
   nextRunDate: string;
   isActive: boolean;
   createdAt: string;

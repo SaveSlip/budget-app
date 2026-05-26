@@ -16,7 +16,23 @@ const TABLE_NAME = Resource.BudgifyTable.name;
 
 type Frequency = "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
 
-function advanceNextRunDate(frequency: Frequency, dayOfMonth?: number, from?: string): string {
+function lastDayOf(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function setDayOfMonthClamped(d: Date, day: number): void {
+  const max = lastDayOf(d.getFullYear(), d.getMonth());
+  d.setDate(Math.min(day, max));
+}
+
+interface AdvanceOpts {
+  dayOfMonth?: number;
+  dayOfWeek?: number;
+  monthOfYear?: number;
+  dayOfYear?: number;
+}
+
+function advanceNextRunDate(frequency: Frequency, opts: AdvanceOpts = {}, from?: string): string {
   const base = from ? new Date(from) : new Date();
   const d = new Date(base);
 
@@ -26,13 +42,18 @@ function advanceNextRunDate(frequency: Frequency, dayOfMonth?: number, from?: st
       break;
     case "WEEKLY":
       d.setDate(d.getDate() + 7);
+      if (opts.dayOfWeek !== undefined) setDayOfMonthClamped(d, d.getDate()); // weekday already pinned by +7
       break;
     case "MONTHLY":
       d.setMonth(d.getMonth() + 1);
-      if (dayOfMonth) d.setDate(Math.min(dayOfMonth, 28));
+      if (opts.dayOfMonth) setDayOfMonthClamped(d, opts.dayOfMonth);
       break;
     case "YEARLY":
       d.setFullYear(d.getFullYear() + 1);
+      if (opts.monthOfYear) {
+        d.setMonth(opts.monthOfYear - 1);
+        setDayOfMonthClamped(d, opts.dayOfYear ?? d.getDate());
+      }
       break;
   }
 
@@ -89,7 +110,12 @@ export async function handler() {
     // Advance nextRunDate
     const nextRunDate = advanceNextRunDate(
       item.frequency as Frequency,
-      item.dayOfMonth as number | undefined,
+      {
+        dayOfMonth: item.dayOfMonth as number | undefined,
+        dayOfWeek: item.dayOfWeek as number | undefined,
+        monthOfYear: item.monthOfYear as number | undefined,
+        dayOfYear: item.dayOfYear as number | undefined,
+      },
       txDate,
     );
 

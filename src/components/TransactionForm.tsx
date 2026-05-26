@@ -27,6 +27,9 @@ export default function TransactionForm({
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState<"DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY">("MONTHLY");
   const [dayOfMonth, setDayOfMonth] = useState("");
+  const [dayOfWeek, setDayOfWeek] = useState("1");
+  const [monthOfYear, setMonthOfYear] = useState("1");
+  const [dayOfYear, setDayOfYear] = useState("1");
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -55,6 +58,9 @@ export default function TransactionForm({
             accountId: formData.accountId || undefined,
             frequency,
             dayOfMonth: frequency === "MONTHLY" && dayOfMonth ? parseInt(dayOfMonth, 10) : undefined,
+            dayOfWeek: frequency === "WEEKLY" ? parseInt(dayOfWeek, 10) : undefined,
+            monthOfYear: frequency === "YEARLY" ? parseInt(monthOfYear, 10) : undefined,
+            dayOfYear: frequency === "YEARLY" ? parseInt(dayOfYear, 10) : undefined,
             isActive: true,
           })
         : await createTransaction({
@@ -74,6 +80,9 @@ export default function TransactionForm({
         setIsRecurring(false);
         setFrequency("MONTHLY");
         setDayOfMonth("");
+        setDayOfWeek("1");
+        setMonthOfYear("1");
+        setDayOfYear("1");
         onSuccess?.();
         setTimeout(() => setSuccess(false), 3000);
       }
@@ -130,7 +139,7 @@ export default function TransactionForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${isRecurring ? "grid-cols-1" : "grid-cols-2"}`}>
         <div>
           <label className="text-sm font-medium leading-none text-muted-foreground">
             Amount
@@ -153,18 +162,20 @@ export default function TransactionForm({
           </div>
         </div>
 
-        <div>
-          <label className="text-sm font-medium leading-none text-muted-foreground">
-            Date
-          </label>
-          <input
-            type="date"
-            required
-            value={formData.date}
-            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary scheme-light dark:scheme-dark"
-          />
-        </div>
+        {!isRecurring && (
+          <div>
+            <label className="text-sm font-medium leading-none text-muted-foreground">
+              Date
+            </label>
+            <input
+              type="date"
+              required
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary scheme-light dark:scheme-dark"
+            />
+          </div>
+        )}
       </div>
 
       <div>
@@ -234,39 +245,101 @@ export default function TransactionForm({
 
       {isRecurring && (
         <div className="space-y-3 pl-6 border-l-2 border-primary/20">
-          <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium leading-none text-muted-foreground">
+              Frequency
+            </label>
+            <select
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value as typeof frequency)}
+              className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+            >
+              <option value="DAILY">Daily</option>
+              <option value="WEEKLY">Weekly</option>
+              <option value="MONTHLY">Monthly</option>
+              <option value="YEARLY">Yearly</option>
+            </select>
+          </div>
+
+          {frequency === "WEEKLY" && (
             <div>
               <label className="text-sm font-medium leading-none text-muted-foreground">
-                Frequency
+                Day of Week
               </label>
               <select
-                value={frequency}
-                onChange={(e) => setFrequency(e.target.value as typeof frequency)}
+                value={dayOfWeek}
+                onChange={(e) => setDayOfWeek(e.target.value)}
                 className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
               >
-                <option value="DAILY">Daily</option>
-                <option value="WEEKLY">Weekly</option>
-                <option value="MONTHLY">Monthly</option>
-                <option value="YEARLY">Yearly</option>
+                <option value="0">Sunday</option>
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
               </select>
             </div>
-            {frequency === "MONTHLY" && (
+          )}
+
+          {frequency === "MONTHLY" && (
+            <div>
+              <label className="text-sm font-medium leading-none text-muted-foreground">
+                Day of Month <span className="text-muted-foreground/60">(optional, 1–31)</span>
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={31}
+                placeholder="e.g., 15"
+                value={dayOfMonth}
+                onChange={(e) => setDayOfMonth(e.target.value)}
+                className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+              />
+            </div>
+          )}
+
+          {frequency === "YEARLY" && (
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium leading-none text-muted-foreground">
-                  Day of Month <span className="text-muted-foreground/60">(optional, 1–28)</span>
+                  Month
+                </label>
+                <select
+                  value={monthOfYear}
+                  onChange={(e) => setMonthOfYear(e.target.value)}
+                  className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+                >
+                  <option value="1">January</option>
+                  <option value="2">February</option>
+                  <option value="3">March</option>
+                  <option value="4">April</option>
+                  <option value="5">May</option>
+                  <option value="6">June</option>
+                  <option value="7">July</option>
+                  <option value="8">August</option>
+                  <option value="9">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium leading-none text-muted-foreground">
+                  Day
                 </label>
                 <input
                   type="number"
                   min={1}
-                  max={28}
+                  max={31}
                   placeholder="e.g., 1"
-                  value={dayOfMonth}
-                  onChange={(e) => setDayOfMonth(e.target.value)}
+                  value={dayOfYear}
+                  onChange={(e) => setDayOfYear(e.target.value)}
                   className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                 />
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

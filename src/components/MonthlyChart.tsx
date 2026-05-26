@@ -110,6 +110,7 @@ export function MonthlyChart({ transactions, year }: MonthlyChartProps) {
             tickFormatter={(v) => `$${v}`}
           />
           <Tooltip
+            formatter={(value: number) => [`$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, undefined]}
             cursor={{ fill: "var(--muted)", stroke: "none" }}
             contentStyle={{
               backgroundColor: "var(--popover)",

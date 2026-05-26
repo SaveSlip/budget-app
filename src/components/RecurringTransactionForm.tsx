@@ -45,6 +45,9 @@ export function RecurringTransactionForm({
     accountId: existing?.accountId ?? "",
     frequency: (existing?.frequency ?? "MONTHLY") as "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY",
     dayOfMonth: existing?.dayOfMonth?.toString() ?? "",
+    dayOfWeek: existing?.dayOfWeek?.toString() ?? "1",
+    monthOfYear: existing?.monthOfYear?.toString() ?? "1",
+    dayOfYear: existing?.dayOfYear?.toString() ?? "1",
     isActive: existing?.isActive ?? true,
   });
 
@@ -92,6 +95,15 @@ export function RecurringTransactionForm({
       dayOfMonth: formData.frequency === "MONTHLY" && formData.dayOfMonth
         ? parseInt(formData.dayOfMonth, 10)
         : undefined,
+      dayOfWeek: formData.frequency === "WEEKLY"
+        ? parseInt(formData.dayOfWeek, 10)
+        : undefined,
+      monthOfYear: formData.frequency === "YEARLY"
+        ? parseInt(formData.monthOfYear, 10)
+        : undefined,
+      dayOfYear: formData.frequency === "YEARLY"
+        ? parseInt(formData.dayOfYear, 10)
+        : undefined,
       isActive: formData.isActive,
     };
 
@@ -114,6 +126,9 @@ export function RecurringTransactionForm({
           accountId: "",
           frequency: "MONTHLY",
           dayOfMonth: "",
+          dayOfWeek: "1",
+          monthOfYear: "1",
+          dayOfYear: "1",
           isActive: true,
         });
       }
@@ -206,20 +221,83 @@ export function RecurringTransactionForm({
         </div>
       </div>
 
+      {formData.frequency === "WEEKLY" && (
+        <div>
+          <label className="text-sm font-medium leading-none text-muted-foreground">
+            Day of Week
+          </label>
+          <select
+            value={formData.dayOfWeek}
+            onChange={(e) => setFormData({ ...formData, dayOfWeek: e.target.value })}
+            className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+          >
+            <option value="0">Sunday</option>
+            <option value="1">Monday</option>
+            <option value="2">Tuesday</option>
+            <option value="3">Wednesday</option>
+            <option value="4">Thursday</option>
+            <option value="5">Friday</option>
+            <option value="6">Saturday</option>
+          </select>
+        </div>
+      )}
+
       {formData.frequency === "MONTHLY" && (
         <div>
           <label className="text-sm font-medium leading-none text-muted-foreground">
-            Day of Month <span className="text-muted-foreground/60">(optional, 1–28)</span>
+            Day of Month <span className="text-muted-foreground/60">(optional, 1–31)</span>
           </label>
           <input
             type="number"
             min={1}
-            max={28}
-            placeholder="e.g., 1 for the 1st of each month"
+            max={31}
+            placeholder="e.g., 15 for the 15th of each month"
             value={formData.dayOfMonth}
             onChange={(e) => setFormData({ ...formData, dayOfMonth: e.target.value })}
             className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
           />
+        </div>
+      )}
+
+      {formData.frequency === "YEARLY" && (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium leading-none text-muted-foreground">
+              Month
+            </label>
+            <select
+              value={formData.monthOfYear}
+              onChange={(e) => setFormData({ ...formData, monthOfYear: e.target.value })}
+              className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+            >
+              <option value="1">January</option>
+              <option value="2">February</option>
+              <option value="3">March</option>
+              <option value="4">April</option>
+              <option value="5">May</option>
+              <option value="6">June</option>
+              <option value="7">July</option>
+              <option value="8">August</option>
+              <option value="9">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-medium leading-none text-muted-foreground">
+              Day
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={31}
+              placeholder="e.g., 1"
+              value={formData.dayOfYear}
+              onChange={(e) => setFormData({ ...formData, dayOfYear: e.target.value })}
+              className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+            />
+          </div>
         </div>
       )}
 

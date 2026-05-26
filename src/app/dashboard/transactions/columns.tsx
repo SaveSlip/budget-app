@@ -11,12 +11,14 @@ import type { Category, Account } from "@/lib/data/budget";
 
 export type Transaction = {
   id: string;
+  sk?: string;
   description: string;
   amount: number;
   date: string;
   category: string;
   createdAt: string;
   transactionType?: "INCOME" | "EXPENSE";
+  importOrder?: number;
 };
 
 /** Shared header label style matching the RecentTransactions component. */
@@ -35,6 +37,14 @@ export function getColumns(
   onDelete?: (txId: string) => void,
 ): ColumnDef<Transaction>[] {
   return [
+  {
+    accessorKey: "importOrder",
+    enableHiding: true,
+    enableSorting: true,
+    header: () => null,
+    cell: () => null,
+    size: 0,
+  },
   {
     id: "select",
     header: ({ table }) => (

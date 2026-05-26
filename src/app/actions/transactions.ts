@@ -26,6 +26,7 @@ export async function createTransaction(data: TransactionInput) {
   const { description, amount, date, category, transactionType, accountId } =
     parsed.data;
   const txId = crypto.randomUUID();
+  const seq = Date.now().toString().padStart(13, "0");
 
   try {
     await docClient.send(
@@ -33,7 +34,7 @@ export async function createTransaction(data: TransactionInput) {
         TableName: TABLE_NAME,
         Item: {
           pk: `USER#${userId}`,
-          sk: `TX#${date}#${txId}`,
+          sk: `TX#${date}#${seq}#${txId}`,
           id: txId,
           type: "TRANSACTION",
           description,
@@ -43,6 +44,7 @@ export async function createTransaction(data: TransactionInput) {
           transactionType,
           accountId: accountId ?? null,
           addedByUserId: userId,
+          importOrder: Date.now(),
           createdAt: new Date().toISOString(),
         },
       }),
@@ -68,13 +70,15 @@ export async function batchCreateTransactions(
   if (validTransactions.length === 0)
     return { error: "No valid transactions found." };
 
-  const putRequests = validTransactions.map((tx) => {
+  const batchBase = Date.now();
+  const putRequests = validTransactions.map((tx, index) => {
     const txId = crypto.randomUUID();
+    const seq = (batchBase + index).toString().padStart(13, "0");
     return {
       PutRequest: {
         Item: {
           pk: `USER#${userId}`,
-          sk: `TX#${tx.date}#${txId}`,
+          sk: `TX#${tx.date}#${seq}#${txId}`,
           id: txId,
           type: "TRANSACTION",
           description: tx.description,
@@ -84,6 +88,7 @@ export async function batchCreateTransactions(
           transactionType: tx.transactionType ?? "EXPENSE",
           accountId: tx.accountId ?? null,
           addedByUserId: userId,
+          importOrder: batchBase + index,
           createdAt: new Date().toISOString(),
         },
       },
@@ -379,10 +384,12 @@ export async function recategorizeByDescription(
   }
 }
 
-export async function deleteTransaction(date: string, txId: string) {
+export async function deleteTransaction(date: string, txId: string, sk?: string) {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return { error: "Unauthorized" };
+
+  const sortKey = sk ?? `TX#${date}#${txId}`;
 
   try {
     await docClient.send(
@@ -390,7 +397,7 @@ export async function deleteTransaction(date: string, txId: string) {
         TableName: TABLE_NAME,
         Key: {
           pk: `USER#${userId}`,
-          sk: `TX#${date}#${txId}`,
+          sk: sortKey,
         },
       }),
     );
@@ -404,7 +411,7 @@ export async function deleteTransaction(date: string, txId: string) {
 }
 
 export async function batchDeleteTransactions(
-  items: { date: string; id: string }[],
+  items: { date: string; id: string; sk?: string }[],
 ) {
   const session = await auth();
   const userId = session?.user?.id;
@@ -416,9 +423,9 @@ export async function batchDeleteTransactions(
       await docClient.send(
         new BatchWriteCommand({
           RequestItems: {
-            [TABLE_NAME]: chunk.map(({ date, id }) => ({
+            [TABLE_NAME]: chunk.map(({ date, id, sk }) => ({
               DeleteRequest: {
-                Key: { pk: `USER#${userId}`, sk: `TX#${date}#${id}` },
+                Key: { pk: `USER#${userId}`, sk: sk ?? `TX#${date}#${id}` },
               },
             })),
           },
@@ -444,8 +451,7 @@ export async function deleteAllTransactions() {
     if ("error" in allResult) return { error: allResult.error }
 
     const items = (allResult.transactions as any[]).map((tx) => ({
-      date: tx.date as string,
-      id: tx.id as string,
+      sk: tx.sk as string,
     }))
 
     if (items.length === 0) return { success: true, count: 0 }
@@ -455,9 +461,9 @@ export async function deleteAllTransactions() {
       await docClient.send(
         new BatchWriteCommand({
           RequestItems: {
-            [TABLE_NAME]: chunk.map(({ date, id }) => ({
+            [TABLE_NAME]: chunk.map(({ sk }) => ({
               DeleteRequest: {
-                Key: { pk: `USER#${userId}`, sk: `TX#${date}#${id}` },
+                Key: { pk: `USER#${userId}`, sk },
               },
             })),
           },
@@ -478,6 +484,7 @@ export async function updateTransaction(
   originalDate: string,
   txId: string,
   data: TransactionInput,
+  originalSk?: string,
 ) {
   const session = await auth();
   const userId = session?.user?.id;
@@ -488,6 +495,10 @@ export async function updateTransaction(
 
   const { description, amount, date, category, transactionType, accountId } =
     parsed.data;
+
+  const updateSeq = Date.now().toString().padStart(13, "0");
+
+  const originalSkResolved = originalSk ?? `TX#${originalDate}#${txId}`;
 
   try {
     // If date changed, we must replace the item since SK changes
@@ -500,7 +511,7 @@ export async function updateTransaction(
                 TableName: TABLE_NAME,
                 Key: {
                   pk: `USER#${userId}`,
-                  sk: `TX#${originalDate}#${txId}`,
+                  sk: originalSkResolved,
                 },
               },
             },
@@ -509,7 +520,7 @@ export async function updateTransaction(
                 TableName: TABLE_NAME,
                 Item: {
                   pk: `USER#${userId}`,
-                  sk: `TX#${date}#${txId}`,
+                  sk: `TX#${date}#${updateSeq}#${txId}`,
                   id: txId,
                   type: "TRANSACTION",
                   description,
@@ -519,6 +530,7 @@ export async function updateTransaction(
                   transactionType,
                   accountId: accountId ?? null,
                   addedByUserId: userId,
+                  importOrder: Date.now(),
                   createdAt: new Date().toISOString(),
                 },
               },
@@ -532,7 +544,7 @@ export async function updateTransaction(
           TableName: TABLE_NAME,
           Item: {
             pk: `USER#${userId}`,
-            sk: `TX#${date}#${txId}`,
+            sk: originalSkResolved,
             id: txId,
             type: "TRANSACTION",
             description,
@@ -542,6 +554,7 @@ export async function updateTransaction(
             transactionType,
             accountId: accountId ?? null,
             addedByUserId: userId,
+            importOrder: Date.now(),
             createdAt: new Date().toISOString(),
           },
         }),

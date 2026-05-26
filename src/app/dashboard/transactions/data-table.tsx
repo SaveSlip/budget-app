@@ -6,6 +6,7 @@ import {
   ColumnFiltersState,
   RowSelectionState,
   SortingState,
+  VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -123,8 +124,9 @@ export function DataTable({
   const [isMonthLoading, setIsMonthLoading] = React.useState(false)
   const [exhausted, setExhausted] = React.useState(initialCursor === null)
 
-  const [sorting, setSorting] = React.useState<SortingState>([{ id: "date", desc: true }])
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: "date", desc: true }, { id: "importOrder", desc: true }])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [columnVisibility] = React.useState<VisibilityState>({ importOrder: false })
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
@@ -306,13 +308,20 @@ export function DataTable({
     columns,
     enableRowSelection: true,
     getCoreRowModel: getCoreRowModel(),
-    onSortingChange: setSorting,
+    onSortingChange: (updater) => {
+      setSorting((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater;
+        const dateSort = next.find((s) => s.id === "date");
+        const filtered = next.filter((s) => s.id !== "importOrder");
+        return [...filtered, { id: "importOrder", desc: dateSort ? dateSort.desc : true }];
+      });
+    },
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onRowSelectionChange: setRowSelection,
     autoResetPageIndex: false,
-    state: { sorting, columnFilters, rowSelection },
+    state: { sorting, columnFilters, rowSelection, columnVisibility },
   })
 
   const selectedRows = table.getSelectedRowModel().rows
@@ -329,8 +338,8 @@ export function DataTable({
   async function handleBulkDelete() {
     setIsDeleting(true)
     const items = selectedRows.map((row) => {
-      const tx = row.original as { id: string; date: string }
-      return { id: tx.id, date: tx.date }
+      const tx = row.original as { id: string; date: string; sk?: string }
+      return { id: tx.id, date: tx.date, sk: tx.sk }
     })
     await batchDeleteTransactions(items)
     setRowSelection({})
