@@ -83,7 +83,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
             <Card className="border-border bg-card shadow-lg">
               <CardHeader className="space-y-1 text-center">
                 <div className="flex justify-center mb-4">
-                  <CheckCircle className="h-12 w-12 text-green-500" />
+                  <CheckCircle className="h-12 w-12 text-success" />
                 </div>
                 <CardTitle className="text-2xl text-foreground">
                   Password Reset Successful

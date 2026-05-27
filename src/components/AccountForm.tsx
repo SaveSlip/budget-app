@@ -120,9 +120,9 @@ export function AccountForm() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       {success && (
-        <p className="text-sm text-green-500">Account added successfully.</p>
+        <p className="text-sm text-success">Account added successfully.</p>
       )}
 
       <button

@@ -73,7 +73,7 @@ export function QuarterlyReview({ suggestions }: QuarterlyReviewProps) {
                   <span
                     className={cn(
                       "font-semibold",
-                      s.action === "increase" ? "text-destructive" : "text-emerald-500",
+                      s.action === "increase" ? "text-destructive" : "text-success",
                     )}
                   >
                     ${s.suggestedLimit.toLocaleString()}

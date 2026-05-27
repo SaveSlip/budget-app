@@ -302,7 +302,7 @@ export function BudgetProgress({
             <span
               className={cn(
                 "text-[10px] font-semibold ml-auto",
-                rolloverDelta > 0 ? "text-emerald-500" : "text-destructive",
+                rolloverDelta > 0 ? "text-success" : "text-destructive",
               )}
             >
               {rolloverDelta > 0 ? "+" : "-"}$
@@ -321,11 +321,11 @@ export function BudgetProgress({
         ) : (
           <>
             <div
-              className="absolute left-0 top-0 h-full bg-orange-500 transition-all duration-500"
+              className="absolute left-0 top-0 h-full bg-warning transition-all duration-500"
               style={{ width: `${Math.min(percentage, 100)}%` }}
             />
             <div
-              className="absolute top-0 h-full bg-emerald-500 transition-all duration-500"
+              className="absolute top-0 h-full bg-success transition-all duration-500"
               style={{
                 left: `${Math.min(percentage, 100)}%`,
                 width: `${Math.max(100 - percentage, 0)}%`,

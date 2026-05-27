@@ -127,7 +127,7 @@ function SignupContent() {
                     <p>{serverError}</p>
                     {needsVerification && (
                       resendStatus === "sent" ? (
-                        <p className="text-xs text-green-500 font-normal">
+                        <p className="text-xs text-success font-normal">
                           Verification email sent! Check your inbox.
                         </p>
                       ) : (
@@ -159,13 +159,13 @@ function SignupContent() {
                       type="email"
                       placeholder="user@enterprise.com"
                       className={`pl-10 bg-muted border-border text-foreground focus:ring-primary focus:border-primary ${
-                        errors.email ? "border-red-500" : ""
+                        errors.email ? "border-destructive" : ""
                       }`}
                       disabled={isSubmitting}
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-xs text-red-500 pl-1">
+                    <p className="text-xs text-destructive pl-1">
                       {errors.email.message}
                     </p>
                   )}
@@ -179,13 +179,13 @@ function SignupContent() {
                       type="password"
                       placeholder="Password"
                       className={`pl-10 bg-muted border-border text-foreground focus:ring-primary focus:border-primary ${
-                        errors.password ? "border-red-500" : ""
+                        errors.password ? "border-destructive" : ""
                       }`}
                       disabled={isSubmitting}
                     />
                   </div>
                   {errors.password && (
-                    <p className="text-xs text-red-500 pl-1">
+                    <p className="text-xs text-destructive pl-1">
                       {errors.password.message}
                     </p>
                   )}
@@ -199,13 +199,13 @@ function SignupContent() {
                       type="password"
                       placeholder="Confirm Password"
                       className={`pl-10 bg-muted border-border text-foreground focus:ring-primary focus:border-primary ${
-                        errors.confirmPassword ? "border-red-500" : ""
+                        errors.confirmPassword ? "border-destructive" : ""
                       }`}
                       disabled={isSubmitting}
                     />
                   </div>
                   {errors.confirmPassword && (
-                    <p className="text-xs text-red-500 pl-1">
+                    <p className="text-xs text-destructive pl-1">
                       {errors.confirmPassword.message}
                     </p>
                   )}

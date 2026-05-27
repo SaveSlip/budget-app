@@ -12,6 +12,7 @@ interface TransactionFormProps {
   initialType?: "INCOME" | "EXPENSE";
   hideTypeToggle?: boolean;
   onSuccess?: () => void;
+  initialRecurring?: boolean;
 }
 
 export default function TransactionForm({
@@ -20,11 +21,12 @@ export default function TransactionForm({
   initialType = "EXPENSE",
   hideTypeToggle = false,
   onSuccess,
+  initialRecurring,
 }: TransactionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [isRecurring, setIsRecurring] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(initialRecurring ?? false);
   const [frequency, setFrequency] = useState<"DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY">("MONTHLY");
   const [dayOfMonth, setDayOfMonth] = useState("");
   const [dayOfWeek, setDayOfWeek] = useState("1");

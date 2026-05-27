@@ -235,7 +235,7 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
             Make Recurring
           </DropdownMenuItem>
           <DropdownMenuItem
-            className="text-red-600 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/20"
+            className="text-destructive focus:text-destructive focus:bg-destructive/10"
             onClick={() => setIsDeleteOpen(true)}
           >
             <Trash className="mr-2 h-4 w-4" />
@@ -268,7 +268,7 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
                   }}
                   className={`flex-1 py-2 text-sm font-medium transition-colors ${
                     formData.transactionType === "EXPENSE"
-                      ? "bg-red-500/15 text-red-500"
+                      ? "bg-destructive/15 text-destructive"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -282,7 +282,7 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
                   }}
                   className={`flex-1 py-2 text-sm font-medium transition-colors ${
                     formData.transactionType === "INCOME"
-                      ? "bg-green-500/15 text-green-500"
+                      ? "bg-success/15 text-success"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -380,7 +380,7 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
                   ))}
                 </select>
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error && <p className="text-sm text-destructive">{error}</p>}
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={openRecurringStep}>
                   <RefreshCw className="w-4 h-4 mr-2" />
@@ -498,8 +498,8 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
                   </div>
                 </div>
               )}
-              {recurringError && <p className="text-sm text-red-500">{recurringError}</p>}
-              {recurringSuccess && <p className="text-sm text-green-600">Recurring transaction created.</p>}
+              {recurringError && <p className="text-sm text-destructive">{recurringError}</p>}
+              {recurringSuccess && <p className="text-sm text-success">Recurring transaction created.</p>}
               <DialogFooter>
                 <Button
                   type="button"

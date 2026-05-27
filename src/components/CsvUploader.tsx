@@ -135,9 +135,11 @@ const ACTIVE_STATES = new Set<UploadState>(["dragging", "processing", "mapping",
 interface CsvUploaderProps {
   onActiveChange?: (active: boolean) => void;
   onImportComplete?: (month: string) => void;
+  glowing?: boolean;
+  tall?: boolean;
 }
 
-export default function CsvUploader({ onActiveChange, onImportComplete }: CsvUploaderProps = {}) {
+export default function CsvUploader({ onActiveChange, onImportComplete, glowing, tall }: CsvUploaderProps = {}) {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   useEffect(() => {
     onActiveChange?.(ACTIVE_STATES.has(uploadState));
@@ -402,7 +404,11 @@ export default function CsvUploader({ onActiveChange, onImportComplete }: CsvUpl
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer ${borderClass}`}
+        className={`relative flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-lg transition-all duration-300 cursor-pointer ${borderClass} ${
+          glowing && uploadState === "idle"
+            ? "ring-2 ring-primary/40 shadow-[0_0_18px_3px_hsl(var(--primary)/0.20)]"
+            : "ring-0 shadow-none"
+        } ${tall ? "min-h-125" : "min-h-20"}`}
       >
         <Icon className={`w-6 h-6 mb-1 transition-colors ${iconClass}`} />
 
@@ -429,7 +435,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete }: CsvUpl
         )}
 
         {skippedWarning && (
-          <p className="text-xs text-amber-500 mt-1 text-center max-w-xs truncate">
+          <p className="text-xs text-warning mt-1 text-center max-w-xs truncate">
             {skippedWarning}
           </p>
         )}

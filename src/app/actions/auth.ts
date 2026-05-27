@@ -251,11 +251,11 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
               Html: {
                 Data: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #333;">Password Reset Request</h2>
+                  <h2 style="color: #1c1a18;">Password Reset Request</h2>
                   <p>Hello,</p>
                   <p>You requested a password reset for your Budgify account. Click the link below to reset your password:</p>
                   <p style="margin: 30px 0;">
-                    <a href="${resetLink}" style="background-color: #a8471f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a>
+                    <a href="${resetLink}" style="background-color: #a8471f; color: #fdf9f4; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a>
                   </p>
                   <p><strong>Important:</strong> This link will expire in ${expiresInLabel} for security reasons.</p>
                   <p>If you did not request this password reset, please ignore this email.</p>
@@ -485,11 +485,11 @@ export async function sendVerificationEmail(
               Html: {
                 Data: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #333;">Welcome to Budgify!</h2>
+                  <h2 style="color: #1c1a18;">Welcome to Budgify!</h2>
                   <p>Hello,</p>
                   <p>Thanks for signing up. Please verify your email address to activate your account:</p>
                   <p style="margin: 30px 0;">
-                    <a href="${verifyLink}" style="background-color: #a8471f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Verify Email Address</a>
+                    <a href="${verifyLink}" style="background-color: #a8471f; color: #fdf9f4; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Verify Email Address</a>
                   </p>
                   <p><strong>This link expires in ${expiresInLabel}.</strong></p>
                   <p>If you did not create a Budgify account, you can safely ignore this email.</p>

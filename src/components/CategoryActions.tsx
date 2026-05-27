@@ -89,7 +89,7 @@ export function CategoryActions({ category }: CategoryActionsProps) {
             Edit
           </DropdownMenuItem>
           <DropdownMenuItem
-            className="text-red-600 focus:text-red-600 focus:bg-red-100 dark:focus:bg-red-900/20"
+            className="text-destructive focus:text-destructive focus:bg-destructive/10"
             onClick={() => setIsDeleteOpen(true)}
           >
             <Trash className="mr-2 h-4 w-4" />
@@ -138,7 +138,7 @@ export function CategoryActions({ category }: CategoryActionsProps) {
                 />
               </div>
             </div>
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (

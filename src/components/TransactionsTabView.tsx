@@ -21,16 +21,19 @@ interface Props {
   initialView?: string;
   initialYear?: string;
   initialAvailableMonths?: string[];
+  initialTab?: Tab;
+  initialMode?: "csv" | "manual";
 }
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "ledger", label: "Transaction Ledger" },
-  { id: "recurring", label: "Recurring" },
+  { id: "recurring", label: "Recurring Transactions" },
   { id: "add", label: "Add Transaction" },
 ];
 
-export function TransactionsTabView({ transactions, initialCursor, categories, accounts, recurring, initialMonth, initialView, initialYear, initialAvailableMonths }: Props) {
-  const [activeTab, setActiveTab] = useState<Tab>("ledger");
+export function TransactionsTabView({ transactions, initialCursor, categories, accounts, recurring, initialMonth, initialView, initialYear, initialAvailableMonths, initialTab, initialMode }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? "ledger");
+  const [addWithRecurring, setAddWithRecurring] = useState(false);
 
   // Ref-based bridge: CsvUploader (in "add" tab) notifies DataTable (in "ledger" tab)
   // without either component needing to be mounted at the same time.
@@ -47,7 +50,7 @@ export function TransactionsTabView({ transactions, initialCursor, categories, a
         {TABS.map(({ id, label }) => (
           <button
             key={id}
-            onClick={() => setActiveTab(id)}
+            onClick={() => { if (id !== "add") setAddWithRecurring(false); setActiveTab(id); }}
             className={cn(
               "relative pb-3 px-1 mr-6 text-sm font-medium transition-colors",
               activeTab === id
@@ -70,10 +73,15 @@ export function TransactionsTabView({ transactions, initialCursor, categories, a
           <DataTable data={transactions} initialCursor={initialCursor} embedded initialCategories={categories} initialAccounts={accounts} initialMonth={initialMonth} initialView={initialView} initialYear={initialYear} initialAvailableMonths={initialAvailableMonths} onImportCompleteRef={onImportCompleteRef} />
         )}
         {activeTab === "recurring" && (
-          <RecurringList recurring={recurring} categories={categories} accounts={accounts} />
+          <RecurringList
+            recurring={recurring}
+            categories={categories}
+            accounts={accounts}
+            onAddRecurring={() => { setAddWithRecurring(true); setActiveTab("add"); }}
+          />
         )}
         {activeTab === "add" && (
-          <LogPanel categories={categories} accounts={accounts} onImportComplete={handleImportComplete} />
+          <LogPanel categories={categories} accounts={accounts} onImportComplete={handleImportComplete} initialMode={initialMode} initialRecurring={addWithRecurring} />
         )}
       </CardContent>
     </Card>

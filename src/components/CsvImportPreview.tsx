@@ -117,7 +117,7 @@ export function CsvImportPreview({
           {duplicateCount > 0 && (
             <>
               {" · "}
-              <span className="text-amber-500 font-medium">
+              <span className="text-warning font-medium">
                 {duplicateCount} likely duplicate{duplicateCount !== 1 ? "s" : ""}
               </span>
             </>
@@ -151,7 +151,7 @@ export function CsvImportPreview({
                       "text-xs",
                       row.isSkipped && "opacity-40",
                       hasErrors && !row.isSkipped && "bg-destructive/5",
-                      row.isDuplicate && !hasErrors && !row.isSkipped && "bg-amber-500/5",
+                      row.isDuplicate && !hasErrors && !row.isSkipped && "bg-warning/5",
                     )}
                   >
                     <TableCell className="text-center text-muted-foreground py-1.5">
@@ -273,7 +273,7 @@ export function CsvImportPreview({
                     <TableCell className="py-1.5 text-center">
                       {row.isDuplicate && !row.isSkipped ? (
                         <Badge
-                          className="text-[10px] px-1 py-0 bg-amber-500/15 text-amber-500 border-amber-500/30 cursor-pointer hover:bg-amber-500/25"
+                          className="text-[10px] px-1 py-0 bg-warning/15 text-warning border-warning/30 cursor-pointer hover:bg-warning/25"
                           title="Likely duplicate — click Skip to exclude"
                           onClick={() => toggleSkip(row.id)}
                         >

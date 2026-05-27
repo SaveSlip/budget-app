@@ -150,13 +150,13 @@ function SigninContent() {
                       type="email"
                       placeholder="user@enterprise.com"
                       className={`pl-10 bg-muted border-border text-foreground focus:ring-primary focus:border-primary ${
-                        errors.email ? "border-red-500" : ""
+                        errors.email ? "border-destructive" : ""
                       }`}
                       disabled={isSubmitting}
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-xs text-red-500 pl-1">
+                    <p className="text-xs text-destructive pl-1">
                       {errors.email.message}
                     </p>
                   )}
@@ -170,13 +170,13 @@ function SigninContent() {
                       type="password"
                       placeholder="••••••••"
                       className={`pl-10 bg-muted border-border text-foreground focus:ring-primary focus:border-primary ${
-                        errors.password ? "border-red-500" : ""
+                        errors.password ? "border-destructive" : ""
                       }`}
                       disabled={isSubmitting}
                     />
                   </div>
                   {errors.password && (
-                    <p className="text-xs text-red-500 pl-1">
+                    <p className="text-xs text-destructive pl-1">
                       {errors.password.message}
                     </p>
                   )}

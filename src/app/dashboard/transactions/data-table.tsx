@@ -578,7 +578,7 @@ export function DataTable({
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={`font-mono text-sm font-semibold tracking-tighter ${isIncome ? "text-green-500" : "text-red-500"}`}>
+                    <span className={`font-mono text-sm font-semibold tracking-tighter ${isIncome ? "text-success" : "text-destructive"}`}>
                       {isIncome ? "+" : "-"}{formatted}
                     </span>
                     <TransactionActions

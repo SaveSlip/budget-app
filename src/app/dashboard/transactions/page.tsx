@@ -6,8 +6,11 @@ import { getCategories, getAccounts } from "@/lib/data/budget";
 import { type Transaction } from "./columns";
 import { TransactionsTabView } from "@/components/TransactionsTabView";
 
+const VALID_TABS = ["ledger", "recurring", "add"] as const;
+type Tab = (typeof VALID_TABS)[number];
+
 interface PageProps {
-  searchParams: Promise<{ month?: string; view?: string; year?: string }>;
+  searchParams: Promise<{ month?: string; view?: string; year?: string; tab?: string; mode?: string }>;
 }
 
 export default async function TransactionsPage({ searchParams }: PageProps) {
@@ -24,6 +27,11 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
   ]);
 
   const transactions = (batchResponse.transactions || []) as Transaction[];
+  const initialTab = VALID_TABS.includes(resolvedParams.tab as Tab)
+    ? (resolvedParams.tab as Tab)
+    : undefined;
+  const initialMode =
+    resolvedParams.mode === "csv" ? "csv" : resolvedParams.mode === "manual" ? "manual" : undefined;
 
   return (
     <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 pt-4">
@@ -46,6 +54,8 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
         initialYear={resolvedParams.year}
         initialAvailableMonths={availableMonths}
         recurring={recurring}
+        initialTab={initialTab}
+        initialMode={initialMode}
       />
     </div>
   );

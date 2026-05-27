@@ -132,7 +132,7 @@ export function getColumns(
       }).format(amount);
 
       return (
-        <span className={`flex justify-end pr-3 font-mono text-sm font-semibold tracking-tighter ${isIncome ? "text-green-500" : "text-red-500"}`}>
+        <span className={`flex justify-end pr-3 font-mono text-sm font-semibold tracking-tighter ${isIncome ? "text-success" : "text-destructive"}`}>
           {isIncome ? "+" : "-"}{formatted}
         </span>
       );

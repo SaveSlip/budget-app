@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Trash, Loader2, RefreshCw, Pencil } from "lucide-react";
+import { Trash, Loader2, RefreshCw, Pencil, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   deleteRecurringTransaction,
   toggleRecurringTransaction,
@@ -42,9 +43,10 @@ interface RecurringListProps {
   recurring: RecurringTransaction[];
   categories?: Category[];
   accounts?: Account[];
+  onAddRecurring?: () => void;
 }
 
-export function RecurringList({ recurring, categories = [], accounts = [] }: RecurringListProps) {
+export function RecurringList({ recurring, categories = [], accounts = [], onAddRecurring }: RecurringListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -65,14 +67,22 @@ export function RecurringList({ recurring, categories = [], accounts = [] }: Rec
 
   if (recurring.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="p-3 rounded-full bg-muted mb-4">
-          <RefreshCw className="w-6 h-6 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
+          <RefreshCw className="w-6 h-6 text-primary" />
         </div>
-        <p className="text-sm font-medium text-foreground mb-1">No recurring transactions yet</p>
-        <p className="text-sm text-muted-foreground">
-          Add one from the <span className="font-medium text-foreground">Add Transaction</span> tab by checking &ldquo;Make this a recurring transaction&rdquo;.
-        </p>
+        <div className="space-y-1 max-w-xs">
+          <p className="text-base font-semibold text-foreground">No recurring transactions yet</p>
+          <p className="text-sm text-muted-foreground">
+            Set up bills, subscriptions, or any payment that repeats on a schedule.
+          </p>
+        </div>
+        {onAddRecurring && (
+          <Button onClick={onAddRecurring} size="sm" className="mt-1 gap-1.5">
+            Add a recurring transaction
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Button>
+        )}
       </div>
     );
   }
