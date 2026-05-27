@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { DataTable } from "@/app/dashboard/transactions/data-table";
@@ -32,6 +32,14 @@ const TABS: { id: Tab; label: string }[] = [
 export function TransactionsTabView({ transactions, initialCursor, categories, accounts, recurring, initialMonth, initialView, initialYear, initialAvailableMonths }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("ledger");
 
+  // Ref-based bridge: CsvUploader (in "add" tab) notifies DataTable (in "ledger" tab)
+  // without either component needing to be mounted at the same time.
+  const onImportCompleteRef = useRef<((month: string) => void) | null>(null);
+  const handleImportComplete = useCallback((month: string) => {
+    onImportCompleteRef.current?.(month);
+    setActiveTab("ledger");
+  }, []);
+
   return (
     <Card className="border-border bg-card/80 backdrop-blur-sm">
       {/* Tab navigation */}
@@ -59,13 +67,13 @@ export function TransactionsTabView({ transactions, initialCursor, categories, a
 
       <CardContent className="pt-6">
         {activeTab === "ledger" && (
-          <DataTable data={transactions} initialCursor={initialCursor} embedded initialCategories={categories} initialAccounts={accounts} initialMonth={initialMonth} initialView={initialView} initialYear={initialYear} initialAvailableMonths={initialAvailableMonths} />
+          <DataTable data={transactions} initialCursor={initialCursor} embedded initialCategories={categories} initialAccounts={accounts} initialMonth={initialMonth} initialView={initialView} initialYear={initialYear} initialAvailableMonths={initialAvailableMonths} onImportCompleteRef={onImportCompleteRef} />
         )}
         {activeTab === "recurring" && (
           <RecurringList recurring={recurring} categories={categories} accounts={accounts} />
         )}
         {activeTab === "add" && (
-          <LogPanel categories={categories} accounts={accounts} />
+          <LogPanel categories={categories} accounts={accounts} onImportComplete={handleImportComplete} />
         )}
       </CardContent>
     </Card>

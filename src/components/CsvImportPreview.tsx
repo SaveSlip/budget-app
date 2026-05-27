@@ -37,6 +37,7 @@ export interface PreviewRow {
   transactionType: "INCOME" | "EXPENSE";
   errors: PreviewRowErrors;
   isSkipped: boolean;
+  isDuplicate: boolean;
   editingField: "description" | "amount" | null;
 }
 
@@ -70,6 +71,7 @@ export function CsvImportPreview({
   const errorCount = rows.filter(
     (r) => !r.isSkipped && Object.keys(r.errors).length > 0,
   ).length;
+  const duplicateCount = rows.filter((r) => !r.isSkipped && r.isDuplicate).length;
 
   function updateRow(id: number, patch: Partial<PreviewRow>) {
     onChange(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -112,6 +114,14 @@ export function CsvImportPreview({
           ) : (
             <span className="text-success font-medium">all rows valid</span>
           )}
+          {duplicateCount > 0 && (
+            <>
+              {" · "}
+              <span className="text-amber-500 font-medium">
+                {duplicateCount} likely duplicate{duplicateCount !== 1 ? "s" : ""}
+              </span>
+            </>
+          )}
           {" · "}
           {importableCount} of {rows.length} rows will be imported
         </CardDescription>
@@ -127,6 +137,7 @@ export function CsvImportPreview({
                 <TableHead className="text-xs">Description</TableHead>
                 <TableHead className="text-xs">Amount</TableHead>
                 <TableHead className="text-xs">Type</TableHead>
+                <TableHead className="w-16 text-center text-xs">Dup?</TableHead>
                 <TableHead className="w-10 text-center text-xs">Skip</TableHead>
               </TableRow>
             </TableHeader>
@@ -140,6 +151,7 @@ export function CsvImportPreview({
                       "text-xs",
                       row.isSkipped && "opacity-40",
                       hasErrors && !row.isSkipped && "bg-destructive/5",
+                      row.isDuplicate && !hasErrors && !row.isSkipped && "bg-amber-500/5",
                     )}
                   >
                     <TableCell className="text-center text-muted-foreground py-1.5">
@@ -256,6 +268,18 @@ export function CsvImportPreview({
                       >
                         {row.transactionType === "EXPENSE" ? "Exp" : "Inc"}
                       </span>
+                    </TableCell>
+
+                    <TableCell className="py-1.5 text-center">
+                      {row.isDuplicate && !row.isSkipped ? (
+                        <Badge
+                          className="text-[10px] px-1 py-0 bg-amber-500/15 text-amber-500 border-amber-500/30 cursor-pointer hover:bg-amber-500/25"
+                          title="Likely duplicate — click Skip to exclude"
+                          onClick={() => toggleSkip(row.id)}
+                        >
+                          Dup
+                        </Badge>
+                      ) : null}
                     </TableCell>
 
                     <TableCell className="py-1.5 text-center">

@@ -22,6 +22,7 @@ import { DashboardFilters } from "@/components/DashboardFilters";
 import { QuarterlyReview } from "@/components/QuarterlyReview";
 import { AddCategoryDialog } from "@/components/AddCategoryDialog";
 import { RecentTransactions } from "@/components/RecentTransactions";
+import { EmptyDashboardCta } from "@/components/EmptyDashboardCta";
 import Link from "next/link";
 import { format } from "date-fns";
 
@@ -99,6 +100,13 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <AnimateSection delay={0}>
         <DashboardFilters availableMonths={availableMonths} />
       </AnimateSection>
+
+      {/* First-time user onboarding CTA */}
+      {availableMonths.length === 0 && (
+        <AnimateSection delay={0.04}>
+          <EmptyDashboardCta />
+        </AnimateSection>
+      )}
 
       {/* Row 1: Stats */}
       <AnimateSection delay={0.08}>

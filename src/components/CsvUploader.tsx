@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, DragEvent, useRef } from "react";
+import { useState, useEffect, DragEvent, useRef } from "react";
 import Papa from "papaparse";
 import { UploadCloud, Loader2, CheckCircle, AlertCircle } from "lucide-react";
-import { batchCreateTransactions } from "@/app/actions/transactions";
+import { batchCreateTransactions, checkDuplicates } from "@/app/actions/transactions";
 import { getCategoryRules, type CategoryRule } from "@/app/actions/categoryRules";
 import { applyUserRules, autoMatchCategory } from "@/lib/constants/categories";
 import { CsvColumnMapper, autoDetectMapping, type ColumnMapping } from "@/components/CsvColumnMapper";
@@ -93,6 +93,7 @@ function extractPreviewRows(
             transactionType,
             errors: {},
             isSkipped: false,
+            isDuplicate: false,
             editingField: null,
           };
           partial.errors = validatePreviewRow(partial);
@@ -129,8 +130,18 @@ async function importValidRows(rows: PreviewRow[]): Promise<number> {
 
 type UploadState = "idle" | "dragging" | "processing" | "mapping" | "preview" | "success" | "error";
 
-export default function CsvUploader() {
+const ACTIVE_STATES = new Set<UploadState>(["dragging", "processing", "mapping", "preview"]);
+
+interface CsvUploaderProps {
+  onActiveChange?: (active: boolean) => void;
+  onImportComplete?: (month: string) => void;
+}
+
+export default function CsvUploader({ onActiveChange, onImportComplete }: CsvUploaderProps = {}) {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
+  useEffect(() => {
+    onActiveChange?.(ACTIVE_STATES.has(uploadState));
+  }, [uploadState, onActiveChange]);
   const [message, setMessage] = useState<string | null>(null);
   const [fileProgress, setFileProgress] = useState<string | null>(null);
   const [skippedWarning, setSkippedWarning] = useState<string | null>(null);
@@ -203,7 +214,22 @@ export default function CsvUploader() {
         allRows.push(...rows);
       }
 
-      setPreviewRows(allRows);
+      // Check for duplicates against existing DynamoDB records
+      setMessage("Checking for duplicates…");
+      const dupResult = await checkDuplicates(
+        allRows.map((r) => ({
+          rowId: r.id,
+          date: r.date,
+          amount: Number(r.amount),
+          description: r.description,
+        })),
+      );
+      const dupSet = new Set(dupResult.duplicateRowIds ?? []);
+      const rowsWithDups = allRows.map((r) =>
+        dupSet.has(r.id) ? { ...r, isDuplicate: true } : r,
+      );
+
+      setPreviewRows(rowsWithDups);
       setColumnMapping(mapping);
       setUploadState("preview");
       setMessage(null);
@@ -225,6 +251,14 @@ export default function CsvUploader() {
       const count = await importValidRows(finalRows);
       const skipped = finalRows.filter((r) => r.isSkipped || Object.keys(r.errors).length > 0).length;
       const rejected = pendingRejected;
+
+      // Derive the earliest month from successfully imported rows and notify parent
+      const importedMonths = finalRows
+        .filter((r) => !r.isSkipped && Object.keys(r.errors).length === 0)
+        .map((r) => r.date.slice(0, 7))
+        .filter(Boolean)
+        .sort();
+      if (importedMonths.length > 0) onImportComplete?.(importedMonths[0]);
 
       setPendingFiles([]);
       setPendingRejected([]);

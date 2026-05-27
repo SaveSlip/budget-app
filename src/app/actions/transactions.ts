@@ -112,6 +112,7 @@ export async function batchCreateTransactions(
       ),
     );
     revalidatePath("/dashboard");
+    revalidatePath("/dashboard/transactions");
     return { success: true, count: validTransactions.length };
   } catch (error) {
     console.error("Failed to batch write transactions:", error);
@@ -477,6 +478,92 @@ export async function deleteAllTransactions() {
   } catch (error) {
     console.error("[DB] Failed to delete all transactions:", error)
     return { error: "Failed to delete all transactions" }
+  }
+}
+
+export type DuplicateCheckInput = {
+  rowId: number;
+  date: string;
+  amount: number;
+  description: string;
+};
+
+export type DuplicateCheckResult = {
+  duplicateRowIds: number[];
+  error?: never;
+} | {
+  duplicateRowIds?: never;
+  error: string;
+};
+
+function normalizeDesc(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+// Returns true when two strings are close enough to be considered the same
+// merchant (handles minor spacing/casing differences). Uses a simple
+// contains-or-equal check rather than full edit-distance to stay cheap.
+function fuzzyMatch(a: string, b: string): boolean {
+  const na = normalizeDesc(a);
+  const nb = normalizeDesc(b);
+  return na === nb || na.includes(nb) || nb.includes(na);
+}
+
+export async function checkDuplicates(
+  inputs: DuplicateCheckInput[],
+): Promise<DuplicateCheckResult> {
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return { error: "Unauthorized" };
+
+  // Group incoming rows by date so we issue one DynamoDB query per unique date
+  const byDate = new Map<string, DuplicateCheckInput[]>();
+  for (const row of inputs) {
+    const list = byDate.get(row.date) ?? [];
+    list.push(row);
+    byDate.set(row.date, list);
+  }
+
+  const duplicateRowIds: number[] = [];
+
+  try {
+    for (const [date, rows] of byDate) {
+      // Cheap range query — only fetches transactions on this exact date
+      let lastEvaluatedKey: Record<string, unknown> | undefined;
+      const existing: { description: string; amount: number }[] = [];
+
+      do {
+        const response = await docClient.send(
+          new QueryCommand({
+            TableName: TABLE_NAME,
+            KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+            ExpressionAttributeValues: {
+              ":pk": `USER#${userId}`,
+              ":skPrefix": `TX#${date}`,
+            },
+            ProjectionExpression: "description, amount",
+            ExclusiveStartKey: lastEvaluatedKey,
+          }),
+        );
+        for (const item of response.Items ?? []) {
+          existing.push(item as { description: string; amount: number });
+        }
+        lastEvaluatedKey = response.LastEvaluatedKey as Record<string, unknown> | undefined;
+      } while (lastEvaluatedKey);
+
+      for (const row of rows) {
+        const amt = Number(row.amount);
+        const isDup = existing.some(
+          (ex) => ex.amount === amt && fuzzyMatch(ex.description, row.description),
+        );
+        if (isDup) duplicateRowIds.push(row.rowId);
+      }
+    }
+
+    return { duplicateRowIds };
+  } catch (error) {
+    console.error("Failed to check duplicates:", error);
+    return { error: "Failed to check for duplicate transactions." };
   }
 }
 

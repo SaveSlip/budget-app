@@ -75,6 +75,7 @@ interface DataTableProps {
   initialView?: string
   initialYear?: string
   initialAvailableMonths?: string[]
+  onImportCompleteRef?: React.MutableRefObject<((month: string) => void) | null>
 }
 
 export function DataTable({
@@ -87,6 +88,7 @@ export function DataTable({
   initialView,
   initialYear,
   initialAvailableMonths,
+  onImportCompleteRef,
 }: DataTableProps) {
   const handleCategoryUpdate = React.useCallback((txId: string, category: string) => {
     setVisibleData((prev) =>
@@ -135,6 +137,7 @@ export function DataTable({
   const [monthFilter, setMonthFilter] = React.useState<string>(
     () => `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
   )
+  const [extraMonths, setExtraMonths] = React.useState<string[]>([])
 
   // Generation counter — incremented on every new fetch so stale responses are ignored
   const fetchGenRef = React.useRef(0)
@@ -154,6 +157,17 @@ export function DataTable({
       if (gen === fetchGenRef.current) setIsMonthLoading(false)
     }
   }, [])
+
+  // Register this DataTable's import-complete handler into the shared ref so the
+  // "add" tab's CsvUploader can trigger a month switch without both tabs being mounted.
+  React.useEffect(() => {
+    if (!onImportCompleteRef) return
+    onImportCompleteRef.current = (month: string) => {
+      setExtraMonths((prev) => (prev.includes(month) ? prev : [...prev, month]))
+      setMonthFilter(month)
+    }
+    return () => { onImportCompleteRef.current = null }
+  }, [onImportCompleteRef])
 
   // Effect A: derive monthFilter from URL props / sessionStorage — state only, no fetches
   React.useEffect(() => {
@@ -287,13 +301,13 @@ export function DataTable({
   }, [isLoadingAll])
 
   const availableMonths = React.useMemo(() => {
-    const months = new Set<string>(initialAvailableMonths ?? [])
+    const months = new Set<string>([...(initialAvailableMonths ?? []), ...extraMonths])
     visibleData.forEach((row) => {
       const d = (row as { date?: string }).date
       if (d && d.length >= 7) months.add(d.slice(0, 7))
     })
     return Array.from(months).sort((a, b) => b.localeCompare(a))
-  }, [visibleData, initialAvailableMonths])
+  }, [visibleData, initialAvailableMonths, extraMonths])
 
   const filteredData = React.useMemo(() => {
     if (monthFilter === "all") return visibleData
