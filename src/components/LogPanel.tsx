@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import TransactionForm from "@/components/TransactionForm";
 import CsvUploader from "@/components/CsvUploader";
 import { UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
@@ -111,10 +111,10 @@ export function LogPanel({ categories, accounts, onSuccess, onImportComplete, in
           </div>
         </div>
 
-        {/* CSV drop zone — fades in/out within the fixed flex-1 space (no height animation to avoid jump) */}
+        {/* CSV drop zone — same max-height transition as Manual Entry */}
         <div
-          className={`transition-opacity duration-300 ease-in-out ${
-            csvCollapsed ? "opacity-0 pointer-events-none h-0 overflow-hidden" : "opacity-100"
+          className={`overflow-hidden transition-[max-height,opacity] duration-500 ease-in-out ${
+            csvCollapsed ? "max-h-0 opacity-0 pointer-events-none" : "max-h-225 opacity-100"
           }`}
           onMouseEnter={() => !csvProcessing && setMode("csv")}
         >
@@ -123,7 +123,7 @@ export function LogPanel({ categories, accounts, onSuccess, onImportComplete, in
               glowing={mode === "csv" && !csvProcessing}
               onActiveChange={setCsvProcessing}
               onImportComplete={onImportComplete}
-              tall={manualCollapsed}
+              accounts={accounts}
             />
           </div>
         </div>
@@ -141,7 +141,7 @@ export function LogPanel({ categories, accounts, onSuccess, onImportComplete, in
       >
         <span className="flex items-center justify-between w-full">
           Bulk Import
-          {!manualCollapsed && <ChevronUp className="w-3.5 h-3.5" />}
+          {manualCollapsed && <ChevronDown className="w-3.5 h-3.5" />}
         </span>
       </button>
 

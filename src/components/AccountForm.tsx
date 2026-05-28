@@ -13,7 +13,14 @@ const ACCOUNT_TYPES = [
   { value: "OTHER", label: "Other" },
 ] as const;
 
-export function AccountForm() {
+interface AccountFormProps {
+  /** Pre-fill the account number field (e.g. from CSV detection) */
+  initialAccountNumber?: string;
+  /** Called with the new account id on success */
+  onSuccess?: (id: string) => void;
+}
+
+export function AccountForm({ initialAccountNumber, onSuccess }: AccountFormProps = {}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -22,6 +29,7 @@ export function AccountForm() {
     name: "",
     type: "" as string,
     initialBalance: "0",
+    accountNumber: initialAccountNumber ?? "",
   });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,6 +48,7 @@ export function AccountForm() {
       name: formData.name,
       type: formData.type as (typeof ACCOUNT_TYPES)[number]["value"],
       initialBalance: Number(formData.initialBalance),
+      accountNumber: formData.accountNumber || undefined,
     });
 
     setIsSubmitting(false);
@@ -48,8 +57,9 @@ export function AccountForm() {
       setError(result.error);
     } else {
       setSuccess(true);
-      setFormData({ name: "", type: "", initialBalance: "0" });
+      setFormData({ name: "", type: "", initialBalance: "0", accountNumber: "" });
       setTimeout(() => setSuccess(false), 3000);
+      if (onSuccess && result.id) onSuccess(result.id);
     }
   };
 
@@ -65,6 +75,21 @@ export function AccountForm() {
           placeholder="e.g., Chase Checking, AMEX Gold"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium leading-none text-muted-foreground">
+          Account Number (last 4 digits){" "}
+          <span className="text-muted-foreground/60 font-normal">— optional</span>
+        </label>
+        <input
+          type="text"
+          maxLength={20}
+          placeholder="e.g., 4242"
+          value={formData.accountNumber}
+          onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
           className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>

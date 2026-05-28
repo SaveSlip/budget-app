@@ -12,6 +12,9 @@ import {
   validatePreviewRow,
   type PreviewRow,
 } from "@/components/CsvImportPreview";
+import { CsvAccountSelector } from "@/components/CsvAccountSelector";
+import { detectAccountNumberFromCsv, matchAccountByNumber } from "@/lib/accountMatching";
+import type { Account } from "@/lib/data/budget";
 
 function filterCsvFiles(files: FileList | File[]): { valid: File[]; rejected: string[] } {
   const arr = Array.from(files);
@@ -109,7 +112,7 @@ function extractPreviewRows(
   });
 }
 
-async function importValidRows(rows: PreviewRow[]): Promise<number> {
+async function importValidRows(rows: PreviewRow[], accountId: string | null): Promise<number> {
   const toImport = rows.filter(
     (r) => !r.isSkipped && Object.keys(r.errors).length === 0,
   );
@@ -121,6 +124,7 @@ async function importValidRows(rows: PreviewRow[]): Promise<number> {
     date: r.date,
     category: r.category,
     transactionType: r.transactionType,
+    ...(accountId ? { accountId } : {}),
   }));
 
   const result = await batchCreateTransactions(transactions);
@@ -128,18 +132,19 @@ async function importValidRows(rows: PreviewRow[]): Promise<number> {
   return result.count ?? 0;
 }
 
-type UploadState = "idle" | "dragging" | "processing" | "mapping" | "preview" | "success" | "error";
+type UploadState = "idle" | "dragging" | "processing" | "account-select" | "mapping" | "preview" | "success" | "error";
 
-const ACTIVE_STATES = new Set<UploadState>(["dragging", "processing", "mapping", "preview"]);
+const ACTIVE_STATES = new Set<UploadState>(["dragging", "processing", "account-select", "mapping", "preview"]);
 
 interface CsvUploaderProps {
   onActiveChange?: (active: boolean) => void;
   onImportComplete?: (month: string) => void;
   glowing?: boolean;
   tall?: boolean;
+  accounts?: Account[];
 }
 
-export default function CsvUploader({ onActiveChange, onImportComplete, glowing, tall }: CsvUploaderProps = {}) {
+export default function CsvUploader({ onActiveChange, onImportComplete, glowing, tall, accounts = [] }: CsvUploaderProps = {}) {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   useEffect(() => {
     onActiveChange?.(ACTIVE_STATES.has(uploadState));
@@ -152,6 +157,8 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null);
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
+  const [detectedAccountNumber, setDetectedAccountNumber] = useState<string | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -184,11 +191,34 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     try {
       const headers = await extractHeaders(valid[0]);
       const detected = autoDetectMapping(headers);
+
+      // Peek at first data row to detect an account number column
+      const firstRowDetection = await new Promise<{ columnName: string; value: string } | null>((resolve) => {
+        Papa.parse(valid[0], {
+          header: true,
+          preview: 1,
+          skipEmptyLines: true,
+          complete: (results) => {
+            const firstRow = (results.data[0] ?? {}) as Record<string, string>;
+            resolve(detectAccountNumberFromCsv(headers, firstRow));
+          },
+          error: () => resolve(null),
+        });
+      });
+
       setPendingFiles(valid);
       setPendingRejected(rejected);
       setCsvHeaders(headers);
       setColumnMapping(detected);
-      setUploadState("mapping");
+
+      const detectedNum = firstRowDetection?.value ?? null;
+      setDetectedAccountNumber(detectedNum);
+
+      // Pre-select account if number matches an existing one
+      const matched = detectedNum ? matchAccountByNumber(detectedNum, accounts) : null;
+      setSelectedAccountId(matched?.id ?? null);
+
+      setUploadState("account-select");
     } catch {
       setUploadState("error");
       setMessage("Could not read CSV headers.");
@@ -250,7 +280,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     setSkippedWarning(null);
 
     try {
-      const count = await importValidRows(finalRows);
+      const count = await importValidRows(finalRows, selectedAccountId);
       const skipped = finalRows.filter((r) => r.isSkipped || Object.keys(r.errors).length > 0).length;
       const rejected = pendingRejected;
 
@@ -299,6 +329,8 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     setCsvHeaders([]);
     setColumnMapping(null);
     setPreviewRows([]);
+    setDetectedAccountNumber(null);
+    setSelectedAccountId(null);
     setUploadState("idle");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -315,6 +347,22 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
       e.target.value = "";
     }
   };
+
+  if (uploadState === "account-select" && columnMapping) {
+    return (
+      <CsvAccountSelector
+        accounts={accounts}
+        detectedAccountNumber={detectedAccountNumber}
+        preSelectedAccountId={selectedAccountId}
+        filename={pendingFiles[0]?.name ?? ""}
+        onSelect={(accountId) => {
+          setSelectedAccountId(accountId);
+          setUploadState("mapping");
+        }}
+        onBack={handleMappingCancel}
+      />
+    );
+  }
 
   if (uploadState === "mapping" && columnMapping) {
     return (
@@ -344,6 +392,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     idle: "border-border hover:border-primary/50 hover:bg-accent",
     dragging: "border-primary bg-primary/10 scale-[1.02]",
     processing: "border-info bg-info/5 cursor-wait",
+    "account-select": "border-border",
     mapping: "border-border",
     preview: "border-border",
     success: "border-success bg-success/10",
@@ -354,6 +403,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     idle: "text-muted-foreground",
     dragging: "text-primary",
     processing: "text-info animate-spin",
+    "account-select": "text-muted-foreground",
     mapping: "text-muted-foreground",
     preview: "text-muted-foreground",
     success: "text-success",
@@ -373,6 +423,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     idle: "Drag & drop your bank CSV files",
     dragging: "Drop them here!",
     processing: "Processing Data...",
+    "account-select": "Selecting account…",
     mapping: "Mapping columns…",
     preview: "Reviewing import…",
     success: "Import Complete",

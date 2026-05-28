@@ -9,6 +9,7 @@ export interface Account {
   name: string;
   accountType: "CHECKING" | "SAVINGS" | "CREDIT" | "CASH" | "INVESTMENT" | "OTHER";
   initialBalance: number;
+  accountNumber?: string;
   createdAt: string;
 }
 
