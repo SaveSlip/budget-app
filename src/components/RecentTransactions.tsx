@@ -15,11 +15,13 @@ interface RecentTransactionsProps {
   transactions: Transaction[];
   categories?: Category[];
   accounts?: Account[];
+  emptyMessage?: string;
+  scrollable?: boolean;
 }
 
-export function RecentTransactions({ transactions, categories = [], accounts = [] }: RecentTransactionsProps) {
+export function RecentTransactions({ transactions, categories = [], accounts = [], emptyMessage, scrollable }: RecentTransactionsProps) {
   return (
-    <div className="rounded-md border border-border">
+    <div className={cn("rounded-md border border-border", scrollable && "max-h-130 overflow-y-auto")}>
       <Table>
         <TableHeader className="bg-muted/50">
           <TableRow className="hover:bg-transparent border-border">
@@ -45,7 +47,7 @@ export function RecentTransactions({ transactions, categories = [], accounts = [
                 colSpan={5}
                 className="h-24 text-center text-sm text-muted-foreground"
               >
-                No verified transactions found for this period.
+                {emptyMessage ?? "No verified transactions found for this period."}
               </TableCell>
             </TableRow>
           ) : (

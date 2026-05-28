@@ -79,6 +79,12 @@ export function DashboardFilters({ availableMonths: propMonths }: { availableMon
     setStoredFilter({ month: currentMonth, year: activeYear, view });
   }, [currentMonth, activeYear, view]);
 
+  // Scroll to results when a search query is active
+  useEffect(() => {
+    if (!currentQuery) return;
+    document.getElementById("recent-transactions")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [currentQuery]);
+
   function toggleView() {
     if (view === "monthly") {
       updateFilters({ view: "yearly", month: "", year: activeYear });

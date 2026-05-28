@@ -23,6 +23,7 @@ interface Props {
   initialAvailableMonths?: string[];
   initialTab?: Tab;
   initialMode?: "csv" | "manual";
+  initialQuery?: string;
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -31,7 +32,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "add", label: "Add Transaction" },
 ];
 
-export function TransactionsTabView({ transactions, initialCursor, categories, accounts, recurring, initialMonth, initialView, initialYear, initialAvailableMonths, initialTab, initialMode }: Props) {
+export function TransactionsTabView({ transactions, initialCursor, categories, accounts, recurring, initialMonth, initialView, initialYear, initialAvailableMonths, initialTab, initialMode, initialQuery }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? "ledger");
   const [addWithRecurring, setAddWithRecurring] = useState(false);
 
@@ -70,7 +71,7 @@ export function TransactionsTabView({ transactions, initialCursor, categories, a
 
       <CardContent className="pt-6">
         {activeTab === "ledger" && (
-          <DataTable data={transactions} initialCursor={initialCursor} embedded initialCategories={categories} initialAccounts={accounts} initialMonth={initialMonth} initialView={initialView} initialYear={initialYear} initialAvailableMonths={initialAvailableMonths} onImportCompleteRef={onImportCompleteRef} />
+          <DataTable data={transactions} initialCursor={initialCursor} embedded initialCategories={categories} initialAccounts={accounts} initialMonth={initialMonth} initialView={initialView} initialYear={initialYear} initialAvailableMonths={initialAvailableMonths} onImportCompleteRef={onImportCompleteRef} initialQuery={initialQuery} />
         )}
         {activeTab === "recurring" && (
           <RecurringList

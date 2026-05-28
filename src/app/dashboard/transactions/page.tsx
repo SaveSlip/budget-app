@@ -10,7 +10,7 @@ const VALID_TABS = ["ledger", "recurring", "add"] as const;
 type Tab = (typeof VALID_TABS)[number];
 
 interface PageProps {
-  searchParams: Promise<{ month?: string; view?: string; year?: string; tab?: string; mode?: string }>;
+  searchParams: Promise<{ month?: string; view?: string; year?: string; tab?: string; mode?: string; q?: string }>;
 }
 
 export default async function TransactionsPage({ searchParams }: PageProps) {
@@ -52,6 +52,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
         initialMonth={resolvedParams.month}
         initialView={resolvedParams.view}
         initialYear={resolvedParams.year}
+        initialQuery={resolvedParams.q}
         initialAvailableMonths={availableMonths}
         recurring={recurring}
         initialTab={initialTab}

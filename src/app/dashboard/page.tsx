@@ -44,6 +44,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const activeMonth = resolvedParams.month || todayMonth;
   const view = resolvedParams.view === "yearly" ? "yearly" : "monthly";
   const activeYear = resolvedParams.year || format(new Date(), "yyyy");
+  const searchQuery = resolvedParams.q?.trim() ?? "";
 
   let categories: Category[];
   let totalIncome: number;
@@ -88,6 +89,18 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     trendItems = trend;
     quarterlyReview = quarterly;
   }
+
+  const filteredItems = searchQuery
+    ? trendItems.filter((tx) => {
+        const q = searchQuery.toLowerCase();
+        return (
+          tx.description.toLowerCase().includes(q) ||
+          tx.category.toLowerCase().includes(q)
+        );
+      })
+    : trendItems;
+
+  const displayItems = searchQuery ? filteredItems : filteredItems.slice(0, 8);
 
   const periodLabel =
     view === "yearly"
@@ -168,12 +181,17 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       </AnimateSection>
 
       {/* Recent Transactions */}
+      <div id="recent-transactions">
       <AnimateSection delay={0.20}>
         <GlassCard>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-foreground">Recent Transactions</h3>
+            <h3 className="text-lg font-semibold text-foreground">
+              {searchQuery
+                ? `Results for "${searchQuery}" (${filteredItems.length})`
+                : "Recent Transactions"}
+            </h3>
             <Link
-              href={`/dashboard/transactions?month=${activeMonth}&view=${view}&year=${activeYear}`}
+              href={`/dashboard/transactions?month=${searchQuery ? "all" : activeMonth}&view=${view}&year=${searchQuery ? "all" : activeYear}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""}`}
               className="text-sm font-medium text-primary hover:underline"
             >
               View all →
@@ -181,12 +199,15 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           </div>
           <div className="overflow-x-auto">
             <RecentTransactions
-              transactions={trendItems.slice(0, 8)}
+              transactions={displayItems}
               categories={categories}
+              scrollable={!!searchQuery}
+              emptyMessage={searchQuery ? `No transactions match "${searchQuery}".` : undefined}
             />
           </div>
         </GlassCard>
       </AnimateSection>
+      </div>
 
       {/* Row 3: Spending Activity Chart */}
       <AnimateSection delay={0.24}>

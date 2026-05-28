@@ -76,6 +76,7 @@ interface DataTableProps {
   initialYear?: string
   initialAvailableMonths?: string[]
   onImportCompleteRef?: React.MutableRefObject<((month: string) => void) | null>
+  initialQuery?: string
 }
 
 export function DataTable({
@@ -89,6 +90,7 @@ export function DataTable({
   initialYear,
   initialAvailableMonths,
   onImportCompleteRef,
+  initialQuery,
 }: DataTableProps) {
   const handleCategoryUpdate = React.useCallback((txId: string, category: string) => {
     setVisibleData((prev) =>
@@ -139,6 +141,20 @@ export function DataTable({
   )
   const [extraMonths, setExtraMonths] = React.useState<string[]>([])
 
+  const [isYearlyView, setIsYearlyView] = React.useState<boolean>(() => {
+    if (initialView === "yearly") return true
+    const stored = getStoredFilter()
+    return stored?.view === "yearly"
+  })
+  const currentYear = new Date().getFullYear().toString()
+  const availableYears = React.useMemo(
+    () => [0, 1, 2, 3].map((i) => String(Number(currentYear) - i)),
+    [currentYear]
+  )
+  const [yearFilter, setYearFilter] = React.useState<string>(
+    () => initialYear || currentYear
+  )
+
   // Generation counter — incremented on every new fetch so stale responses are ignored
   const fetchGenRef = React.useRef(0)
 
@@ -169,12 +185,17 @@ export function DataTable({
     return () => { onImportCompleteRef.current = null }
   }, [onImportCompleteRef])
 
-  // Effect A: derive monthFilter from URL props / sessionStorage — state only, no fetches
+  // Effect A: derive monthFilter/yearFilter/isYearlyView from URL props / sessionStorage
   React.useEffect(() => {
     if (initialView === "yearly") { setMonthFilter("all"); return }
     if (initialMonth) { setMonthFilter(initialMonth); return }
     const stored = getStoredFilter()
-    if (stored?.view === "yearly") { setMonthFilter("all"); return }
+    if (stored?.view === "yearly") {
+      setMonthFilter("all")
+      setIsYearlyView(true)
+      if (stored.year) setYearFilter(stored.year)
+      return
+    }
     const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
     setMonthFilter(stored?.month ?? currentMonth)
   }, [initialMonth, initialView])
@@ -310,12 +331,19 @@ export function DataTable({
   }, [visibleData, initialAvailableMonths, extraMonths])
 
   const filteredData = React.useMemo(() => {
+    if (isYearlyView) {
+      if (yearFilter === "all") return visibleData
+      return visibleData.filter((row) => {
+        const d = (row as { date?: string }).date
+        return d?.startsWith(yearFilter)
+      })
+    }
     if (monthFilter === "all") return visibleData
     return visibleData.filter((row) => {
       const d = (row as { date?: string }).date
       return d?.startsWith(monthFilter)
     })
-  }, [visibleData, monthFilter])
+  }, [visibleData, monthFilter, yearFilter, isYearlyView])
 
   const table = useReactTable({
     data: filteredData,
@@ -340,6 +368,20 @@ export function DataTable({
 
   const selectedRows = table.getSelectedRowModel().rows
   const selectedCount = selectedRows.length
+
+  // Seed description filter from URL ?q= param on first render
+  React.useEffect(() => {
+    if (!initialQuery) return
+    table.getColumn("description")?.setFilterValue(initialQuery)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery])
+
+  // When arriving with a pre-set search query, load all pages so the filter is accurate
+  React.useEffect(() => {
+    if (!initialQuery) return
+    loadAllRemaining()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleDeleteAll() {
     setIsDeletingAll(true)
@@ -394,29 +436,49 @@ export function DataTable({
             }
             className="flex-1 min-w-0"
           />
-          <Select
-            value={monthFilter}
-            onValueChange={(val) => {
-              setMonthFilter(val)
-              setStoredFilter({
-                month: val,
-                year: initialYear || new Date().getFullYear().toString(),
-                view: "monthly",
-              })
-            }}
-          >
-            <SelectTrigger className="w-28 sm:w-36 shrink-0">
-              <SelectValue placeholder="All months" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableMonths.map((m) => (
-                <SelectItem key={m} value={m}>
-                  {new Date(m + "-02").toLocaleString("default", { month: "long", year: "numeric" })}
-                </SelectItem>
-              ))}
-              <SelectItem value="all">All months</SelectItem>
-            </SelectContent>
-          </Select>
+          {isYearlyView ? (
+            <Select
+              value={yearFilter}
+              onValueChange={(val) => {
+                setYearFilter(val)
+                setStoredFilter({ month: monthFilter, year: val, view: "yearly" })
+              }}
+            >
+              <SelectTrigger className="w-28 sm:w-36 shrink-0">
+                <SelectValue placeholder="All years" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableYears.map((y) => (
+                  <SelectItem key={y} value={y}>{y}</SelectItem>
+                ))}
+                <SelectItem value="all">All years</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <Select
+              value={monthFilter}
+              onValueChange={(val) => {
+                setMonthFilter(val)
+                setStoredFilter({
+                  month: val,
+                  year: initialYear || new Date().getFullYear().toString(),
+                  view: "monthly",
+                })
+              }}
+            >
+              <SelectTrigger className="w-28 sm:w-36 shrink-0">
+                <SelectValue placeholder="All months" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableMonths.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {new Date(m + "-02").toLocaleString("default", { month: "long", year: "numeric" })}
+                  </SelectItem>
+                ))}
+                <SelectItem value="all">All months</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Delete Selected — own right-aligned row on mobile/tablet only */}
