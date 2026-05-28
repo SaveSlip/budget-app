@@ -4,7 +4,18 @@ import { useState } from "react";
 import { createTransaction } from "@/app/actions/transactions";
 import { createRecurringTransaction } from "@/app/actions/recurring";
 import { Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Account, Category } from "@/lib/data/budget";
+
+const NO_ACCOUNT = "__none__";
 
 interface TransactionFormProps {
   categories: Category[];
@@ -41,23 +52,28 @@ export default function TransactionForm({
     date: today,
     category: "",
     transactionType: initialType as "INCOME" | "EXPENSE",
-    accountId: "",
+    accountId: NO_ACCOUNT,
   });
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!formData.category) {
+      setError("Please select a category.");
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     setSuccess(false);
 
     try {
+      const accountId = formData.accountId === NO_ACCOUNT ? undefined : formData.accountId;
       const result = isRecurring
         ? await createRecurringTransaction({
             description: formData.description,
             amount: Number(formData.amount),
             category: formData.category,
             transactionType: formData.transactionType,
-            accountId: formData.accountId || undefined,
+            accountId,
             frequency,
             dayOfMonth: frequency === "MONTHLY" && dayOfMonth ? parseInt(dayOfMonth, 10) : undefined,
             dayOfWeek: frequency === "WEEKLY" ? parseInt(dayOfWeek, 10) : undefined,
@@ -71,14 +87,14 @@ export default function TransactionForm({
             date: formData.date,
             category: formData.category,
             transactionType: formData.transactionType,
-            accountId: formData.accountId || undefined,
+            accountId,
           });
 
       if (result.error) {
         setError(result.error);
       } else {
         setSuccess(true);
-        setFormData({ description: "", amount: "", date: today, category: "", transactionType: initialType, accountId: "" });
+        setFormData({ description: "", amount: "", date: today, category: "", transactionType: initialType, accountId: NO_ACCOUNT });
         setIsRecurring(false);
         setFrequency("MONTHLY");
         setDayOfMonth("");
@@ -94,6 +110,10 @@ export default function TransactionForm({
       setIsSubmitting(false);
     }
   };
+
+  const visibleCategories = categories.filter(
+    (c) => !c.categoryType || c.categoryType === formData.transactionType,
+  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -129,15 +149,13 @@ export default function TransactionForm({
         <label className="text-sm font-medium leading-none text-muted-foreground">
           Description
         </label>
-        <input
+        <Input
           type="text"
           required
           placeholder="e.g., AWS Route53 Renewal"
           value={formData.description}
-          onChange={(e) =>
-            setFormData({ ...formData, description: e.target.value })
-          }
-          className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          className="mt-1.5"
         />
       </div>
 
@@ -147,19 +165,15 @@ export default function TransactionForm({
             Amount
           </label>
           <div className="relative mt-1.5">
-            <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">
-              $
-            </span>
-            <input
+            <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">$</span>
+            <Input
               type="number"
               step="0.01"
               required
               placeholder="0.00"
               value={formData.amount}
-              onChange={(e) =>
-                setFormData({ ...formData, amount: e.target.value })
-              }
-              className="flex h-10 w-full rounded-md border border-border bg-transparent pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              className="pl-7 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
             />
           </div>
         </div>
@@ -169,12 +183,12 @@ export default function TransactionForm({
             <label className="text-sm font-medium leading-none text-muted-foreground">
               Date
             </label>
-            <input
+            <Input
               type="date"
               required
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary scheme-light dark:scheme-dark"
+              className="mt-1.5 scheme-light dark:scheme-dark"
             />
           </div>
         )}
@@ -184,52 +198,49 @@ export default function TransactionForm({
         <label className="text-sm font-medium leading-none text-muted-foreground">
           Category
         </label>
-        <select
-          required
+        <Select
           value={formData.category}
-          onChange={(e) =>
-            setFormData({ ...formData, category: e.target.value })
-          }
-          className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+          onValueChange={(v) => setFormData({ ...formData, category: v })}
         >
-          <option value="" disabled>
-            Select a category...
-          </option>
-          {(() => {
-            const visibleCategories = categories.filter(
-              (c) => !c.categoryType || c.categoryType === formData.transactionType
-            );
-            return visibleCategories.length === 0 ? (
-              <option disabled>No categories yet — add one above</option>
+          <SelectTrigger className="w-full mt-1.5">
+            <SelectValue placeholder="Select a category..." />
+          </SelectTrigger>
+          <SelectContent>
+            {visibleCategories.length === 0 ? (
+              <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                No categories yet — add one above
+              </p>
             ) : (
               visibleCategories.map((cat) => (
-                <option key={cat.id} value={cat.name}>
+                <SelectItem key={cat.id} value={cat.name}>
                   {cat.name}
-                </option>
+                </SelectItem>
               ))
-            );
-          })()}
-        </select>
+            )}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
         <label className="text-sm font-medium leading-none text-muted-foreground">
           Account <span className="text-muted-foreground/60">(optional)</span>
         </label>
-        <select
+        <Select
           value={formData.accountId}
-          onChange={(e) =>
-            setFormData({ ...formData, accountId: e.target.value })
-          }
-          className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+          onValueChange={(v) => setFormData({ ...formData, accountId: v })}
         >
-          <option value="">No account</option>
-          {accounts.map((acc) => (
-            <option key={acc.id} value={acc.id}>
-              {acc.name}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-full mt-1.5">
+            <SelectValue placeholder="No account" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_ACCOUNT}>No account</SelectItem>
+            {accounts.map((acc) => (
+              <SelectItem key={acc.id} value={acc.id}>
+                {acc.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex items-center gap-2 pt-1">
@@ -246,21 +257,27 @@ export default function TransactionForm({
       </div>
 
       {isRecurring && (
-        <div className="space-y-3 pl-6 border-l-2 border-primary/20">
+        <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+          <p className="text-xs font-semibold text-foreground/70 uppercase tracking-wider">Schedule</p>
+
           <div>
             <label className="text-sm font-medium leading-none text-muted-foreground">
               Frequency
             </label>
-            <select
+            <Select
               value={frequency}
-              onChange={(e) => setFrequency(e.target.value as typeof frequency)}
-              className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+              onValueChange={(v) => setFrequency(v as typeof frequency)}
             >
-              <option value="DAILY">Daily</option>
-              <option value="WEEKLY">Weekly</option>
-              <option value="MONTHLY">Monthly</option>
-              <option value="YEARLY">Yearly</option>
-            </select>
+              <SelectTrigger className="w-full mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DAILY">Daily</SelectItem>
+                <SelectItem value="WEEKLY">Weekly</SelectItem>
+                <SelectItem value="MONTHLY">Monthly</SelectItem>
+                <SelectItem value="YEARLY">Yearly</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {frequency === "WEEKLY" && (
@@ -268,19 +285,20 @@ export default function TransactionForm({
               <label className="text-sm font-medium leading-none text-muted-foreground">
                 Day of Week
               </label>
-              <select
-                value={dayOfWeek}
-                onChange={(e) => setDayOfWeek(e.target.value)}
-                className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
-              >
-                <option value="0">Sunday</option>
-                <option value="1">Monday</option>
-                <option value="2">Tuesday</option>
-                <option value="3">Wednesday</option>
-                <option value="4">Thursday</option>
-                <option value="5">Friday</option>
-                <option value="6">Saturday</option>
-              </select>
+              <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
+                <SelectTrigger className="w-full mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Sunday</SelectItem>
+                  <SelectItem value="1">Monday</SelectItem>
+                  <SelectItem value="2">Tuesday</SelectItem>
+                  <SelectItem value="3">Wednesday</SelectItem>
+                  <SelectItem value="4">Thursday</SelectItem>
+                  <SelectItem value="5">Friday</SelectItem>
+                  <SelectItem value="6">Saturday</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -289,14 +307,14 @@ export default function TransactionForm({
               <label className="text-sm font-medium leading-none text-muted-foreground">
                 Day of Month <span className="text-muted-foreground/60">(optional, 1–31)</span>
               </label>
-              <input
+              <Input
                 type="number"
                 min={1}
                 max={31}
                 placeholder="e.g., 15"
                 value={dayOfMonth}
                 onChange={(e) => setDayOfMonth(e.target.value)}
-                className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                className="mt-1.5 [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
               />
             </div>
           )}
@@ -307,37 +325,38 @@ export default function TransactionForm({
                 <label className="text-sm font-medium leading-none text-muted-foreground">
                   Month
                 </label>
-                <select
-                  value={monthOfYear}
-                  onChange={(e) => setMonthOfYear(e.target.value)}
-                  className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
-                >
-                  <option value="1">January</option>
-                  <option value="2">February</option>
-                  <option value="3">March</option>
-                  <option value="4">April</option>
-                  <option value="5">May</option>
-                  <option value="6">June</option>
-                  <option value="7">July</option>
-                  <option value="8">August</option>
-                  <option value="9">September</option>
-                  <option value="10">October</option>
-                  <option value="11">November</option>
-                  <option value="12">December</option>
-                </select>
+                <Select value={monthOfYear} onValueChange={setMonthOfYear}>
+                  <SelectTrigger className="w-full mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">January</SelectItem>
+                    <SelectItem value="2">February</SelectItem>
+                    <SelectItem value="3">March</SelectItem>
+                    <SelectItem value="4">April</SelectItem>
+                    <SelectItem value="5">May</SelectItem>
+                    <SelectItem value="6">June</SelectItem>
+                    <SelectItem value="7">July</SelectItem>
+                    <SelectItem value="8">August</SelectItem>
+                    <SelectItem value="9">September</SelectItem>
+                    <SelectItem value="10">October</SelectItem>
+                    <SelectItem value="11">November</SelectItem>
+                    <SelectItem value="12">December</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="text-sm font-medium leading-none text-muted-foreground">
                   Day
                 </label>
-                <input
+                <Input
                   type="number"
                   min={1}
                   max={31}
                   placeholder="e.g., 1"
                   value={dayOfYear}
                   onChange={(e) => setDayOfYear(e.target.value)}
-                  className="flex h-10 w-full mt-1.5 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
+                  className="mt-1.5 [&::-webkit-inner-spin-button]:appearance-none [-moz-appearance:textfield]"
                 />
               </div>
             </div>
@@ -352,11 +371,7 @@ export default function TransactionForm({
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 w-full mt-2"
-      >
+      <Button type="submit" disabled={isSubmitting} className="w-full mt-2">
         {isSubmitting ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
         ) : isRecurring ? (
@@ -364,7 +379,7 @@ export default function TransactionForm({
         ) : (
           "Record Transaction"
         )}
-      </button>
+      </Button>
     </form>
   );
 }

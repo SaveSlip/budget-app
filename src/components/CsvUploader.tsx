@@ -438,7 +438,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
         : "text-muted-foreground";
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${tall ? "flex-1 flex flex-col" : ""}`}>
       <input
         type="file"
         accept=".csv"
@@ -459,7 +459,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
           glowing && uploadState === "idle"
             ? "ring-2 ring-primary/40 shadow-[0_0_18px_3px_hsl(var(--primary)/0.20)]"
             : "ring-0 shadow-none"
-        } ${tall ? "min-h-125" : "min-h-20"}`}
+        } ${tall ? "flex-1" : "min-h-20"}`}
       >
         <Icon className={`w-6 h-6 mb-1 transition-colors ${iconClass}`} />
 

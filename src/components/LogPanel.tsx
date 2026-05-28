@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import TransactionForm from "@/components/TransactionForm";
 import CsvUploader from "@/components/CsvUploader";
 import { UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
@@ -21,9 +20,25 @@ type Tab = "EXPENSE" | "INCOME";
 export function LogPanel({ categories, accounts, onSuccess, onImportComplete, initialMode, initialRecurring }: LogPanelProps) {
   const [activeTab, setActiveTab] = useState<Tab>("EXPENSE");
   const [mode, setMode] = useState<"manual" | "csv">(initialMode === "csv" ? "csv" : "manual");
-  // csvProcessing tracks mapping/preview/processing states in CsvUploader
-  // so we keep the manual form hidden during those flows
   const [csvProcessing, setCsvProcessing] = useState(false);
+  // Tracks the last measured height of the Manual Entry panel so Bulk Import can match it exactly.
+  const [manualHeight, setManualHeight] = useState<number | null>(null);
+  const manualPanelRef = useRef<HTMLDivElement>(null);
+
+  // Measure Manual Entry panel height (including padding) via ResizeObserver so it stays
+  // current even when the form grows (e.g. recurring checkbox expands it).
+  useEffect(() => {
+    const el = manualPanelRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const h = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+      setManualHeight(h);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  // Re-attach whenever Manual Entry re-mounts (switching back from CSV tab).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const incomeCategories: Category[] = UNIVERSAL_INCOME_CATEGORIES.map((uc) => ({
     id: uc.id,
@@ -35,115 +50,96 @@ export function LogPanel({ categories, accounts, onSuccess, onImportComplete, in
   }));
 
   const activeCategories = activeTab === "INCOME" ? incomeCategories : categories;
-  const manualCollapsed = mode === "csv" || csvProcessing;
-  const csvCollapsed = mode === "manual" && !csvProcessing;
-
-  const activeStyle = "text-primary bg-primary/5 shadow-[0_0_8px_1px_hsl(var(--primary)/0.10)]";
-  const inactiveStyle = "text-muted-foreground hover:text-foreground hover:bg-accent/30";
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden min-h-150 flex flex-col">
+    <div className="border border-border rounded-lg overflow-hidden flex flex-col">
 
-      {/* Top header — Manual Entry */}
-      <button
-        type="button"
-        onMouseEnter={() => !csvProcessing && setMode("manual")}
-        onClick={() => !csvProcessing && setMode("manual")}
-        className={`w-full px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider transition-all border-b border-border ${
-          !manualCollapsed ? activeStyle : inactiveStyle
-        }`}
-      >
-        <span className="flex items-center justify-between w-full">
+      {/* Tab bar */}
+      <div className="flex border-b border-border">
+        <button
+          type="button"
+          onClick={() => !csvProcessing && setMode("manual")}
+          className={`flex-1 py-3 px-4 text-sm font-medium transition-colors relative ${
+            mode === "manual"
+              ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
           Manual Entry
-          {manualCollapsed && <ChevronDown className="w-3.5 h-3.5" />}
-        </span>
-      </button>
-
-      {/* Middle container — flex-1 keeps it filling all space between the two bars,
-          so the Bulk Import footer never moves during transitions */}
-      <div className="flex-1 overflow-hidden">
-
-        {/* Manual entry form — collapses smoothly when CSV mode is active */}
-        <div
-          className={`overflow-hidden transition-[max-height,opacity] duration-500 ease-in-out ${
-            manualCollapsed ? "max-h-0 opacity-0 pointer-events-none" : "max-h-225 opacity-100"
+        </button>
+        <button
+          type="button"
+          onClick={() => !csvProcessing && setMode("csv")}
+          disabled={csvProcessing}
+          className={`flex-1 py-3 px-4 text-sm font-medium transition-colors relative ${
+            csvProcessing
+              ? "opacity-50 cursor-not-allowed text-muted-foreground"
+              : mode === "csv"
+                ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+                : "text-muted-foreground hover:text-foreground"
           }`}
-          onFocus={() => setMode("manual")}
-          onInput={() => setMode("manual")}
         >
-          <div className="px-6 pt-4 pb-6">
-            <div className="flex rounded-md border border-border overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setActiveTab("EXPENSE")}
-                className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                  activeTab === "EXPENSE"
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Expense
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("INCOME")}
-                className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                  activeTab === "INCOME"
-                    ? "bg-success/15 text-success"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Income
-              </button>
-            </div>
+          Bulk Import
+        </button>
+      </div>
 
-            <div className="mt-4">
-              <TransactionForm
-                key={activeTab}
-                categories={activeCategories}
-                accounts={accounts}
-                initialType={activeTab}
-                hideTypeToggle
-                onSuccess={onSuccess}
-                initialRecurring={initialRecurring}
-              />
-            </div>
+      {/* Manual Entry panel — ref lets ResizeObserver track its height */}
+      {mode === "manual" && (
+        <div ref={manualPanelRef} className="px-6 pt-4 pb-6">
+          <div className="flex rounded-md border border-border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setActiveTab("EXPENSE")}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                activeTab === "EXPENSE"
+                  ? "bg-primary/15 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Expense
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("INCOME")}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                activeTab === "INCOME"
+                  ? "bg-success/15 text-success"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Income
+            </button>
           </div>
-        </div>
 
-        {/* CSV drop zone — same max-height transition as Manual Entry */}
-        <div
-          className={`overflow-hidden transition-[max-height,opacity] duration-500 ease-in-out ${
-            csvCollapsed ? "max-h-0 opacity-0 pointer-events-none" : "max-h-225 opacity-100"
-          }`}
-          onMouseEnter={() => !csvProcessing && setMode("csv")}
-        >
-          <div className="px-6 pt-4 pb-2">
-            <CsvUploader
-              glowing={mode === "csv" && !csvProcessing}
-              onActiveChange={setCsvProcessing}
-              onImportComplete={onImportComplete}
+          <div className="mt-4">
+            <TransactionForm
+              key={activeTab}
+              categories={activeCategories}
               accounts={accounts}
+              initialType={activeTab}
+              hideTypeToggle
+              onSuccess={onSuccess}
+              initialRecurring={initialRecurring}
             />
           </div>
         </div>
+      )}
 
-      </div>
-
-      {/* Bottom footer — Bulk Import */}
-      <button
-        type="button"
-        onMouseEnter={() => !csvProcessing && setMode("csv")}
-        onClick={() => !csvProcessing && setMode("csv")}
-        className={`w-full px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider transition-all border-t border-border ${
-          manualCollapsed ? activeStyle : inactiveStyle
-        }`}
-      >
-        <span className="flex items-center justify-between w-full">
-          Bulk Import
-          {manualCollapsed && <ChevronDown className="w-3.5 h-3.5" />}
-        </span>
-      </button>
+      {/* Bulk Import panel — fixed to the last measured Manual Entry height */}
+      {mode === "csv" && (
+        <div
+          className="px-6 pt-4 pb-6 flex flex-col"
+          style={manualHeight ? { height: manualHeight } : undefined}
+        >
+          <CsvUploader
+            tall
+            glowing={!csvProcessing}
+            onActiveChange={setCsvProcessing}
+            onImportComplete={onImportComplete}
+            accounts={accounts}
+          />
+        </div>
+      )}
 
     </div>
   );

@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { ImportStepper } from "@/components/ImportStepper";
 
 export type PreviewRowErrors = {
   description?: string;
@@ -100,6 +101,8 @@ export function CsvImportPreview({
   }
 
   return (
+    <div className="space-y-3">
+      <ImportStepper currentStep={3} />
     <Card className="border-border bg-card shadow-sm">
       <CardHeader className="pb-3 pt-5">
         <CardTitle className="text-base font-bold text-foreground">
@@ -316,5 +319,6 @@ export function CsvImportPreview({
         </Button>
       </CardFooter>
     </Card>
+    </div>
   );
 }

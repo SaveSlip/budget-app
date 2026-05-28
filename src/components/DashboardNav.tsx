@@ -24,16 +24,19 @@ export function DashboardNav() {
             key={href}
             href={href}
             className={cn(
-              "relative text-sm font-semibold transition-colors duration-200",
+              "relative group text-sm font-semibold transition-colors duration-200",
               isActive
                 ? "text-primary"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
             {label}
-            {isActive && (
-              <span className="absolute -bottom-1 left-0 w-full h-0.5 rounded-full bg-primary" />
-            )}
+            <span
+              className={cn(
+                "absolute -bottom-1 left-0 w-full h-0.5 rounded-full bg-primary transition-opacity duration-200",
+                isActive ? "opacity-100" : "opacity-0 group-hover:opacity-40",
+              )}
+            />
           </Link>
         );
       })}

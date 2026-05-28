@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ImportStepper } from "@/components/ImportStepper";
 import {
   Select,
   SelectContent,
@@ -106,6 +107,8 @@ export function CsvColumnMapper({
   const canConfirm = mapping.date !== "" && mapping.description !== "" && mapping.amount !== "";
 
   return (
+    <div className="space-y-3">
+      <ImportStepper currentStep={2} />
     <Card className="border-border bg-card shadow-sm">
       <CardHeader className="pb-3 pt-5">
         <CardTitle className="text-base font-bold text-foreground">Map your CSV columns</CardTitle>
@@ -163,5 +166,6 @@ export function CsvColumnMapper({
         </Button>
       </CardFooter>
     </Card>
+    </div>
   );
 }

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/card";
 import { createAccount } from "@/app/actions/accounts";
 import type { Account } from "@/lib/data/budget";
+import { ImportStepper } from "@/components/ImportStepper";
 
 const ACCOUNT_TYPES = [
   { value: "CHECKING", label: "Chequing" },
@@ -126,6 +127,8 @@ export function CsvAccountSelector({
   };
 
   return (
+    <div className="space-y-3">
+      <ImportStepper currentStep={1} />
     <Card className="border-border bg-card shadow-sm">
       <CardHeader className="pb-3 pt-5">
         <CardTitle className="text-base font-bold text-foreground">
@@ -246,5 +249,6 @@ export function CsvAccountSelector({
         </Button>
       </CardFooter>
     </Card>
+    </div>
   );
 }
