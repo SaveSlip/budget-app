@@ -36,18 +36,7 @@ import {
 import { createRecurringTransaction } from "@/app/actions/recurring";
 import { saveCategoryRule } from "@/app/actions/categoryRules";
 import type { Account, Category } from "@/lib/data/budget";
-
-type Transaction = {
-  id: string;
-  sk?: string;
-  description: string;
-  amount: number;
-  date: string;
-  category: string;
-  createdAt: string;
-  transactionType?: "INCOME" | "EXPENSE";
-  accountId?: string;
-};
+import type { Transaction } from "@/app/dashboard/transactions/columns";
 
 interface TransactionActionsProps {
   transaction: Transaction;
@@ -570,7 +559,7 @@ export function TransactionActions({ transaction, initialCategories, initialAcco
               />
               <span className="text-sm text-muted-foreground">Update all existing transactions</span>
             </label>
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : "Save"}

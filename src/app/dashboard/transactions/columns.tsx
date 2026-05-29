@@ -18,6 +18,7 @@ export type Transaction = {
   category: string;
   createdAt: string;
   transactionType?: "INCOME" | "EXPENSE";
+  accountId?: string;
   importOrder?: number;
 };
 

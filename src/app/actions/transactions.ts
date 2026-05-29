@@ -15,6 +15,36 @@ import {
 } from "@/lib/validations/transaction";
 import { revalidatePath } from "next/cache";
 
+async function fetchAllTxItems(
+  userId: string,
+  filterExpression?: string,
+  filterNames?: Record<string, string>,
+  filterValues?: Record<string, string>,
+): Promise<any[]> {
+  const items: any[] = [];
+  let lastKey: Record<string, any> | undefined;
+  do {
+    const response = (await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
+        ExpressionAttributeNames: filterNames,
+        ExpressionAttributeValues: {
+          ":pk": `USER#${userId}`,
+          ":skPrefix": "TX#",
+          ...filterValues,
+        },
+        FilterExpression: filterExpression,
+        ScanIndexForward: false,
+        ExclusiveStartKey: lastKey,
+      }),
+    )) as any;
+    if (response.Items) items.push(...response.Items);
+    lastKey = response.LastEvaluatedKey;
+  } while (lastKey);
+  return items;
+}
+
 export async function createTransaction(data: TransactionInput) {
   const session = await auth();
   const userId = session?.user?.id;
@@ -219,29 +249,9 @@ export async function getAllTransactions() {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) throw new Error("Unauthorized");
-  const transactions: any[] = [];
-  let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
   try {
-    do {
-      const response = (await docClient.send(
-        new QueryCommand({
-          TableName: TABLE_NAME,
-          KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
-          ExpressionAttributeValues: {
-            ":pk": `USER#${userId}`,
-            ":skPrefix": "TX#",
-          },
-          ScanIndexForward: false,
-          ExclusiveStartKey: lastEvaluatedKey,
-        }),
-      )) as any;
-      if (response.Items) {
-        transactions.push(...response.Items);
-      }
-      lastEvaluatedKey = response.LastEvaluatedKey;
-    } while (lastEvaluatedKey);
-
+    const transactions = await fetchAllTxItems(userId);
     return { success: true, transactions };
   } catch (error) {
     console.error("Failed to fetch all transactions:", error);
@@ -290,26 +300,14 @@ export async function countTransactionsByDescription(
   if (!userId) return { error: "Unauthorized" };
 
   const normalizedDesc = description.toLowerCase();
-  const transactions: any[] = [];
-  let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
   try {
-    do {
-      const response = (await docClient.send(
-        new QueryCommand({
-          TableName: TABLE_NAME,
-          KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
-          ExpressionAttributeValues: {
-            ":pk": `USER#${userId}`,
-            ":skPrefix": "TX#",
-          },
-          ScanIndexForward: false,
-          ExclusiveStartKey: lastEvaluatedKey,
-        }),
-      )) as any;
-      if (response.Items) transactions.push(...response.Items);
-      lastEvaluatedKey = response.LastEvaluatedKey;
-    } while (lastEvaluatedKey);
+    const transactions = await fetchAllTxItems(
+      userId,
+      "contains(#desc, :descPart) AND transactionType = :txType",
+      { "#desc": "description" },
+      { ":descPart": normalizedDesc, ":txType": transactionType },
+    );
 
     const count = transactions.filter(
       (tx) =>
@@ -334,26 +332,14 @@ export async function recategorizeByDescription(
   if (!userId) return { error: "Unauthorized" };
 
   const normalizedDesc = description.toLowerCase();
-  const transactions: any[] = [];
-  let lastEvaluatedKey: Record<string, any> | undefined = undefined;
 
   try {
-    do {
-      const response = (await docClient.send(
-        new QueryCommand({
-          TableName: TABLE_NAME,
-          KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
-          ExpressionAttributeValues: {
-            ":pk": `USER#${userId}`,
-            ":skPrefix": "TX#",
-          },
-          ScanIndexForward: false,
-          ExclusiveStartKey: lastEvaluatedKey,
-        }),
-      )) as any;
-      if (response.Items) transactions.push(...response.Items);
-      lastEvaluatedKey = response.LastEvaluatedKey;
-    } while (lastEvaluatedKey);
+    const transactions = await fetchAllTxItems(
+      userId,
+      "contains(#desc, :descPart) AND transactionType = :txType",
+      { "#desc": "description" },
+      { ":descPart": normalizedDesc, ":txType": transactionType },
+    );
 
     const matches = transactions.filter(
       (tx) =>

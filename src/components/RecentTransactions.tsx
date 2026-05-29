@@ -79,7 +79,7 @@ export function RecentTransactions({ transactions, categories = [], accounts = [
                   })}
                 </TableCell>
                 <TableCell className="text-right">
-                  <TransactionActions transaction={tx as any} initialCategories={categories} initialAccounts={accounts} />
+                  <TransactionActions transaction={tx} initialCategories={categories} initialAccounts={accounts} />
                 </TableCell>
               </TableRow>
             ))
