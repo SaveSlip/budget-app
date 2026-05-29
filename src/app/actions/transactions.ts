@@ -14,6 +14,7 @@ import {
   TransactionInput,
 } from "@/lib/validations/transaction";
 import { revalidatePath } from "next/cache";
+import { normalizeDesc, fuzzyMatch } from "@/lib/transactionUtils";
 
 async function fetchAllTxItems(
   userId: string,
@@ -482,18 +483,6 @@ export type DuplicateCheckResult = {
   error: string;
 };
 
-function normalizeDesc(s: string): string {
-  return s.toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-// Returns true when two strings are close enough to be considered the same
-// merchant (handles minor spacing/casing differences). Uses a simple
-// contains-or-equal check rather than full edit-distance to stay cheap.
-function fuzzyMatch(a: string, b: string): boolean {
-  const na = normalizeDesc(a);
-  const nb = normalizeDesc(b);
-  return na === nb || na.includes(nb) || nb.includes(na);
-}
 
 export async function checkDuplicates(
   inputs: DuplicateCheckInput[],
