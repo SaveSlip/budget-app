@@ -156,9 +156,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       <AnimateSection delay={0.16}>
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-xl font-semibold text-foreground">
+            <Link
+              href={`/dashboard/benchmarking?month=${activeMonth}&view=${view}&year=${activeYear}`}
+              className="text-xl font-semibold text-foreground hover:text-primary transition-colors"
+            >
               Budget Benchmarking
-            </h3>
+            </Link>
             <AddCategoryDialog />
           </div>
           <BudgetBenchmarking
@@ -176,6 +179,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             spendingMap={spendingMap}
             adjustedCategoryLimits={adjustedCategoryLimits}
             rolloverDeltas={rolloverDeltas}
+            activeMonth={activeMonth}
+            activeYear={activeYear}
+            view={view}
           />
         </div>
       </AnimateSection>

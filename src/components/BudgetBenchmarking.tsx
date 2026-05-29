@@ -1,6 +1,4 @@
-"use client";
-
-import { useState } from "react";
+import Link from "next/link";
 import { BudgetProgress } from "@/components/BudgetProgress";
 import { Category } from "@/lib/data/budget";
 
@@ -9,20 +7,27 @@ interface Props {
   spendingMap: Record<string, number>;
   adjustedCategoryLimits: Record<string, number>;
   rolloverDeltas: Record<string, number>;
+  activeMonth: string;
+  activeYear: string;
+  view: string;
 }
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 4;
 
 export function BudgetBenchmarking({
   categories,
   spendingMap,
   adjustedCategoryLimits,
   rolloverDeltas,
+  activeMonth,
+  activeYear,
+  view,
 }: Props) {
-  const [showAll, setShowAll] = useState(false);
-
-  const visible = showAll ? categories : categories.slice(0, PAGE_SIZE);
+  const visible = categories.slice(0, PAGE_SIZE);
   const hiddenCount = categories.length - PAGE_SIZE;
+
+  const benchmarkHref =
+    `/dashboard/benchmarking?month=${activeMonth}&view=${view}&year=${activeYear}`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -41,12 +46,12 @@ export function BudgetBenchmarking({
         ))}
       </div>
       {hiddenCount > 0 && (
-        <button
-          onClick={() => setShowAll((v) => !v)}
+        <Link
+          href={benchmarkHref}
           className="self-start text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          {showAll ? "Show less" : `Show ${hiddenCount} more`}
-        </button>
+          Show {hiddenCount} more →
+        </Link>
       )}
     </div>
   );

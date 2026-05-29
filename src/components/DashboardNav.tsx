@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { href: "/dashboard", label: "Overview", exact: true },
   { href: "/dashboard/transactions", label: "Transactions", exact: false },
   { href: "/dashboard/accounts", label: "Accounts", exact: false },
+  { href: "/dashboard/benchmarking", label: "Benchmarking", exact: false },
 ];
 
 export function DashboardNav() {

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format, subMonths } from "date-fns";
+import { X } from "lucide-react";
 
 function setStoredFilter(val: { month: string; year: string; view: string }) {
   if (typeof window === "undefined") return;
@@ -44,6 +45,7 @@ export function DashboardFilters({ availableMonths: propMonths }: { availableMon
 
   const prevMonth = useRef(currentMonth);
   const [highlighted, setHighlighted] = useState(false);
+  const [inputValue, setInputValue] = useState(currentQuery);
   const hasMounted = useRef(false);
 
   useEffect(() => {
@@ -85,15 +87,7 @@ export function DashboardFilters({ availableMonths: propMonths }: { availableMon
     document.getElementById("recent-transactions")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [currentQuery]);
 
-  function toggleView() {
-    if (view === "monthly") {
-      updateFilters({ view: "yearly", month: "", year: activeYear });
-    } else {
-      updateFilters({ view: "", year: "", month: format(new Date(), "yyyy-MM") });
-    }
-  }
-
-  function updateFilters(updates: Record<string, string>) {
+function updateFilters(updates: Record<string, string>) {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
       if (value) params.set(key, value);
@@ -107,18 +101,31 @@ export function DashboardFilters({ availableMonths: propMonths }: { availableMon
 
   return (
     <div className="flex flex-col md:flex-row items-center gap-4 w-full bg-muted/50 p-4 rounded-xl border border-border backdrop-blur-md">
-      <div className="w-full md:flex-1">
+      <div className="relative w-full md:flex-1">
         <Input
           placeholder="Search merchants..."
-          defaultValue={currentQuery}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               updateFilters({ q: (e.target as HTMLInputElement).value });
             }
           }}
           onBlur={(e) => updateFilters({ q: e.target.value })}
-          className="bg-background/50 border-border text-foreground"
+          className={`bg-background/50 border-border text-foreground${inputValue ? " pr-8" : ""}`}
         />
+        {inputValue && (
+          <button
+            onClick={() => {
+              setInputValue("")
+              updateFilters({ q: "" })
+            }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div className="shrink-0">
@@ -169,18 +176,21 @@ export function DashboardFilters({ availableMonths: propMonths }: { availableMon
             Syncing...
           </span>
         )}
-        <button
-          onClick={toggleView}
-          className="text-sm font-semibold tracking-wide uppercase transition-colors focus-visible:outline-none"
-        >
-          <span className={view === "monthly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}>
+        <div className="flex items-center gap-1.5 text-sm font-semibold tracking-wide uppercase">
+          <button
+            onClick={() => view !== "monthly" && updateFilters({ view: "", year: "", month: format(new Date(), "yyyy-MM") })}
+            className={`transition-colors focus-visible:outline-none ${view === "monthly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
             Monthly
-          </span>
-          <span className="text-muted-foreground mx-1.5">/</span>
-          <span className={view === "yearly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}>
+          </button>
+          <span className="text-muted-foreground">/</span>
+          <button
+            onClick={() => view !== "yearly" && updateFilters({ view: "yearly", month: "", year: activeYear })}
+            className={`transition-colors focus-visible:outline-none ${view === "yearly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
             Yearly
-          </span>
-        </button>
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -38,6 +38,13 @@ export function getColumns(
 ): ColumnDef<Transaction>[] {
   return [
   {
+    id: "search",
+    accessorFn: (row) => `${row.description} ${row.category}`,
+    enableHiding: true,
+    header: () => null,
+    cell: () => null,
+  },
+  {
     accessorKey: "importOrder",
     enableHiding: true,
     enableSorting: true,

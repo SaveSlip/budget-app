@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { AlertTriangle, Download, Loader2, Trash2 } from "lucide-react"
+import { AlertTriangle, Download, Loader2, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import Papa from "papaparse"
 import { batchDeleteTransactions, deleteAllTransactions, getTransactionsBatch, getTransactionsByMonth } from "@/app/actions/transactions"
@@ -130,7 +130,8 @@ export function DataTable({
 
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "date", desc: true }, { id: "importOrder", desc: true }])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [columnVisibility] = React.useState<VisibilityState>({ importOrder: false })
+  const [columnVisibility] = React.useState<VisibilityState>({ importOrder: false, search: false })
+  const [searchValue, setSearchValue] = React.useState<string>("")
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
@@ -187,7 +188,7 @@ export function DataTable({
 
   // Effect A: derive monthFilter/yearFilter/isYearlyView from URL props / sessionStorage
   React.useEffect(() => {
-    if (initialView === "yearly") { setMonthFilter("all"); return }
+    if (initialView === "yearly") { setMonthFilter("all"); setIsYearlyView(true); return }
     if (initialMonth) { setMonthFilter(initialMonth); return }
     const stored = getStoredFilter()
     if (stored?.view === "yearly") {
@@ -369,10 +370,11 @@ export function DataTable({
   const selectedRows = table.getSelectedRowModel().rows
   const selectedCount = selectedRows.length
 
-  // Seed description filter from URL ?q= param on first render
+  // Seed unified search filter from URL ?q= param on first render.
   React.useEffect(() => {
     if (!initialQuery) return
-    table.getColumn("description")?.setFilterValue(initialQuery)
+    setSearchValue(initialQuery)
+    table.getColumn("search")?.setFilterValue(initialQuery)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery])
 
@@ -428,14 +430,30 @@ export function DataTable({
       <div className="flex flex-col gap-2 pb-4 lg:flex-row lg:items-center lg:gap-x-3">
         {/* Filters — top row / left on desktop */}
         <div className="flex items-center gap-2 lg:flex-1">
-          <Input
-            placeholder="Filter descriptions..."
-            value={(table.getColumn("description")?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn("description")?.setFilterValue(event.target.value)
-            }
-            className="flex-1 min-w-0"
-          />
+          <div className="relative flex-1 min-w-0">
+            <Input
+              placeholder="Search transactions..."
+              value={searchValue}
+              onChange={(event) => {
+                const val = event.target.value
+                setSearchValue(val)
+                table.getColumn("search")?.setFilterValue(val)
+              }}
+              className={searchValue ? "pr-8" : ""}
+            />
+            {searchValue && (
+              <button
+                onClick={() => {
+                  setSearchValue("")
+                  table.getColumn("search")?.setFilterValue("")
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           {isYearlyView ? (
             <Select
               value={yearFilter}
