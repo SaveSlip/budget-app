@@ -5,6 +5,7 @@ import { User, LogOut, Sun, Moon, Monitor, Settings } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useTheme } from "@/hooks/useTheme";
+import { clearFilterStorage } from "@/lib/clearFilterStorage";
 
 export default function UserNav() {
   const [isOpen, setIsOpen] = useState(false);
@@ -95,7 +96,7 @@ export default function UserNav() {
           </Link>
 
           <button
-            onClick={() => signOut({ callbackUrl: "/signin" })}
+            onClick={() => { clearFilterStorage(session?.user?.id ?? ""); signOut({ callbackUrl: "/signin" }); }}
             className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-destructive/10 flex items-center gap-2 transition-colors"
           >
             <LogOut className="w-4 h-4" />

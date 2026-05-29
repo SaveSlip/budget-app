@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { ArrowLeft, TrendingDown, TrendingUp, Minus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -43,6 +43,7 @@ interface Props {
   activeMonth: string;
   activeYear: string;
   view: string;
+  initialCategory?: string;
 }
 
 const CHART_COLORS = [
@@ -105,8 +106,11 @@ export function BenchmarkingPage({
   activeMonth,
   activeYear,
   view,
+  initialCategory,
 }: Props) {
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+    () => categories.find((c) => c.name === initialCategory) ?? null
+  );
 
   const totalBudgeted = categories.reduce(
     (sum, c) => sum + (adjustedCategoryLimits[c.name] ?? c.limit ?? 0),
@@ -346,6 +350,17 @@ function BenchmarkingOverview({
     startTransition(() => router.push(`/dashboard/benchmarking?${params.toString()}`));
   }
 
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleViewMouseEnter = (newView: string, updates: Record<string, string>) => {
+    if (view === newView) return;
+    if (!window.matchMedia("(hover: hover)").matches) return;
+    hoverTimer.current = setTimeout(() => updateFilters(updates), 150);
+  };
+
+  const handleViewMouseLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+  };
 
   return (
     <div className="flex-1 w-full space-y-8">
@@ -392,6 +407,8 @@ function BenchmarkingOverview({
         <div className="ml-auto flex items-center gap-1.5 text-sm font-semibold tracking-wide uppercase">
           <button
             onClick={() => view !== "monthly" && updateFilters({ view: "monthly", year: "", month: format(new Date(), "yyyy-MM") })}
+            onMouseEnter={() => handleViewMouseEnter("monthly", { view: "monthly", year: "", month: format(new Date(), "yyyy-MM") })}
+            onMouseLeave={handleViewMouseLeave}
             className={cn("transition-colors focus-visible:outline-none", view === "monthly" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
           >
             Monthly
@@ -399,6 +416,8 @@ function BenchmarkingOverview({
           <span className="text-muted-foreground">/</span>
           <button
             onClick={() => view !== "yearly" && updateFilters({ view: "yearly", month: "", year: activeYear })}
+            onMouseEnter={() => handleViewMouseEnter("yearly", { view: "yearly", month: "", year: activeYear })}
+            onMouseLeave={handleViewMouseLeave}
             className={cn("transition-colors focus-visible:outline-none", view === "yearly" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
           >
             Yearly

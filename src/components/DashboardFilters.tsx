@@ -13,17 +13,17 @@ import {
 import { format, subMonths } from "date-fns";
 import { X } from "lucide-react";
 
-function setStoredFilter(val: { month: string; year: string; view: string }) {
+function setStoredFilter(key: string, val: { month: string; year: string; view: string }) {
   if (typeof window === "undefined") return;
-  try { sessionStorage.setItem("budgify-filter", JSON.stringify(val)); } catch {}
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
 }
 
-function getStoredFilter(): { month: string; year: string; view: string } | null {
+function getStoredFilter(key: string): { month: string; year: string; view: string } | null {
   if (typeof window === "undefined") return null;
-  try { return JSON.parse(sessionStorage.getItem("budgify-filter") ?? "null"); } catch { return null; }
+  try { return JSON.parse(localStorage.getItem(key) ?? "null"); } catch { return null; }
 }
 
-export function DashboardFilters({ availableMonths: propMonths }: { availableMonths?: string[] }) {
+export function DashboardFilters({ availableMonths: propMonths, userId }: { availableMonths?: string[]; userId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -46,7 +46,19 @@ export function DashboardFilters({ availableMonths: propMonths }: { availableMon
   const prevMonth = useRef(currentMonth);
   const [highlighted, setHighlighted] = useState(false);
   const [inputValue, setInputValue] = useState(currentQuery);
+  const storageKey = `budgify-filter-${userId}`;
   const hasMounted = useRef(false);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleViewMouseEnter = (newView: string, updates: Record<string, string>) => {
+    if (view === newView) return;
+    if (!window.matchMedia("(hover: hover)").matches) return;
+    hoverTimer.current = setTimeout(() => updateFilters(updates), 150);
+  };
+
+  const handleViewMouseLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+  };
 
   useEffect(() => {
     if (prevMonth.current !== currentMonth) {
@@ -63,7 +75,7 @@ export function DashboardFilters({ availableMonths: propMonths }: { availableMon
     hasMounted.current = true;
     const hasParams = searchParams.get("month") || searchParams.get("year") || searchParams.get("view");
     if (hasParams) return;
-    const stored = getStoredFilter();
+    const stored = getStoredFilter(storageKey);
     if (!stored) return;
     const params = new URLSearchParams();
     if (stored.view === "yearly") {
@@ -76,10 +88,10 @@ export function DashboardFilters({ availableMonths: propMonths }: { availableMon
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep sessionStorage in sync with the current dashboard filter
+  // Keep localStorage in sync with the current dashboard filter
   useEffect(() => {
-    setStoredFilter({ month: currentMonth, year: activeYear, view });
-  }, [currentMonth, activeYear, view]);
+    setStoredFilter(storageKey, { month: currentMonth, year: activeYear, view });
+  }, [currentMonth, activeYear, view, storageKey]);
 
   // Scroll to results when a search query is active
   useEffect(() => {
@@ -179,6 +191,8 @@ function updateFilters(updates: Record<string, string>) {
         <div className="flex items-center gap-1.5 text-sm font-semibold tracking-wide uppercase">
           <button
             onClick={() => view !== "monthly" && updateFilters({ view: "", year: "", month: format(new Date(), "yyyy-MM") })}
+            onMouseEnter={() => handleViewMouseEnter("monthly", { view: "", year: "", month: format(new Date(), "yyyy-MM") })}
+            onMouseLeave={handleViewMouseLeave}
             className={`transition-colors focus-visible:outline-none ${view === "monthly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             Monthly
@@ -186,6 +200,8 @@ function updateFilters(updates: Record<string, string>) {
           <span className="text-muted-foreground">/</span>
           <button
             onClick={() => view !== "yearly" && updateFilters({ view: "yearly", month: "", year: activeYear })}
+            onMouseEnter={() => handleViewMouseEnter("yearly", { view: "yearly", month: "", year: activeYear })}
+            onMouseLeave={handleViewMouseLeave}
             className={`transition-colors focus-visible:outline-none ${view === "yearly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             Yearly

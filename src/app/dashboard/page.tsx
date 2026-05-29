@@ -111,7 +111,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     <div className="flex-1 w-full max-w-[1600px] mx-auto space-y-8">
       {/* Header & Global Filters */}
       <AnimateSection delay={0}>
-        <DashboardFilters availableMonths={availableMonths} />
+        <DashboardFilters availableMonths={availableMonths} userId={session.user.id!} />
       </AnimateSection>
 
       {/* First-time user onboarding CTA */}

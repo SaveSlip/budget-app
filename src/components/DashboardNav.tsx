@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,12 +16,25 @@ const NAV_LINKS = [
 export function DashboardNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function buildHref(base: string): string {
+    const params = new URLSearchParams();
+    const view = searchParams.get("view");
+    const month = searchParams.get("month");
+    const year = searchParams.get("year");
+    if (view) params.set("view", view);
+    if (month) params.set("month", month);
+    if (year) params.set("year", year);
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
+  }
 
   const handleMouseEnter = (href: string, exact: boolean) => {
     if (exact ? pathname === href : pathname.startsWith(href)) return;
     if (!window.matchMedia("(hover: hover)").matches) return;
-    hoverTimer.current = setTimeout(() => router.push(href), 150);
+    hoverTimer.current = setTimeout(() => router.push(buildHref(href)), 150);
   };
 
   const handleMouseLeave = () => {
@@ -35,7 +48,7 @@ export function DashboardNav() {
         return (
           <Link
             key={href}
-            href={href}
+            href={buildHref(href)}
             onMouseEnter={() => handleMouseEnter(href, exact)}
             onMouseLeave={handleMouseLeave}
             onClick={(e) => {
@@ -64,8 +77,21 @@ export function DashboardNav() {
 
 export function MobileNav() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  function buildHref(base: string): string {
+    const params = new URLSearchParams();
+    const view = searchParams.get("view");
+    const month = searchParams.get("month");
+    const year = searchParams.get("year");
+    if (view) params.set("view", view);
+    if (month) params.set("month", month);
+    if (year) params.set("year", year);
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
+  }
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -106,7 +132,7 @@ export function MobileNav() {
             return (
               <Link
                 key={href}
-                href={href}
+                href={buildHref(href)}
                 onClick={() => setIsOpen(false)}
                 className={cn(
                   "block px-4 py-2.5 text-sm font-semibold transition-colors",

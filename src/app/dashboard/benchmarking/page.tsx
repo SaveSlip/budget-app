@@ -6,6 +6,9 @@ import {
   getMonthlyBalance,
   getMonthlyData,
   getYearlyBalance,
+  getAllMonthsBalance,
+  getAllYearsBalance,
+  getTransactionTrend,
   type Category,
   type Transaction,
 } from "@/lib/data/budget";
@@ -13,7 +16,7 @@ import { getAvailableMonths } from "@/app/actions/transactions";
 import { BenchmarkingPage } from "@/components/BenchmarkingPage";
 
 interface PageProps {
-  searchParams: Promise<{ month?: string; view?: string; year?: string }>;
+  searchParams: Promise<{ month?: string; view?: string; year?: string; category?: string }>;
 }
 
 function getPrevMonth(month: string): string {
@@ -31,6 +34,7 @@ export default async function BenchmarkingPageRoute({ searchParams }: PageProps)
   const activeMonth = resolved.month || todayMonth;
   const view = resolved.view === "yearly" ? "yearly" : "monthly";
   const activeYear = resolved.year || format(new Date(), "yyyy");
+  const initialCategory = resolved.category;
 
   function computeSpending(txs: Transaction[]): Record<string, number> {
     const map: Record<string, number> = {};
@@ -43,20 +47,22 @@ export default async function BenchmarkingPageRoute({ searchParams }: PageProps)
   }
 
   if (view === "yearly") {
+    const isAllYears = activeYear === "all";
     const [availableMonths, categories, yearlyBalance, prevYearlyBalance] = await Promise.all([
       getAvailableMonths(),
       getCategories(),
-      getYearlyBalance(activeYear),
-      getYearlyBalance(String(Number(activeYear) - 1)),
+      isAllYears ? getAllYearsBalance() : getYearlyBalance(activeYear),
+      isAllYears ? Promise.resolve({ categorySpending: {} }) : getYearlyBalance(String(Number(activeYear) - 1)),
     ]);
 
+    const yearMultiplier = isAllYears ? 48 : 12;
     const expenseCategories: Category[] = categories
       .filter((c) => c.categoryType !== "INCOME")
       .sort((a, b) => {
         const spentA = yearlyBalance.categorySpending[a.name] || 0;
         const spentB = yearlyBalance.categorySpending[b.name] || 0;
-        const limitA = (a.limit ?? 0) * 12;
-        const limitB = (b.limit ?? 0) * 12;
+        const limitA = (a.limit ?? 0) * yearMultiplier;
+        const limitB = (b.limit ?? 0) * yearMultiplier;
         const pctA = limitA > 0 ? spentA / limitA : spentA > 0 ? Infinity : 0;
         const pctB = limitB > 0 ? spentB / limitB : spentB > 0 ? Infinity : 0;
         return pctB - pctA;
@@ -64,7 +70,7 @@ export default async function BenchmarkingPageRoute({ searchParams }: PageProps)
 
     const yearlyLimits: Record<string, number> = {};
     for (const cat of expenseCategories) {
-      yearlyLimits[cat.name] = (cat.limit ?? 0) * 12;
+      yearlyLimits[cat.name] = (cat.limit ?? 0) * yearMultiplier;
     }
 
     const expenseTxs = yearlyBalance.transactions.filter((tx) => tx.transactionType === "EXPENSE");
@@ -83,6 +89,50 @@ export default async function BenchmarkingPageRoute({ searchParams }: PageProps)
         activeMonth={activeMonth}
         activeYear={activeYear}
         view={view}
+        initialCategory={initialCategory}
+      />
+    );
+  }
+
+  const isAllMonths = activeMonth === "all";
+
+  if (isAllMonths) {
+    const [availableMonths, categories, allBalance, allTxs] = await Promise.all([
+      getAvailableMonths(),
+      getCategories(),
+      getAllMonthsBalance(),
+      getTransactionTrend(12),
+    ]);
+
+    const expenseCategories: Category[] = categories
+      .filter((c) => c.categoryType !== "INCOME")
+      .sort((a, b) => {
+        const spentA = allBalance.categorySpending[a.name] || 0;
+        const spentB = allBalance.categorySpending[b.name] || 0;
+        const limitA = allBalance.adjustedCategoryLimits[a.name] ?? a.limit ?? 0;
+        const limitB = allBalance.adjustedCategoryLimits[b.name] ?? b.limit ?? 0;
+        const pctA = limitA > 0 ? spentA / limitA : spentA > 0 ? Infinity : 0;
+        const pctB = limitB > 0 ? spentB / limitB : spentB > 0 ? Infinity : 0;
+        return pctB - pctA;
+      });
+
+    const expenseTxs = allTxs.filter((tx) => tx.transactionType === "EXPENSE");
+
+    return (
+      <BenchmarkingPage
+        categories={expenseCategories}
+        spendingMap={allBalance.categorySpending}
+        adjustedCategoryLimits={allBalance.adjustedCategoryLimits}
+        rolloverDeltas={{}}
+        prevSpendingMap={{}}
+        sparklineData={{}}
+        sparkMonths={["", "", ""]}
+        transactions={expenseTxs}
+        availableMonths={availableMonths}
+        activeMonth={activeMonth}
+        activeYear={activeYear}
+        view={view}
+        initialCategory={initialCategory}
       />
     );
   }
@@ -137,6 +187,7 @@ export default async function BenchmarkingPageRoute({ searchParams }: PageProps)
       activeMonth={activeMonth}
       activeYear={activeYear}
       view={view}
+      initialCategory={initialCategory}
     />
   );
 }

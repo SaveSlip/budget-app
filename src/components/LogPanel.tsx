@@ -24,6 +24,20 @@ export function LogPanel({ categories, accounts, onSuccess, onImportComplete, in
   // Tracks the last measured height of the Manual Entry panel so Bulk Import can match it exactly.
   const [manualHeight, setManualHeight] = useState<number | null>(null);
   const manualPanelRef = useRef<HTMLDivElement>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleModeMouseEnter = (newMode: "manual" | "csv") => {
+    if (newMode === mode) return;
+    if (newMode === "csv" && csvProcessing) return;
+    if (!window.matchMedia("(hover: hover)").matches) return;
+    hoverTimer.current = setTimeout(() => {
+      if (!csvProcessing) setMode(newMode);
+    }, 150);
+  };
+
+  const handleModeMouseLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+  };
 
   // Measure Manual Entry panel height (including padding) via ResizeObserver so it stays
   // current even when the form grows (e.g. recurring checkbox expands it).
@@ -59,6 +73,8 @@ export function LogPanel({ categories, accounts, onSuccess, onImportComplete, in
         <button
           type="button"
           onClick={() => !csvProcessing && setMode("manual")}
+          onMouseEnter={() => handleModeMouseEnter("manual")}
+          onMouseLeave={handleModeMouseLeave}
           className={`flex-1 py-3 px-4 text-sm font-medium transition-colors relative ${
             mode === "manual"
               ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
@@ -70,6 +86,8 @@ export function LogPanel({ categories, accounts, onSuccess, onImportComplete, in
         <button
           type="button"
           onClick={() => !csvProcessing && setMode("csv")}
+          onMouseEnter={() => handleModeMouseEnter("csv")}
+          onMouseLeave={handleModeMouseLeave}
           disabled={csvProcessing}
           className={`flex-1 py-3 px-4 text-sm font-medium transition-colors relative ${
             csvProcessing

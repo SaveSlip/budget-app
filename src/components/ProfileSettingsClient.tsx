@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
+import { clearFilterStorage } from "@/lib/clearFilterStorage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -42,7 +43,7 @@ export function ProfileSettingsClient({
   email,
 }: ProfileSettingsClientProps) {
   const router = useRouter();
-  const { update } = useSession();
+  const { update, data: session } = useSession();
   const [name, setName] = useState(initialName);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
@@ -115,6 +116,7 @@ export function ProfileSettingsClient({
       setDeleteError(result.error);
       setIsDeleting(false);
     } else {
+      clearFilterStorage(session?.user?.id ?? "");
       await signOut({ callbackUrl: "/signin" });
     }
   };

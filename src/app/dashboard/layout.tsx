@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import UserNav from "@/components/UserNav";
 import { DashboardNav, MobileNav } from "@/components/DashboardNav";
 import { auth } from "@/auth";
@@ -45,12 +46,16 @@ export default async function DashboardLayout({
           </Link>
 
           {/* Middle Navigation */}
-          <DashboardNav />
+          <Suspense>
+            <DashboardNav />
+          </Suspense>
 
           {/* Right Aligned Actions */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <UserNav />
-            <MobileNav />
+            <Suspense>
+              <MobileNav />
+            </Suspense>
           </div>
         </div>
       </nav>

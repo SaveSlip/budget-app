@@ -1,11 +1,14 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { clearFilterStorage } from "@/lib/clearFilterStorage";
 
 export function LogoutButton() {
+  const { data: session } = useSession();
   const handleLogout = () => {
+    clearFilterStorage(session?.user?.id ?? "");
     signOut({ callbackUrl: "/signin" });
   };
 
