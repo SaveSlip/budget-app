@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,18 @@ const NAV_LINKS = [
 
 export function DashboardNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = (href: string, exact: boolean) => {
+    if (exact ? pathname === href : pathname.startsWith(href)) return;
+    if (!window.matchMedia("(hover: hover)").matches) return;
+    hoverTimer.current = setTimeout(() => router.push(href), 150);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+  };
 
   return (
     <nav className="hidden md:flex items-center gap-8 flex-1 justify-center">
@@ -24,6 +36,11 @@ export function DashboardNav() {
           <Link
             key={href}
             href={href}
+            onMouseEnter={() => handleMouseEnter(href, exact)}
+            onMouseLeave={handleMouseLeave}
+            onClick={(e) => {
+              if (exact ? pathname === href : pathname.startsWith(href)) e.preventDefault();
+            }}
             className={cn(
               "relative group text-sm font-semibold transition-colors duration-200",
               isActive

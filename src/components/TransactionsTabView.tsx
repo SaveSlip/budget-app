@@ -36,6 +36,21 @@ export function TransactionsTabView({ transactions, initialCursor, categories, a
   const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? "ledger");
   const [addWithRecurring, setAddWithRecurring] = useState(false);
 
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTabMouseEnter = (id: Tab) => {
+    if (id === activeTab) return;
+    if (!window.matchMedia("(hover: hover)").matches) return;
+    hoverTimer.current = setTimeout(() => {
+      if (id !== "add") setAddWithRecurring(false);
+      setActiveTab(id);
+    }, 150);
+  };
+
+  const handleTabMouseLeave = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+  };
+
   // Ref-based bridge: CsvUploader (in "add" tab) notifies DataTable (in "ledger" tab)
   // without either component needing to be mounted at the same time.
   const onImportCompleteRef = useRef<((month: string) => void) | null>(null);
@@ -52,6 +67,8 @@ export function TransactionsTabView({ transactions, initialCursor, categories, a
           <button
             key={id}
             onClick={() => { if (id !== "add") setAddWithRecurring(false); setActiveTab(id); }}
+            onMouseEnter={() => handleTabMouseEnter(id)}
+            onMouseLeave={handleTabMouseLeave}
             className={cn(
               "relative pb-3 px-1 mr-6 text-sm font-medium transition-colors",
               activeTab === id
