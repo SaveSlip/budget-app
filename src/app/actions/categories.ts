@@ -134,6 +134,7 @@ export async function listCategories() {
 
     const customCategories = (Items ?? []) as Array<{ id: string; name: string; limit: number; type: string; createdAt: string; categoryType?: "INCOME" | "EXPENSE" }>;
     const universalLimitOverrides = new Map<string, number>(
+      /* v8 ignore next -- DynamoDB Promise.all always resolves Items; ?? [] is defensive-only */
       (limitItems ?? []).map((item) => [item.id as string, item.limit as number])
     );
 

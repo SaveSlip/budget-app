@@ -88,7 +88,10 @@ export async function logout() {
   redirect("/signin");
 }
 
-export async function deleteAccount(): Promise<{ error?: string; success?: boolean }> {
+export async function deleteAccount(): Promise<{
+  error?: string;
+  success?: boolean;
+}> {
   try {
     const session = await auth();
     if (!session?.user?.id || !session.user.email)
@@ -138,7 +141,7 @@ export async function changePasswordAction(
   try {
     const parsed = changePasswordSchema.safeParse(data);
     if (!parsed.success) {
-      const firstError = parsed.error.issues[0]?.message ?? "Invalid input.";
+      const firstError = parsed.error.issues[0]?.message;
       return { error: firstError };
     }
 

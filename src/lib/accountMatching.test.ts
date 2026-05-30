@@ -70,6 +70,12 @@ describe("detectAccountNumberFromCsv", () => {
     expect(detectAccountNumberFromCsv(headers, firstRow)).toBeNull();
   });
 
+  it("returns null when the recognised column key is absent from firstRow", () => {
+    const headers = ["account number"];
+    const firstRow: Record<string, string> = {};
+    expect(detectAccountNumberFromCsv(headers, firstRow)).toBeNull();
+  });
+
   it("covers all known alias strings", () => {
     for (const alias of ACCOUNT_NUMBER_ALIASES) {
       const headers = [alias];

@@ -2,19 +2,11 @@
 
 import { createContext, useState, useEffect, useContext } from "react";
 import { SessionProvider } from "next-auth/react";
+import { getInitialTheme } from "@/lib/themeUtils";
 
 type Theme = "light" | "dark" | "system";
 
 const STORAGE_KEY = "budgify-theme";
-
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark" || stored === "system") return stored;
-  } catch {}
-  return "dark";
-}
 
 interface ThemeContextValue {
   theme: Theme;

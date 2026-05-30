@@ -63,6 +63,11 @@ describe("computeCategorySpending", () => {
     expect(computeCategorySpending(txns)).toEqual({ Bills: 150 });
   });
 
+  it("treats a non-numeric amount as 0", () => {
+    const txns: Transaction[] = [makeTx({ category: "Misc", amount: NaN })];
+    expect(computeCategorySpending(txns)).toEqual({ Misc: 0 });
+  });
+
   it("returns empty object for an empty list", () => {
     expect(computeCategorySpending([])).toEqual({});
   });

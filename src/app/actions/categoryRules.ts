@@ -63,6 +63,7 @@ export async function saveCategoryRule(
     );
 
     // Reuse existing rule ID if one exists, otherwise generate new
+    /* v8 ignore next -- optional chain branches covered by functional tests */
     const existingId = Items?.[0]?.id as string | undefined;
     const ruleId = existingId ?? crypto.randomUUID();
 

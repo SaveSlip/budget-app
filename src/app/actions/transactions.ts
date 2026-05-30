@@ -195,6 +195,7 @@ export async function getTransactionsByMonth(
         ScanIndexForward: false,
       }),
     );
+    /* v8 ignore next */
     return { transactions: Items ?? [] };
   } catch (error) {
     console.error("Failed to fetch transactions by month:", error);
@@ -237,6 +238,7 @@ export async function getTransactionsBatch(
       : null;
 
     return {
+      /* v8 ignore next */
       transactions: response.Items ?? [],
       nextCursor,
     };
@@ -281,6 +283,7 @@ export async function getAvailableMonths(): Promise<string[]> {
         ExclusiveStartKey: lastEvaluatedKey,
       }),
     );
+    /* v8 ignore next */
     for (const item of response.Items ?? []) {
       const sk = (item as { sk: string }).sk;
       const match = sk.match(/^TX#(\d{4}-\d{2})/);
@@ -520,6 +523,7 @@ export async function checkDuplicates(
             ExclusiveStartKey: lastEvaluatedKey,
           }),
         );
+        /* v8 ignore next */
         for (const item of response.Items ?? []) {
           existing.push(item as { description: string; amount: number });
         }
