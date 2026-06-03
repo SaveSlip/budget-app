@@ -75,6 +75,26 @@ describe("autoMatchCategory", () => {
     const result = autoMatchCategory("uber ride", "EXPENSE");
     expect(result).toBe("Transportation");
   });
+
+  it("matches gym to Personal Care", () => {
+    expect(autoMatchCategory("gym membership", "EXPENSE")).toBe("Personal Care");
+  });
+
+  it("matches yoga to Personal Care", () => {
+    expect(autoMatchCategory("yoga studio monthly", "EXPENSE")).toBe("Personal Care");
+  });
+
+  it("matches haircut to Personal Care", () => {
+    expect(autoMatchCategory("haircut at barber", "EXPENSE")).toBe("Personal Care");
+  });
+
+  it("matches e-transfer income to Account Transfer", () => {
+    expect(autoMatchCategory("e-transfer from john", "INCOME")).toBe("Account Transfer");
+  });
+
+  it("matches streaming to Subscriptions not Entertainment & Dining", () => {
+    expect(autoMatchCategory("amazon streaming", "EXPENSE")).toBe("Subscriptions");
+  });
 });
 
 describe("category constants", () => {

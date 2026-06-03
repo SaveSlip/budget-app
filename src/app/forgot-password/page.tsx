@@ -53,6 +53,7 @@ function ForgotPasswordContent() {
   useEffect(() => {
     if (resendParam !== "1" || !emailParam) return;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsSending(true);
     forgotPasswordAction({ email: emailParam })
       .then((response) => {

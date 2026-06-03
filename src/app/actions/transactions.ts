@@ -14,18 +14,19 @@ import {
   TransactionInput,
 } from "@/lib/validations/transaction";
 import { revalidatePath } from "next/cache";
-import { normalizeDesc, fuzzyMatch } from "@/lib/transactionUtils";
+import { fuzzyMatch, extractMerchant } from "@/lib/transactionUtils";
+import { Transaction } from "@/lib/data/budget";
 
 async function fetchAllTxItems(
   userId: string,
   filterExpression?: string,
   filterNames?: Record<string, string>,
   filterValues?: Record<string, string>,
-): Promise<any[]> {
-  const items: any[] = [];
-  let lastKey: Record<string, any> | undefined;
+): Promise<Transaction[]> {
+  const items: Transaction[] = [];
+  let lastKey: Record<string, unknown> | undefined;
   do {
-    const response = (await docClient.send(
+    const response = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAME,
         KeyConditionExpression: "pk = :pk AND begins_with(sk, :skPrefix)",
@@ -39,9 +40,9 @@ async function fetchAllTxItems(
         ScanIndexForward: false,
         ExclusiveStartKey: lastKey,
       }),
-    )) as any;
-    if (response.Items) items.push(...response.Items);
-    lastKey = response.LastEvaluatedKey;
+    );
+    if (response.Items) items.push(...(response.Items as Transaction[]));
+    lastKey = response.LastEvaluatedKey as Record<string, unknown> | undefined;
   } while (lastKey);
   return items;
 }
@@ -178,7 +179,7 @@ export async function getTransactions(month?: string) {
 
 export async function getTransactionsByMonth(
   month: string,
-): Promise<{ transactions: any[] }> {
+): Promise<{ transactions: Transaction[] }> {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) throw new Error("Unauthorized");
@@ -196,7 +197,7 @@ export async function getTransactionsByMonth(
       }),
     );
     /* v8 ignore next */
-    return { transactions: Items ?? [] };
+    return { transactions: (Items ?? []) as Transaction[] };
   } catch (error) {
     console.error("Failed to fetch transactions by month:", error);
     throw new Error("Failed to retrieve transactions.");
@@ -206,7 +207,7 @@ export async function getTransactionsByMonth(
 export async function getTransactionsBatch(
   cursor?: string,
   limit: number = 25,
-): Promise<{ transactions: any[]; nextCursor: string | null }> {
+): Promise<{ transactions: Transaction[]; nextCursor: string | null }> {
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) throw new Error("Unauthorized");
@@ -239,7 +240,7 @@ export async function getTransactionsBatch(
 
     return {
       /* v8 ignore next */
-      transactions: response.Items ?? [],
+      transactions: (response.Items ?? []) as Transaction[],
       nextCursor,
     };
   } catch (error) {
@@ -303,19 +304,20 @@ export async function countTransactionsByDescription(
   const userId = session?.user?.id;
   if (!userId) return { error: "Unauthorized" };
 
-  const normalizedDesc = description.toLowerCase();
+  const merchantKey = extractMerchant(description);
 
   try {
     const transactions = await fetchAllTxItems(
       userId,
       "contains(#desc, :descPart) AND transactionType = :txType",
       { "#desc": "description" },
-      { ":descPart": normalizedDesc, ":txType": transactionType },
+      { ":descPart": merchantKey, ":txType": transactionType },
     );
 
     const count = transactions.filter(
       (tx) =>
-        tx.description?.toLowerCase() === normalizedDesc &&
+        tx.description !== undefined &&
+        extractMerchant(tx.description) === merchantKey &&
         tx.transactionType === transactionType,
     ).length;
 
@@ -335,19 +337,20 @@ export async function recategorizeByDescription(
   const userId = session?.user?.id;
   if (!userId) return { error: "Unauthorized" };
 
-  const normalizedDesc = description.toLowerCase();
+  const merchantKey = extractMerchant(description);
 
   try {
     const transactions = await fetchAllTxItems(
       userId,
       "contains(#desc, :descPart) AND transactionType = :txType",
       { "#desc": "description" },
-      { ":descPart": normalizedDesc, ":txType": transactionType },
+      { ":descPart": merchantKey, ":txType": transactionType },
     );
 
     const matches = transactions.filter(
       (tx) =>
-        tx.description?.toLowerCase() === normalizedDesc &&
+        tx.description !== undefined &&
+        extractMerchant(tx.description) === merchantKey &&
         tx.transactionType === transactionType,
     );
 
@@ -367,7 +370,6 @@ export async function recategorizeByDescription(
       );
     }
 
-    revalidatePath("/dashboard");
     return { success: true, count: matches.length };
   } catch (error) {
     console.error("Failed to recategorize transactions:", error);
@@ -441,7 +443,7 @@ export async function deleteAllTransactions() {
     const allResult = await getAllTransactions()
     if ("error" in allResult) return { error: allResult.error }
 
-    const items = (allResult.transactions as any[]).map((tx) => ({
+    const items = allResult.transactions.map((tx) => ({
       sk: tx.sk as string,
     }))
 
@@ -627,8 +629,6 @@ export async function updateTransaction(
       );
     }
 
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/transactions");
     return { success: true };
   } catch (error) {
     console.error("[DB] Failed to update transaction:", error);

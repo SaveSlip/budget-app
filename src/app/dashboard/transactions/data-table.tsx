@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import {
-  ColumnDef,
   ColumnFiltersState,
   RowSelectionState,
   SortingState,
@@ -47,8 +46,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { TransactionActions } from "@/components/TransactionActions"
+import { CategoryBadgeSelect } from "@/components/CategoryBadgeSelect"
+import { RecurringToggle } from "@/components/RecurringToggle"
 import type { Category, Account } from "@/lib/data/budget"
 import type { Transaction } from "@/app/dashboard/transactions/columns"
 
@@ -102,9 +102,15 @@ export function DataTable({
     setVisibleData((prev) => prev.filter((row) => row.id !== txId))
   }, [])
 
+  const handleRecurringUpdate = React.useCallback((txId: string, isRecurring: boolean) => {
+    setVisibleData((prev) =>
+      prev.map((row) => (row.id === txId ? { ...row, isRecurring } : row))
+    )
+  }, [])
+
   const columns = React.useMemo(
-    () => getColumns(initialCategories, initialAccounts, handleCategoryUpdate, handleRowDelete),
-    [initialCategories, initialAccounts, handleCategoryUpdate, handleRowDelete],
+    () => getColumns(initialCategories, initialAccounts, handleCategoryUpdate, handleRowDelete, handleRecurringUpdate),
+    [initialCategories, initialAccounts, handleCategoryUpdate, handleRowDelete, handleRecurringUpdate],
   )
 
   const [visibleData, setVisibleData] = React.useState<Transaction[]>(data)
@@ -346,6 +352,7 @@ export function DataTable({
     })
   }, [visibleData, monthFilter, yearFilter, isYearlyView])
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredData,
     columns,
@@ -654,7 +661,10 @@ export function DataTable({
                     <p className="text-sm font-medium text-foreground truncate">{tx.description}</p>
                     <div className="flex flex-col gap-0.5 mt-1">
                       <span className="text-xs text-muted-foreground">{date}</span>
-                      <Badge variant="secondary" className="text-xs w-fit">{tx.category}</Badge>
+                      <div className="flex items-center gap-1.5">
+                        <CategoryBadgeSelect transaction={tx} initialCategories={initialCategories} onCategoryUpdate={handleCategoryUpdate} />
+                        <RecurringToggle transaction={tx} />
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">

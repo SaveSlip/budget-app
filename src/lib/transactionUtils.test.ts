@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeDesc, fuzzyMatch } from "./transactionUtils";
+import { normalizeDesc, fuzzyMatch, extractMerchant } from "./transactionUtils";
 
 describe("normalizeDesc", () => {
   it("lowercases the string", () => {
@@ -46,5 +46,29 @@ describe("fuzzyMatch", () => {
 
   it("matches partial description with different casing", () => {
     expect(fuzzyMatch("Tim Hortons #45", "tim hortons")).toBe(true);
+  });
+});
+
+describe("extractMerchant", () => {
+  it("strips bank prefix and reference number", () => {
+    expect(extractMerchant("CONTACTLESS INTERAC PURCHASE - 6985 SWAGAT INDIAN S")).toBe("swagat indian s");
+  });
+
+  it("produces the same merchant key for different reference numbers", () => {
+    expect(extractMerchant("CONTACTLESS INTERAC PURCHASE - 6985 SWAGAT INDIAN S")).toBe(
+      extractMerchant("CONTACTLESS INTERAC PURCHASE - 6749 SWAGAT INDIAN S"),
+    );
+  });
+
+  it("strips bank prefix with no reference number", () => {
+    expect(extractMerchant("ONLINE BANKING PAYMENT - NETFLIX")).toBe("netflix");
+  });
+
+  it("returns the description as-is when there is no dash separator", () => {
+    expect(extractMerchant("COFFEE SHOP ON MAIN")).toBe("coffee shop on main");
+  });
+
+  it("handles descriptions with multiple dashes by using the last one", () => {
+    expect(extractMerchant("PURCHASE - SOME STORE - 1234 ACTUAL MERCHANT")).toBe("actual merchant");
   });
 });

@@ -5,7 +5,7 @@ import Papa from "papaparse";
 import { UploadCloud, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { batchCreateTransactions, checkDuplicates } from "@/app/actions/transactions";
 import { getCategoryRules, type CategoryRule } from "@/app/actions/categoryRules";
-import { applyUserRules, autoMatchCategory } from "@/lib/constants/categories";
+import { applyUserRules, autoMatchCategory, UNIVERSAL_CATEGORIES, UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
 import { CsvColumnMapper, autoDetectMapping, type ColumnMapping } from "@/components/CsvColumnMapper";
 import {
   CsvImportPreview,
@@ -13,8 +13,15 @@ import {
   type PreviewRow,
 } from "@/components/CsvImportPreview";
 import { CsvAccountSelector } from "@/components/CsvAccountSelector";
+import { CsvFormatOptions } from "@/components/CsvFormatOptions";
 import { detectAccountNumberFromCsv, matchAccountByNumber } from "@/lib/accountMatching";
-import type { Account } from "@/lib/data/budget";
+import {
+  parseDate,
+  parseAmount,
+  type FormatOptions,
+} from "@/lib/csvFormatUtils";
+import { sendImportSuccessEmail, sendImportFailureEmail } from "@/app/actions/importEmail";
+import type { Account, Category } from "@/lib/data/budget";
 
 function filterCsvFiles(files: FileList | File[]): { valid: File[]; rejected: string[] } {
   const arr = Array.from(files);
@@ -37,11 +44,30 @@ function extractHeaders(file: File): Promise<string[]> {
   });
 }
 
+function collectSampleDates(file: File, dateHeader: string, n = 10): Promise<string[]> {
+  return new Promise((resolve) => {
+    Papa.parse(file, {
+      header: true,
+      preview: n,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const key = dateHeader.toLowerCase().trim();
+        const dates = (results.data as Record<string, string>[])
+          .map((row) => row[key]?.trim() ?? "")
+          .filter(Boolean);
+        resolve(dates);
+      },
+      error: () => resolve([]),
+    });
+  });
+}
+
 function extractPreviewRows(
   file: File,
   rules: CategoryRule[],
   mapping: ColumnMapping,
   idOffset: number,
+  formatOptions: FormatOptions,
 ): Promise<PreviewRow[]> {
   return new Promise((resolve, reject) => {
     Papa.parse(file, {
@@ -60,27 +86,19 @@ function extractPreviewRows(
           const dateKey = mapping.date.toLowerCase().trim();
 
           const description = normalizedRow[descKey]?.trim() ?? "";
-          const rawAmount = Number(
-            (normalizedRow[amtKey] || "0").replace(/[^0-9.-]+/g, ""),
+
+          const typeColValue =
+            mapping.type !== "auto"
+              ? normalizedRow[mapping.type.toLowerCase().trim()]
+              : undefined;
+
+          const { amount: amountStr, transactionType } = parseAmount(
+            normalizedRow[amtKey] || "0",
+            formatOptions.amountConvention,
+            typeColValue,
           );
-          const amountStr = rawAmount === 0 ? "0" : Math.abs(rawAmount).toString();
 
-          let transactionType: "EXPENSE" | "INCOME";
-          if (mapping.type === "auto") {
-            transactionType = rawAmount < 0 ? "EXPENSE" : "INCOME";
-          } else {
-            const typeVal = (normalizedRow[mapping.type.toLowerCase().trim()] ?? "").toLowerCase();
-            transactionType =
-              typeVal.includes("debit") || typeVal.includes("expense") ? "EXPENSE" : "INCOME";
-          }
-
-          const rawDate = normalizedRow[dateKey] || "";
-          const dateMatch = rawDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-          const date = dateMatch
-            ? `${dateMatch[3]}-${dateMatch[1]}-${dateMatch[2]}`
-            : rawDate.length > 10 && rawDate.includes("T")
-              ? rawDate.split("T")[0]
-              : rawDate;
+          const date = parseDate(normalizedRow[dateKey] || "", formatOptions.dateFormat);
 
           const category = normalizedRow.category?.trim()
             ? normalizedRow.category.trim()
@@ -132,9 +150,25 @@ async function importValidRows(rows: PreviewRow[], accountId: string | null): Pr
   return result.count ?? 0;
 }
 
-type UploadState = "idle" | "dragging" | "processing" | "account-select" | "mapping" | "preview" | "success" | "error";
+type UploadState =
+  | "idle"
+  | "dragging"
+  | "processing"
+  | "account-select"
+  | "mapping"
+  | "format-options"
+  | "preview"
+  | "success"
+  | "error";
 
-const ACTIVE_STATES = new Set<UploadState>(["dragging", "processing", "account-select", "mapping", "preview"]);
+const ACTIVE_STATES = new Set<UploadState>([
+  "dragging",
+  "processing",
+  "account-select",
+  "mapping",
+  "format-options",
+  "preview",
+]);
 
 interface CsvUploaderProps {
   onActiveChange?: (active: boolean) => void;
@@ -142,9 +176,22 @@ interface CsvUploaderProps {
   glowing?: boolean;
   tall?: boolean;
   accounts?: Account[];
+  categories?: Category[];
 }
 
-export default function CsvUploader({ onActiveChange, onImportComplete, glowing, tall, accounts = [] }: CsvUploaderProps = {}) {
+const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
+  dateFormat: "MM/DD/YYYY",
+  amountConvention: "negative-expense",
+};
+
+export default function CsvUploader({
+  onActiveChange,
+  onImportComplete,
+  glowing,
+  tall,
+  accounts = [],
+  categories = [],
+}: CsvUploaderProps = {}) {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   useEffect(() => {
     onActiveChange?.(ACTIVE_STATES.has(uploadState));
@@ -156,10 +203,21 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
   const [pendingRejected, setPendingRejected] = useState<string[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null);
+  const [formatOptions, setFormatOptions] = useState<FormatOptions>(DEFAULT_FORMAT_OPTIONS);
+  const [sampleDates, setSampleDates] = useState<string[]>([]);
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const [detectedAccountNumber, setDetectedAccountNumber] = useState<string | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // All category names available for the preview dropdown (universal + user-defined)
+  const allCategoryNames = Array.from(
+    new Set([
+      ...UNIVERSAL_CATEGORIES.map((c) => c.name),
+      ...UNIVERSAL_INCOME_CATEGORIES.map((c) => c.name),
+      ...categories.map((c) => c.name),
+    ]),
+  );
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -226,7 +284,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     }
   };
 
-  const handleMappingConfirm = async (mapping: ColumnMapping) => {
+  const runParseAndPreview = async (mapping: ColumnMapping, options: FormatOptions) => {
     setUploadState("processing");
     setMessage("Parsing rows…");
     setFileProgress(null);
@@ -241,7 +299,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
         if (pendingFiles.length > 1) {
           setFileProgress(`Parsing file ${i + 1} of ${pendingFiles.length}: ${file.name}`);
         }
-        const rows = await extractPreviewRows(file, rules, mapping, idCounter);
+        const rows = await extractPreviewRows(file, rules, mapping, idCounter, options);
         idCounter += rows.length;
         allRows.push(...rows);
       }
@@ -262,7 +320,6 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
       );
 
       setPreviewRows(rowsWithDups);
-      setColumnMapping(mapping);
       setUploadState("preview");
       setMessage(null);
       setFileProgress(null);
@@ -271,6 +328,23 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
       setMessage(err instanceof Error ? err.message : "Failed to parse CSV.");
       setTimeout(() => { setUploadState("idle"); setMessage(null); }, 3000);
     }
+  };
+
+  const handleMappingConfirm = async (mapping: ColumnMapping) => {
+    setColumnMapping(mapping);
+    const samples = await collectSampleDates(pendingFiles[0], mapping.date);
+    setSampleDates(samples);
+    const defaultOptions: FormatOptions = {
+      dateFormat: "MM/DD/YYYY",
+      amountConvention: mapping.type !== "auto" ? "type-column" : "negative-expense",
+    };
+    setFormatOptions(defaultOptions);
+    setUploadState("format-options");
+  };
+
+  const handleFormatConfirm = async (options: FormatOptions) => {
+    setFormatOptions(options);
+    await runParseAndPreview(columnMapping!, options);
   };
 
   const handlePreviewConfirm = async (finalRows: PreviewRow[]) => {
@@ -310,6 +384,9 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
         );
       }
 
+      // Fire-and-forget — email result must not block or affect import outcome
+      sendImportSuccessEmail(count).catch(() => {});
+
       setTimeout(() => {
         setUploadState("idle");
         setMessage(null);
@@ -317,8 +394,10 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
         setSkippedWarning(null);
       }, 4000);
     } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Import failed.";
       setUploadState("error");
-      setMessage(err instanceof Error ? err.message : "Import failed.");
+      setMessage(errorMsg);
+      sendImportFailureEmail(errorMsg).catch(() => {});
       setTimeout(() => { setUploadState("idle"); setMessage(null); }, 3000);
     }
   };
@@ -328,6 +407,8 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     setPendingRejected([]);
     setCsvHeaders([]);
     setColumnMapping(null);
+    setFormatOptions(DEFAULT_FORMAT_OPTIONS);
+    setSampleDates([]);
     setPreviewRows([]);
     setDetectedAccountNumber(null);
     setSelectedAccountId(null);
@@ -376,14 +457,28 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     );
   }
 
+  if (uploadState === "format-options" && columnMapping) {
+    return (
+      <CsvFormatOptions
+        filename={pendingFiles[0]?.name ?? ""}
+        sampleDates={sampleDates}
+        hasTypeColumn={columnMapping.type !== "auto"}
+        initialOptions={formatOptions}
+        onConfirm={handleFormatConfirm}
+        onBack={() => setUploadState("mapping")}
+      />
+    );
+  }
+
   if (uploadState === "preview") {
     return (
       <CsvImportPreview
         rows={previewRows}
         filename={pendingFiles[0]?.name ?? ""}
         onConfirmImport={handlePreviewConfirm}
-        onCancel={() => setUploadState("mapping")}
+        onCancel={() => setUploadState("format-options")}
         onChange={setPreviewRows}
+        categories={allCategoryNames}
       />
     );
   }
@@ -394,6 +489,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     processing: "border-info bg-info/5 cursor-wait",
     "account-select": "border-border",
     mapping: "border-border",
+    "format-options": "border-border",
     preview: "border-border",
     success: "border-success bg-success/10",
     error: "border-destructive bg-destructive/10",
@@ -405,6 +501,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     processing: "text-info animate-spin",
     "account-select": "text-muted-foreground",
     mapping: "text-muted-foreground",
+    "format-options": "text-muted-foreground",
     preview: "text-muted-foreground",
     success: "text-success",
     error: "text-destructive",
@@ -425,6 +522,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     processing: "Processing Data...",
     "account-select": "Selecting account…",
     mapping: "Mapping columns…",
+    "format-options": "Confirming format…",
     preview: "Reviewing import…",
     success: "Import Complete",
     error: "Import Failed",

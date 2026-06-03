@@ -5,8 +5,9 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { TransactionActions } from "@/components/TransactionActions";
+import { CategoryBadgeSelect } from "@/components/CategoryBadgeSelect";
+import { RecurringToggle } from "@/components/RecurringToggle";
 import type { Category, Account } from "@/lib/data/budget";
 
 export type Transaction = {
@@ -20,6 +21,7 @@ export type Transaction = {
   transactionType?: "INCOME" | "EXPENSE";
   accountId?: string;
   importOrder?: number;
+  isRecurring?: boolean;
 };
 
 /** Shared header label style matching the RecentTransactions component. */
@@ -36,6 +38,7 @@ export function getColumns(
   initialAccounts: Account[],
   onCategoryUpdate?: (txId: string, category: string) => void,
   onDelete?: (txId: string) => void,
+  onRecurringUpdate?: (txId: string, isRecurring: boolean) => void,
 ): ColumnDef<Transaction>[] {
   return [
   {
@@ -114,7 +117,17 @@ export function getColumns(
     accessorKey: "category",
     header: () => <HeaderLabel>Category</HeaderLabel>,
     cell: ({ row }) => (
-      <Badge variant="secondary">{row.getValue("category")}</Badge>
+      <div className="flex items-center gap-1.5">
+        <CategoryBadgeSelect
+          transaction={row.original}
+          initialCategories={initialCategories}
+          onCategoryUpdate={onCategoryUpdate}
+        />
+        <RecurringToggle
+          transaction={row.original}
+          onRecurringUpdate={onRecurringUpdate}
+        />
+      </div>
     ),
   },
   {
@@ -152,7 +165,7 @@ export function getColumns(
       const transaction = row.original;
       return (
         <div className="flex justify-end">
-          <TransactionActions transaction={transaction} initialCategories={initialCategories} initialAccounts={initialAccounts} onCategoryUpdate={onCategoryUpdate} onDelete={onDelete} />
+          <TransactionActions transaction={transaction} initialCategories={initialCategories} initialAccounts={initialAccounts} onDelete={onDelete} />
         </div>
       );
     },

@@ -147,7 +147,7 @@ describe("listCategories", () => {
       .mockResolvedValueOnce({ Items: [{ id: "c99", name: "Housing", limit: 1500, categoryType: "EXPENSE" }] } as any)
       .mockResolvedValueOnce({ Items: [] } as any);
     const result = await listCategories();
-    if ("categories" in result) {
+    if ("success" in result && result.success) {
       const custom = result.categories.filter((c: any) => c.id === "c99");
       expect(custom.length).toBe(0);
     }

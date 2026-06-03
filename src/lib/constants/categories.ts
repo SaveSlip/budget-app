@@ -31,6 +31,11 @@ export const UNIVERSAL_CATEGORIES: UniversalCategory[] = [
     keywords: ["electricity", "water", "internet", "phone", "hydro", "cable", "broadband", "gas bill", "sewer", "wifi", "cell", "mobile plan"],
   },
   {
+    id: "personal-care",
+    name: "Personal Care",
+    keywords: ["haircut", "gym", "salon", "spa", "fitness", "beauty", "barber", "hair", "nails", "massage", "yoga", "pilates", "workout"],
+  },
+  {
     id: "entertainment-dining",
     name: "Entertainment & Dining",
     keywords: ["restaurant", "takeout", "take out", "delivery", "coffee", "cafe", "fast food", "doordash", "ubereats", "grubhub", "skip the dishes", "bar", "pub", "brunch", "dining", "movies", "games", "concert", "music", "cinema", "theater", "theatre", "recreation"],
@@ -65,6 +70,11 @@ export const UNIVERSAL_CATEGORIES: UniversalCategory[] = [
     name: "Miscellaneous",
     keywords: ["misc", "miscellaneous", "other", "general"],
   },
+  {
+    id: "account-transfer",
+    name: "Account Transfer",
+    keywords: ["transfer to", "account transfer", "wire transfer", "interac send", "e-transfer sent", "sent to", "bank transfer out"],
+  },
 ];
 
 export const UNIVERSAL_INCOME_CATEGORIES: UniversalCategory[] = [
@@ -94,9 +104,9 @@ export const UNIVERSAL_INCOME_CATEGORIES: UniversalCategory[] = [
     keywords: ["business income", "revenue", "sales", "profit", "business deposit"],
   },
   {
-    id: "income-internal-transfer",
-    name: "Internal Transfer",
-    keywords: ["transfer", "internal transfer", "payment from", "credit card payment", "account transfer", "interac transfer", "e-transfer"],
+    id: "income-account-transfer",
+    name: "Account Transfer",
+    keywords: ["transfer from", "account transfer", "wire transfer received", "interac receive", "e-transfer received", "received from", "bank transfer in", "transfer", "e-transfer", "interac transfer", "payment from", "credit card payment"],
   },
   {
     id: "income-other",

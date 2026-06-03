@@ -2,6 +2,7 @@
   "name": "budget-app",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.5.0",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
@@ -50,7 +51,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitest/coverage-v8": "^4.1.7",
     "@vitest/ui": "4.1.7",
-    "eslint": "^10.3.0",
+    "eslint": "^9.39.4",
     "eslint-config-next": "16.2.4",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.2.4",

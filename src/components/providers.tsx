@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useState, useEffect, useContext } from "react";
+import { createContext, useState, useEffect } from "react";
 import { SessionProvider } from "next-auth/react";
 import { getInitialTheme } from "@/lib/themeUtils";
 
@@ -25,6 +25,7 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
   // server where window is undefined, so we always start with "dark" and
   // correct it client-side to avoid a stale active-button state.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setThemeState(getInitialTheme());
   }, []);
 

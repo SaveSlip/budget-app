@@ -46,7 +46,7 @@ export function CategoryForm({ onSuccess }: { onSuccess?: () => void } = {}) {
           form.setError("root", { message: result.error });
         } else {
           form.reset();
-          onSuccess ? onSuccess() : router.refresh();
+          if (onSuccess) onSuccess(); else router.refresh();
         }
       } catch {
         form.setError("root", { message: "Something went wrong. Please try again." });

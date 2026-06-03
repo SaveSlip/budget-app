@@ -3,10 +3,10 @@
 import { Check } from "lucide-react";
 
 interface ImportStepperProps {
-  currentStep: 1 | 2 | 3;
+  currentStep: 1 | 2 | 3 | 4;
 }
 
-const STEPS = ["Account", "Columns", "Review"] as const;
+const STEPS = ["Account", "Columns", "Format", "Review"] as const;
 
 export function ImportStepper({ currentStep }: ImportStepperProps) {
   return (
