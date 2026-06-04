@@ -26,7 +26,11 @@ import type { Transaction } from "@/app/dashboard/transactions/columns";
 interface CategoryBadgeSelectProps {
   transaction: Transaction;
   initialCategories: Category[];
-  onCategoryUpdate?: (txId: string, category: string, bulk?: { merchantKey: string; transactionType: "INCOME" | "EXPENSE" }) => void;
+  onCategoryUpdate?: (
+    txId: string,
+    category: string,
+    bulk?: { merchantKey: string; transactionType: "INCOME" | "EXPENSE" },
+  ) => void;
 }
 
 export function CategoryBadgeSelect({
@@ -43,7 +47,9 @@ export function CategoryBadgeSelect({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const filteredCategories = initialCategories.filter(
-    (c) => (c.categoryType ?? "EXPENSE") === (transaction.transactionType ?? "EXPENSE"),
+    (c) =>
+      (c.categoryType ?? "EXPENSE") ===
+      (transaction.transactionType ?? "EXPENSE"),
   );
 
   function handleSelect(categoryName: string) {
@@ -103,7 +109,10 @@ export function CategoryBadgeSelect({
         transaction.id,
         pendingCategory,
         applyToAll
-          ? { merchantKey: extractMerchant(transaction.description), transactionType: transaction.transactionType ?? "EXPENSE" }
+          ? {
+              merchantKey: extractMerchant(transaction.description),
+              transactionType: transaction.transactionType ?? "EXPENSE",
+            }
           : undefined,
       );
     }
@@ -131,7 +140,10 @@ export function CategoryBadgeSelect({
           className="inline-flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full"
           aria-label={`Category: ${currentCategory}. Click to change.`}
         >
-          <Badge variant="secondary" className="cursor-pointer select-none pr-1.5">
+          <Badge
+            variant="secondary"
+            className="cursor-pointer select-none pr-1.5"
+          >
             {confirming ? (
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
             ) : null}
@@ -143,14 +155,20 @@ export function CategoryBadgeSelect({
       <DropdownMenuContent
         align="start"
         className="w-64"
-        onInteractOutside={(e) => { if (pendingCategory) e.preventDefault(); }}
-        onPointerDownOutside={(e) => { if (pendingCategory) e.preventDefault(); }}
+        onInteractOutside={(e) => {
+          if (pendingCategory) e.preventDefault();
+        }}
+        onPointerDownOutside={(e) => {
+          if (pendingCategory) e.preventDefault();
+        }}
       >
         {pendingCategory ? (
           <div className="px-2 py-2 space-y-2">
             <p className="text-xs font-medium text-muted-foreground px-1">
               Change to{" "}
-              <span className="text-foreground font-semibold">{pendingCategory}</span>
+              <span className="text-foreground font-semibold">
+                {pendingCategory}
+              </span>
             </p>
             <label className="flex items-start gap-2 cursor-pointer px-1">
               <input
@@ -167,7 +185,9 @@ export function CategoryBadgeSelect({
                   <span className="font-medium">{matchCount}</span>
                 )}{" "}
                 {matchCount === 1 ? "transaction" : "transactions"} named{" "}
-                <span className="font-medium">"{transaction.description}"</span>
+                <span className="font-medium">
+                  &quot;{transaction.description}&quot;
+                </span>
               </span>
             </label>
             {successMsg ? (
@@ -179,7 +199,9 @@ export function CategoryBadgeSelect({
                 onClick={handleApply}
                 disabled={confirming}
               >
-                {confirming ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                {confirming ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : null}
                 Apply
               </Button>
             )}
