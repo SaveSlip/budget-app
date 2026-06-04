@@ -14,8 +14,6 @@ export default $config({
     };
   },
   async run() {
-    const isLocal = $app.stage === "local";
-
     const table = new sst.aws.Dynamo("BudgifyTable", {
       fields: {
         pk: "string",
@@ -30,7 +28,7 @@ export default $config({
     });
 
     // local: verify Gmail address; deployed: verify domain amanbrar.pro (bare domain → SES domain identity)
-    const email = isLocal
+    const email = $dev
       ? new sst.aws.Email("EmailIdentity", {
           sender: "amanbrarpro@gmail.com",
         })
@@ -51,7 +49,7 @@ export default $config({
 
     const web = new sst.aws.Nextjs("BudgifyWeb", {
       link: [table, email],
-      domain: isLocal
+      domain: $dev
         ? undefined
         : {
             name: "amanbrar.pro",
@@ -59,7 +57,7 @@ export default $config({
           },
       environment: {
         AUTH_SECRET: process.env.AUTH_SECRET!,
-        AUTH_URL: isLocal ? "http://localhost:3000" : "https://amanbrar.pro",
+        AUTH_URL: $dev ? "http://localhost:3000" : "https://amanbrar.pro",
       },
     });
 
