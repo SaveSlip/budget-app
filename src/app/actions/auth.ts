@@ -26,13 +26,8 @@ import {
   DeleteCommand,
   PutCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
-import { Resource } from "sst";
 import { formatDuration, intervalToDuration } from "date-fns";
-
-const sesClient = new SESClient({
-  region: process.env.AWS_REGION ?? "us-east-1",
-});
+import { sendEmail } from "@/lib/email";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
@@ -241,18 +236,13 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
       }),
     );
 
-    const resetLink = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/reset-password/${resetToken}`;
+    const resetLink = `${process.env.AUTH_URL}/reset-password/${resetToken}`;
 
     try {
-      await sesClient.send(
-        new SendEmailCommand({
-          Source: Resource.EmailIdentity.sender,
-          Destination: { ToAddresses: [email] },
-          Message: {
-            Subject: { Data: "Password Reset - Budgify", Charset: "UTF-8" },
-            Body: {
-              Html: {
-                Data: `
+      await sendEmail({
+        to: email,
+        subject: "Password Reset - Budgify",
+        htmlBody: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                   <h2 style="color: #1c1a18;">Password Reset Request</h2>
                   <p>Hello,</p>
@@ -264,12 +254,7 @@ export async function forgotPasswordAction(data: ForgotPasswordInput) {
                   <p>If you did not request this password reset, please ignore this email.</p>
                 </div>
               `,
-                Charset: "UTF-8",
-              },
-            },
-          },
-        }),
-      );
+      });
     } catch (emailError) {
       console.error("Failed to send email:", emailError);
       return { error: "Failed to dispatch email." };
@@ -445,11 +430,7 @@ export async function sendVerificationEmail(
     const expiresInLabel = formatDuration(
       intervalToDuration({ start: 0, end: VERIFY_TOKEN_TTL_MS }),
     );
-    const baseUrl =
-      process.env.AUTH_URL ||
-      process.env.NEXTAUTH_URL ||
-      "http://localhost:3000";
-    const verifyLink = `${baseUrl}/verify-email/${token}`;
+    const verifyLink = `${process.env.AUTH_URL}/verify-email/${token}`;
 
     await docClient.send(
       new PutCommand({
@@ -475,18 +456,10 @@ export async function sendVerificationEmail(
     );
 
     try {
-      await sesClient.send(
-        new SendEmailCommand({
-          Source: Resource.EmailIdentity.sender,
-          Destination: { ToAddresses: [email] },
-          Message: {
-            Subject: {
-              Data: "Verify your email — Budgify",
-              Charset: "UTF-8",
-            },
-            Body: {
-              Html: {
-                Data: `
+      await sendEmail({
+        to: email,
+        subject: "Verify your email — Budgify",
+        htmlBody: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                   <h2 style="color: #1c1a18;">Welcome to Budgify!</h2>
                   <p>Hello,</p>
@@ -498,12 +471,7 @@ export async function sendVerificationEmail(
                   <p>If you did not create a Budgify account, you can safely ignore this email.</p>
                 </div>
               `,
-                Charset: "UTF-8",
-              },
-            },
-          },
-        }),
-      );
+      });
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError);
       return { error: "Failed to send verification email. Please try again." };

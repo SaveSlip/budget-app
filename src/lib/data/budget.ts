@@ -36,6 +36,7 @@ export interface Transaction {
   accountId?: string;
   addedByUserId?: string;
   createdAt: string;
+  isRecurring?: boolean;
 }
 
 async function getSessionUserId(): Promise<string | null> {

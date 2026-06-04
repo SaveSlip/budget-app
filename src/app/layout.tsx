@@ -43,7 +43,6 @@ export default function RootLayout({
          * color-scheme style to <html> so the correct theme is visible on
          * the very first frame — no flash, no hydration mismatch.
          */}
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var s=localStorage.getItem('budgify-theme');var t=s==='light'||s==='dark'||s==='system'?s:'dark';var r=document.documentElement;r.classList.remove('light','dark');var d;if(t==='system'){d=window.matchMedia('(prefers-color-scheme: dark)').matches;r.classList.add(d?'dark':'light');r.style.colorScheme=d?'dark':'light';}else{r.classList.add(t);r.style.colorScheme=t;}}catch(e){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}})();`,

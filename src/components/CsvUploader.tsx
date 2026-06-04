@@ -5,7 +5,7 @@ import Papa from "papaparse";
 import { UploadCloud, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { batchCreateTransactions, checkDuplicates } from "@/app/actions/transactions";
 import { getCategoryRules, type CategoryRule } from "@/app/actions/categoryRules";
-import { applyUserRules, autoMatchCategory } from "@/lib/constants/categories";
+import { applyUserRules, autoMatchCategory, UNIVERSAL_CATEGORIES, UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
 import { CsvColumnMapper, autoDetectMapping, type ColumnMapping } from "@/components/CsvColumnMapper";
 import {
   CsvImportPreview,
@@ -13,8 +13,18 @@ import {
   type PreviewRow,
 } from "@/components/CsvImportPreview";
 import { CsvAccountSelector } from "@/components/CsvAccountSelector";
+import { CsvFormatOptions } from "@/components/CsvFormatOptions";
 import { detectAccountNumberFromCsv, matchAccountByNumber } from "@/lib/accountMatching";
-import type { Account } from "@/lib/data/budget";
+import {
+  parseDate,
+  parseAmount,
+  parseSplitAmount,
+  corroborateType,
+  isSlashDate,
+  type FormatOptions,
+} from "@/lib/csvFormatUtils";
+import { sendImportSuccessEmail, sendImportFailureEmail } from "@/app/actions/importEmail";
+import type { Account, Category } from "@/lib/data/budget";
 
 function filterCsvFiles(files: FileList | File[]): { valid: File[]; rejected: string[] } {
   const arr = Array.from(files);
@@ -25,15 +35,73 @@ function filterCsvFiles(files: FileList | File[]): { valid: File[]; rejected: st
   return { valid, rejected };
 }
 
-function extractHeaders(file: File): Promise<string[]> {
+function looksLikeDate(s: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s.trim()) || isSlashDate(s);
+}
+
+function extractHeaders(file: File): Promise<{ headers: string[]; isHeaderless: boolean }> {
   return new Promise((resolve, reject) => {
     Papa.parse(file, {
       header: true,
       preview: 1,
       skipEmptyLines: true,
-      complete: (results) => resolve(results.meta.fields ?? []),
+      complete: (results) => {
+        const rawHeaders = results.meta.fields ?? [];
+        if (rawHeaders.length > 0 && looksLikeDate(rawHeaders[0])) {
+          // First "header" is actually a date — file has no header row
+          Papa.parse(file, {
+            header: false,
+            preview: 5,
+            skipEmptyLines: true,
+            complete: (headerlessResults) => {
+              const rows = headerlessResults.data as string[][];
+              const colCount = Math.max(...rows.map((r) => r.length));
+              const syntheticHeaders = Array.from({ length: colCount }, (_, i) => `col${i + 1}`);
+              resolve({ headers: syntheticHeaders, isHeaderless: true });
+            },
+            error: (err) => reject(new Error(err.message)),
+          });
+        } else {
+          resolve({ headers: rawHeaders, isHeaderless: false });
+        }
+      },
       error: (err) => reject(new Error(err.message)),
     });
+  });
+}
+
+function collectSampleDates(file: File, dateHeader: string, headerless = false, n = 10): Promise<string[]> {
+  return new Promise((resolve) => {
+    if (headerless) {
+      // dateHeader is like "col1" — extract index from name
+      const colIndex = parseInt(dateHeader.replace("col", ""), 10) - 1;
+      Papa.parse(file, {
+        header: false,
+        preview: n,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const dates = (results.data as string[][])
+            .map((row) => row[colIndex]?.trim() ?? "")
+            .filter(Boolean);
+          resolve(dates);
+        },
+        error: () => resolve([]),
+      });
+    } else {
+      Papa.parse(file, {
+        header: true,
+        preview: n,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const key = dateHeader.toLowerCase().trim();
+          const dates = (results.data as Record<string, string>[])
+            .map((row) => row[key]?.trim() ?? "")
+            .filter(Boolean);
+          resolve(dates);
+        },
+        error: () => resolve([]),
+      });
+    }
   });
 }
 
@@ -42,79 +110,117 @@ function extractPreviewRows(
   rules: CategoryRule[],
   mapping: ColumnMapping,
   idOffset: number,
+  formatOptions: FormatOptions,
+  isHeaderless: boolean,
 ): Promise<PreviewRow[]> {
   return new Promise((resolve, reject) => {
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        let id = idOffset;
-        const rows: PreviewRow[] = results.data.map((row: unknown) => {
-          const normalizedRow: Record<string, string> = {};
-          for (const key in row as Record<string, string>) {
-            normalizedRow[key.toLowerCase().trim()] = (row as Record<string, string>)[key];
-          }
-
-          const descKey = mapping.description.toLowerCase().trim();
-          const amtKey = mapping.amount.toLowerCase().trim();
-          const dateKey = mapping.date.toLowerCase().trim();
-
-          const description = normalizedRow[descKey]?.trim() ?? "";
-          const rawAmount = Number(
-            (normalizedRow[amtKey] || "0").replace(/[^0-9.-]+/g, ""),
-          );
-          const amountStr = rawAmount === 0 ? "0" : Math.abs(rawAmount).toString();
-
-          let transactionType: "EXPENSE" | "INCOME";
-          if (mapping.type === "auto") {
-            transactionType = rawAmount < 0 ? "EXPENSE" : "INCOME";
-          } else {
-            const typeVal = (normalizedRow[mapping.type.toLowerCase().trim()] ?? "").toLowerCase();
-            transactionType =
-              typeVal.includes("debit") || typeVal.includes("expense") ? "EXPENSE" : "INCOME";
-          }
-
-          const rawDate = normalizedRow[dateKey] || "";
-          const dateMatch = rawDate.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-          const date = dateMatch
-            ? `${dateMatch[3]}-${dateMatch[1]}-${dateMatch[2]}`
-            : rawDate.length > 10 && rawDate.includes("T")
-              ? rawDate.split("T")[0]
-              : rawDate;
-
-          const category = normalizedRow.category?.trim()
-            ? normalizedRow.category.trim()
-            : (applyUserRules(description, transactionType, rules) ??
-              autoMatchCategory(description, transactionType));
-
-          const partial: PreviewRow = {
-            id: id++,
-            description,
-            amount: amountStr,
-            date,
-            category,
-            transactionType,
-            errors: {},
-            isSkipped: false,
-            isDuplicate: false,
-            editingField: null,
-          };
-          partial.errors = validatePreviewRow(partial);
-          return partial;
-        });
-
-        resolve(rows);
-      },
-      error: (error) => {
-        reject(new Error(`Failed to parse CSV: ${error.message}`));
-      },
-    });
+    if (isHeaderless) {
+      Papa.parse(file, {
+        header: false,
+        skipEmptyLines: true,
+        complete: (results) => {
+          let id = idOffset;
+          const rows: PreviewRow[] = (results.data as string[][]).map((rawRow) => {
+            // Map positional array to synthetic col1/col2/... keys
+            const normalizedRow: Record<string, string> = {};
+            rawRow.forEach((val, idx) => {
+              normalizedRow[`col${idx + 1}`] = val ?? "";
+            });
+            return buildPreviewRow(normalizedRow, mapping, formatOptions, rules, id++);
+          });
+          resolve(rows);
+        },
+        error: (error) => reject(new Error(`Failed to parse CSV: ${error.message}`)),
+      });
+    } else {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          let id = idOffset;
+          const rows: PreviewRow[] = results.data.map((row: unknown) => {
+            const normalizedRow: Record<string, string> = {};
+            for (const key in row as Record<string, string>) {
+              normalizedRow[key.toLowerCase().trim()] = (row as Record<string, string>)[key];
+            }
+            return buildPreviewRow(normalizedRow, mapping, formatOptions, rules, id++);
+          });
+          resolve(rows);
+        },
+        error: (error) => reject(new Error(`Failed to parse CSV: ${error.message}`)),
+      });
+    }
   });
+}
+
+function buildPreviewRow(
+  normalizedRow: Record<string, string>,
+  mapping: ColumnMapping,
+  formatOptions: FormatOptions,
+  rules: CategoryRule[],
+  id: number,
+): PreviewRow {
+  const descKey = mapping.description.toLowerCase().trim();
+  const amtKey = mapping.amount.toLowerCase().trim();
+  const dateKey = mapping.date.toLowerCase().trim();
+
+  const description = normalizedRow[descKey]?.trim() ?? "";
+
+  const typeColValue =
+    mapping.type !== "auto"
+      ? normalizedRow[mapping.type.toLowerCase().trim()]
+      : undefined;
+
+  let amountStr: string;
+  let transactionType: "INCOME" | "EXPENSE";
+  let flagged = false;
+
+  const usingSplitColumns = mapping.expenseAmount !== "" && mapping.incomeAmount !== "";
+
+  if (usingSplitColumns) {
+    const expKey = mapping.expenseAmount.toLowerCase().trim();
+    const incKey = mapping.incomeAmount.toLowerCase().trim();
+    ({ amount: amountStr, transactionType } = parseSplitAmount(
+      normalizedRow[expKey] || "",
+      normalizedRow[incKey] || "",
+    ));
+    ({ transactionType, flagged } = corroborateType(transactionType, description));
+  } else {
+    ({ amount: amountStr, transactionType } = parseAmount(
+      normalizedRow[amtKey] || "0",
+      formatOptions.amountConvention,
+      typeColValue,
+    ));
+    ({ transactionType, flagged } = corroborateType(transactionType, description));
+  }
+
+  const date = parseDate(normalizedRow[dateKey] || "", formatOptions.dateFormat);
+
+  const category = normalizedRow.category?.trim()
+    ? normalizedRow.category.trim()
+    : (applyUserRules(description, transactionType, rules) ??
+      autoMatchCategory(description, transactionType));
+
+  const partial: PreviewRow = {
+    id,
+    description,
+    amount: amountStr,
+    date,
+    category,
+    transactionType,
+    flagged,
+    errors: {},
+    isSkipped: false,
+    isDuplicate: false,
+    editingField: null,
+  };
+  partial.errors = validatePreviewRow(partial);
+  return partial;
 }
 
 async function importValidRows(rows: PreviewRow[], accountId: string | null): Promise<number> {
   const toImport = rows.filter(
-    (r) => !r.isSkipped && Object.keys(r.errors).length === 0,
+    (r) => !r.isSkipped && !r.isDuplicate && Object.keys(r.errors).length === 0,
   );
   if (toImport.length === 0) return 0;
 
@@ -132,9 +238,25 @@ async function importValidRows(rows: PreviewRow[], accountId: string | null): Pr
   return result.count ?? 0;
 }
 
-type UploadState = "idle" | "dragging" | "processing" | "account-select" | "mapping" | "preview" | "success" | "error";
+type UploadState =
+  | "idle"
+  | "dragging"
+  | "processing"
+  | "account-select"
+  | "mapping"
+  | "format-options"
+  | "preview"
+  | "success"
+  | "error";
 
-const ACTIVE_STATES = new Set<UploadState>(["dragging", "processing", "account-select", "mapping", "preview"]);
+const ACTIVE_STATES = new Set<UploadState>([
+  "dragging",
+  "processing",
+  "account-select",
+  "mapping",
+  "format-options",
+  "preview",
+]);
 
 interface CsvUploaderProps {
   onActiveChange?: (active: boolean) => void;
@@ -142,9 +264,22 @@ interface CsvUploaderProps {
   glowing?: boolean;
   tall?: boolean;
   accounts?: Account[];
+  categories?: Category[];
 }
 
-export default function CsvUploader({ onActiveChange, onImportComplete, glowing, tall, accounts = [] }: CsvUploaderProps = {}) {
+const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
+  dateFormat: "MM/DD/YYYY",
+  amountConvention: "negative-expense",
+};
+
+export default function CsvUploader({
+  onActiveChange,
+  onImportComplete,
+  glowing,
+  tall,
+  accounts = [],
+  categories = [],
+}: CsvUploaderProps = {}) {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   useEffect(() => {
     onActiveChange?.(ACTIVE_STATES.has(uploadState));
@@ -156,10 +291,22 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
   const [pendingRejected, setPendingRejected] = useState<string[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null);
+  const [formatOptions, setFormatOptions] = useState<FormatOptions>(DEFAULT_FORMAT_OPTIONS);
+  const [sampleDates, setSampleDates] = useState<string[]>([]);
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const [detectedAccountNumber, setDetectedAccountNumber] = useState<string | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [isHeaderless, setIsHeaderless] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // All category names available for the preview dropdown (universal + user-defined)
+  const allCategoryNames = Array.from(
+    new Set([
+      ...UNIVERSAL_CATEGORIES.map((c) => c.name),
+      ...UNIVERSAL_INCOME_CATEGORIES.map((c) => c.name),
+      ...categories.map((c) => c.name),
+    ]),
+  );
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -189,11 +336,11 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     }
 
     try {
-      const headers = await extractHeaders(valid[0]);
+      const { headers, isHeaderless: headerless } = await extractHeaders(valid[0]);
       const detected = autoDetectMapping(headers);
 
-      // Peek at first data row to detect an account number column
-      const firstRowDetection = await new Promise<{ columnName: string; value: string } | null>((resolve) => {
+      // Peek at first data row to detect an account number column (only for headed CSVs)
+      const firstRowDetection = headerless ? null : await new Promise<{ columnName: string; value: string } | null>((resolve) => {
         Papa.parse(valid[0], {
           header: true,
           preview: 1,
@@ -210,6 +357,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
       setPendingRejected(rejected);
       setCsvHeaders(headers);
       setColumnMapping(detected);
+      setIsHeaderless(headerless);
 
       const detectedNum = firstRowDetection?.value ?? null;
       setDetectedAccountNumber(detectedNum);
@@ -226,7 +374,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     }
   };
 
-  const handleMappingConfirm = async (mapping: ColumnMapping) => {
+  const runParseAndPreview = async (mapping: ColumnMapping, options: FormatOptions) => {
     setUploadState("processing");
     setMessage("Parsing rows…");
     setFileProgress(null);
@@ -241,7 +389,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
         if (pendingFiles.length > 1) {
           setFileProgress(`Parsing file ${i + 1} of ${pendingFiles.length}: ${file.name}`);
         }
-        const rows = await extractPreviewRows(file, rules, mapping, idCounter);
+        const rows = await extractPreviewRows(file, rules, mapping, idCounter, options, isHeaderless);
         idCounter += rows.length;
         allRows.push(...rows);
       }
@@ -262,7 +410,6 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
       );
 
       setPreviewRows(rowsWithDups);
-      setColumnMapping(mapping);
       setUploadState("preview");
       setMessage(null);
       setFileProgress(null);
@@ -271,6 +418,37 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
       setMessage(err instanceof Error ? err.message : "Failed to parse CSV.");
       setTimeout(() => { setUploadState("idle"); setMessage(null); }, 3000);
     }
+  };
+
+  const handleMappingConfirm = async (mapping: ColumnMapping) => {
+    setColumnMapping(mapping);
+    const samples = await collectSampleDates(pendingFiles[0], mapping.date, isHeaderless);
+    setSampleDates(samples);
+
+    const hasSplitColumns = mapping.expenseAmount !== "" && mapping.incomeAmount !== "";
+    const amountConvention = hasSplitColumns
+      ? "split-columns"
+      : mapping.type !== "auto"
+        ? "type-column"
+        : "negative-expense";
+
+    // Auto-detect YYYY-MM-DD if sample dates already match ISO format
+    const detectedDateFormat: FormatOptions["dateFormat"] =
+      samples.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(samples[0].trim())
+        ? "YYYY-MM-DD"
+        : "MM/DD/YYYY";
+
+    const defaultOptions: FormatOptions = {
+      dateFormat: detectedDateFormat,
+      amountConvention,
+    };
+    setFormatOptions(defaultOptions);
+    setUploadState("format-options");
+  };
+
+  const handleFormatConfirm = async (options: FormatOptions) => {
+    setFormatOptions(options);
+    await runParseAndPreview(columnMapping!, options);
   };
 
   const handlePreviewConfirm = async (finalRows: PreviewRow[]) => {
@@ -290,7 +468,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
         .map((r) => r.date.slice(0, 7))
         .filter(Boolean)
         .sort();
-      if (importedMonths.length > 0) onImportComplete?.(importedMonths[0]);
+      if (importedMonths.length > 0) onImportComplete?.(importedMonths[importedMonths.length - 1]);
 
       setPendingFiles([]);
       setPendingRejected([]);
@@ -310,6 +488,9 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
         );
       }
 
+      // Fire-and-forget — email result must not block or affect import outcome
+      sendImportSuccessEmail(count).catch(() => {});
+
       setTimeout(() => {
         setUploadState("idle");
         setMessage(null);
@@ -317,8 +498,10 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
         setSkippedWarning(null);
       }, 4000);
     } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Import failed.";
       setUploadState("error");
-      setMessage(err instanceof Error ? err.message : "Import failed.");
+      setMessage(errorMsg);
+      sendImportFailureEmail(errorMsg).catch(() => {});
       setTimeout(() => { setUploadState("idle"); setMessage(null); }, 3000);
     }
   };
@@ -328,9 +511,12 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     setPendingRejected([]);
     setCsvHeaders([]);
     setColumnMapping(null);
+    setFormatOptions(DEFAULT_FORMAT_OPTIONS);
+    setSampleDates([]);
     setPreviewRows([]);
     setDetectedAccountNumber(null);
     setSelectedAccountId(null);
+    setIsHeaderless(false);
     setUploadState("idle");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -376,14 +562,30 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     );
   }
 
+  if (uploadState === "format-options" && columnMapping) {
+    const hasSplitColumns = columnMapping.expenseAmount !== "" && columnMapping.incomeAmount !== "";
+    return (
+      <CsvFormatOptions
+        filename={pendingFiles[0]?.name ?? ""}
+        sampleDates={sampleDates}
+        hasTypeColumn={columnMapping.type !== "auto"}
+        hasSplitColumns={hasSplitColumns}
+        initialOptions={formatOptions}
+        onConfirm={handleFormatConfirm}
+        onBack={() => setUploadState("mapping")}
+      />
+    );
+  }
+
   if (uploadState === "preview") {
     return (
       <CsvImportPreview
         rows={previewRows}
         filename={pendingFiles[0]?.name ?? ""}
         onConfirmImport={handlePreviewConfirm}
-        onCancel={() => setUploadState("mapping")}
+        onCancel={() => setUploadState("format-options")}
         onChange={setPreviewRows}
+        categories={allCategoryNames}
       />
     );
   }
@@ -394,6 +596,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     processing: "border-info bg-info/5 cursor-wait",
     "account-select": "border-border",
     mapping: "border-border",
+    "format-options": "border-border",
     preview: "border-border",
     success: "border-success bg-success/10",
     error: "border-destructive bg-destructive/10",
@@ -405,6 +608,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     processing: "text-info animate-spin",
     "account-select": "text-muted-foreground",
     mapping: "text-muted-foreground",
+    "format-options": "text-muted-foreground",
     preview: "text-muted-foreground",
     success: "text-success",
     error: "text-destructive",
@@ -425,6 +629,7 @@ export default function CsvUploader({ onActiveChange, onImportComplete, glowing,
     processing: "Processing Data...",
     "account-select": "Selecting account…",
     mapping: "Mapping columns…",
+    "format-options": "Confirming format…",
     preview: "Reviewing import…",
     success: "Import Complete",
     error: "Import Failed",

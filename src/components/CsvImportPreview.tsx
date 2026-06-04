@@ -20,8 +20,31 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ImportStepper } from "@/components/ImportStepper";
+import { UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
+import { ScrollFade } from "@/components/ScrollFade";
 
 export type PreviewRowErrors = {
   description?: string;
@@ -36,10 +59,11 @@ export interface PreviewRow {
   date: string;
   category: string;
   transactionType: "INCOME" | "EXPENSE";
+  flagged?: boolean;
   errors: PreviewRowErrors;
   isSkipped: boolean;
   isDuplicate: boolean;
-  editingField: "description" | "amount" | null;
+  editingField: "description" | "amount" | "category" | null;
 }
 
 export function validatePreviewRow(row: PreviewRow): PreviewRowErrors {
@@ -57,6 +81,7 @@ interface CsvImportPreviewProps {
   onConfirmImport: (rows: PreviewRow[]) => void;
   onCancel: () => void;
   onChange: (rows: PreviewRow[]) => void;
+  categories: string[];
 }
 
 export function CsvImportPreview({
@@ -65,7 +90,14 @@ export function CsvImportPreview({
   onConfirmImport,
   onCancel,
   onChange,
+  categories,
 }: CsvImportPreviewProps) {
+  const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
+
+  const incomeSet = new Set(UNIVERSAL_INCOME_CATEGORIES.map((c) => c.name));
+  const expenseCategories = categories.filter((c) => !!c && !incomeSet.has(c));
+  const incomeCategories = categories.filter((c) => !!c && incomeSet.has(c));
+
   const importableCount = rows.filter(
     (r) => !r.isSkipped && Object.keys(r.errors).length === 0,
   ).length;
@@ -78,11 +110,11 @@ export function CsvImportPreview({
     onChange(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
 
-  function startEdit(id: number, field: "description" | "amount") {
+  function startEdit(id: number, field: "description" | "amount" | "category") {
     onChange(rows.map((r) => (r.id === id ? { ...r, editingField: field } : r)));
   }
 
-  function commitEdit(id: number, field: "description" | "amount", value: string) {
+  function commitEdit(id: number, field: "description" | "amount" | "category", value: string) {
     const row = rows.find((r) => r.id === id);
     if (!row) return;
     const updated = { ...row, [field]: value, editingField: null as null };
@@ -102,7 +134,7 @@ export function CsvImportPreview({
 
   return (
     <div className="space-y-3">
-      <ImportStepper currentStep={3} />
+      <ImportStepper currentStep={4} />
     <Card className="border-border bg-card shadow-sm">
       <CardHeader className="pb-3 pt-5">
         <CardTitle className="text-base font-bold text-foreground">
@@ -131,7 +163,7 @@ export function CsvImportPreview({
       </CardHeader>
 
       <CardContent className="pb-2 px-3">
-        <div className="max-h-72 overflow-y-auto rounded-md border border-border">
+        <ScrollFade className="max-h-72 rounded-md border border-border" fadeClassName="to-card/90">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -140,6 +172,7 @@ export function CsvImportPreview({
                 <TableHead className="text-xs">Description</TableHead>
                 <TableHead className="text-xs">Amount</TableHead>
                 <TableHead className="text-xs">Type</TableHead>
+                <TableHead className="text-xs min-w-30">Category</TableHead>
                 <TableHead className="w-16 text-center text-xs">Dup?</TableHead>
                 <TableHead className="w-10 text-center text-xs">Skip</TableHead>
               </TableRow>
@@ -176,7 +209,7 @@ export function CsvImportPreview({
                     </TableCell>
 
                     {/* Description — inline editable */}
-                    <TableCell className="py-1.5 max-w-[180px]">
+                    <TableCell className="py-1.5 max-w-45">
                       <div className="flex flex-col gap-0.5">
                         {row.editingField === "description" ? (
                           <Input
@@ -201,7 +234,7 @@ export function CsvImportPreview({
                                 startEdit(row.id, "description");
                             }}
                             className={cn(
-                              "truncate max-w-[160px] block",
+                              "truncate max-w-40 block",
                               !row.isSkipped && "cursor-text hover:underline underline-offset-2",
                               row.errors.description && "text-destructive",
                             )}
@@ -261,16 +294,74 @@ export function CsvImportPreview({
                     </TableCell>
 
                     <TableCell className="py-1.5">
-                      <span
-                        className={cn(
-                          "text-xs",
-                          row.transactionType === "EXPENSE"
-                            ? "text-destructive"
-                            : "text-success",
+                      <span className="inline-flex items-center gap-1">
+                        <span
+                          className={cn(
+                            "text-xs",
+                            row.transactionType === "EXPENSE"
+                              ? "text-destructive"
+                              : "text-success",
+                          )}
+                        >
+                          {row.transactionType === "EXPENSE" ? "Exp" : "Inc"}
+                        </span>
+                        {row.flagged && (
+                          <span title="Column direction and description disagree — please review">
+                            <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
+                          </span>
                         )}
-                      >
-                        {row.transactionType === "EXPENSE" ? "Exp" : "Inc"}
                       </span>
+                    </TableCell>
+
+                    {/* Category — inline editable via Select */}
+                    <TableCell className="py-1.5 min-w-30">
+                      {row.editingField === "category" ? (
+                        <Select
+                          defaultValue={row.category}
+                          onValueChange={(val) => commitEdit(row.id, "category", val)}
+                        >
+                          <SelectTrigger className="h-6 text-xs px-1 py-0 w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {expenseCategories.length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel className="text-[10px]">Expense</SelectLabel>
+                                {expenseCategories.map((c) => (
+                                  <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                            )}
+                            {expenseCategories.length > 0 && incomeCategories.length > 0 && (
+                              <SelectSeparator />
+                            )}
+                            {incomeCategories.length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel className="text-[10px]">Income</SelectLabel>
+                                {incomeCategories.map((c) => (
+                                  <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                                ))}
+                              </SelectGroup>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => !row.isSkipped && startEdit(row.id, "category")}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !row.isSkipped)
+                              startEdit(row.id, "category");
+                          }}
+                          className={cn(
+                            "truncate max-w-30 block text-xs",
+                            !row.isSkipped && "cursor-pointer hover:underline underline-offset-2",
+                          )}
+                        >
+                          {row.category || <span className="italic text-muted-foreground">—</span>}
+                        </span>
+                      )}
                     </TableCell>
 
                     <TableCell className="py-1.5 text-center">
@@ -299,12 +390,12 @@ export function CsvImportPreview({
               })}
             </TableBody>
           </Table>
-        </div>
+        </ScrollFade>
       </CardContent>
 
       <CardFooter className="flex flex-col gap-2 pb-5 pt-3">
         <Button
-          onClick={() => onConfirmImport(rows)}
+          onClick={() => setShowConfirmDialog(true)}
           disabled={importableCount === 0}
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
         >
@@ -319,6 +410,30 @@ export function CsvImportPreview({
         </Button>
       </CardFooter>
     </Card>
+
+    <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm import</AlertDialogTitle>
+          <AlertDialogDescription>
+            {importableCount} transaction{importableCount !== 1 ? "s" : ""} will be saved to your
+            account. You can delete individual transactions afterwards, but bulk undo is not
+            available.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setShowConfirmDialog(false);
+              onConfirmImport(rows);
+            }}
+          >
+            Import {importableCount} transaction{importableCount !== 1 ? "s" : ""}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </div>
   );
 }

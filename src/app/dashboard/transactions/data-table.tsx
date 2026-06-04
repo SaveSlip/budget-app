@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import {
-  ColumnDef,
   ColumnFiltersState,
   RowSelectionState,
   SortingState,
@@ -39,6 +38,7 @@ import { AlertTriangle, Download, Loader2, Trash2, X } from "lucide-react"
 import Link from "next/link"
 import Papa from "papaparse"
 import { batchDeleteTransactions, deleteAllTransactions, getTransactionsBatch, getTransactionsByMonth } from "@/app/actions/transactions"
+import { extractMerchant } from "@/lib/transactionUtils"
 import { getColumns } from "@/app/dashboard/transactions/columns"
 import {
   Select,
@@ -47,23 +47,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { TransactionActions } from "@/components/TransactionActions"
+import { CategoryBadgeSelect } from "@/components/CategoryBadgeSelect"
+import { RecurringToggle } from "@/components/RecurringToggle"
 import type { Category, Account } from "@/lib/data/budget"
 import type { Transaction } from "@/app/dashboard/transactions/columns"
 
 const PAGE_SIZE = 25
 const PREFETCH_SIZE = 50
 
-function getStoredFilter(): { month: string; year: string; view: string } | null {
-  if (typeof window === "undefined") return null
-  try { return JSON.parse(sessionStorage.getItem("budgify-filter") ?? "null") } catch { return null }
-}
-
-function setStoredFilter(val: { month: string; year: string; view: string }) {
-  if (typeof window === "undefined") return
-  try { sessionStorage.setItem("budgify-filter", JSON.stringify(val)) } catch {}
-}
 
 interface DataTableProps {
   data: Transaction[]
@@ -92,19 +84,38 @@ export function DataTable({
   onImportCompleteRef,
   initialQuery,
 }: DataTableProps) {
-  const handleCategoryUpdate = React.useCallback((txId: string, category: string) => {
-    setVisibleData((prev) =>
-      prev.map((row) => (row.id === txId ? { ...row, category } : row))
-    )
-  }, [])
+  const handleCategoryUpdate = React.useCallback(
+    (txId: string, category: string, bulk?: { merchantKey: string; transactionType: "INCOME" | "EXPENSE" }) => {
+      setVisibleData((prev) =>
+        prev.map((row) => {
+          if (row.id === txId) return { ...row, category }
+          if (
+            bulk &&
+            extractMerchant(row.description ?? "") === bulk.merchantKey &&
+            (row.transactionType ?? "EXPENSE") === bulk.transactionType
+          ) {
+            return { ...row, category }
+          }
+          return row
+        })
+      )
+    },
+    [],
+  )
 
   const handleRowDelete = React.useCallback((txId: string) => {
     setVisibleData((prev) => prev.filter((row) => row.id !== txId))
   }, [])
 
+  const handleRecurringUpdate = React.useCallback((txId: string, isRecurring: boolean) => {
+    setVisibleData((prev) =>
+      prev.map((row) => (row.id === txId ? { ...row, isRecurring } : row))
+    )
+  }, [])
+
   const columns = React.useMemo(
-    () => getColumns(initialCategories, initialAccounts, handleCategoryUpdate, handleRowDelete),
-    [initialCategories, initialAccounts, handleCategoryUpdate, handleRowDelete],
+    () => getColumns(initialCategories, initialAccounts, handleCategoryUpdate, handleRowDelete, handleRecurringUpdate),
+    [initialCategories, initialAccounts, handleCategoryUpdate, handleRowDelete, handleRecurringUpdate],
   )
 
   const [visibleData, setVisibleData] = React.useState<Transaction[]>(data)
@@ -137,16 +148,16 @@ export function DataTable({
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = React.useState(false)
   const [isDeletingAll, setIsDeletingAll] = React.useState(false)
-  const [monthFilter, setMonthFilter] = React.useState<string>(
-    () => `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
-  )
+  const [monthFilter, setMonthFilter] = React.useState<string>(() => {
+    if (initialView === "yearly") return "all"
+    if (initialMonth) return initialMonth
+    return `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
+  })
   const [extraMonths, setExtraMonths] = React.useState<string[]>([])
 
-  const [isYearlyView, setIsYearlyView] = React.useState<boolean>(() => {
-    if (initialView === "yearly") return true
-    const stored = getStoredFilter()
-    return stored?.view === "yearly"
-  })
+  const [isYearlyView, setIsYearlyView] = React.useState<boolean>(
+    () => initialView === "yearly"
+  )
   const currentYear = new Date().getFullYear().toString()
   const availableYears = React.useMemo(
     () => [0, 1, 2, 3].map((i) => String(Number(currentYear) - i)),
@@ -185,21 +196,6 @@ export function DataTable({
     }
     return () => { onImportCompleteRef.current = null }
   }, [onImportCompleteRef])
-
-  // Effect A: derive monthFilter/yearFilter/isYearlyView from URL props / sessionStorage
-  React.useEffect(() => {
-    if (initialView === "yearly") { setMonthFilter("all"); setIsYearlyView(true); return }
-    if (initialMonth) { setMonthFilter(initialMonth); return }
-    const stored = getStoredFilter()
-    if (stored?.view === "yearly") {
-      setMonthFilter("all")
-      setIsYearlyView(true)
-      if (stored.year) setYearFilter(stored.year)
-      return
-    }
-    const currentMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
-    setMonthFilter(stored?.month ?? currentMonth)
-  }, [initialMonth, initialView])
 
   const sentinelRef = React.useRef<HTMLDivElement>(null)
 
@@ -328,7 +324,7 @@ export function DataTable({
       const d = (row as { date?: string }).date
       if (d && d.length >= 7) months.add(d.slice(0, 7))
     })
-    return Array.from(months).sort((a, b) => b.localeCompare(a))
+    return Array.from(months).filter(Boolean).sort((a, b) => b.localeCompare(a))
   }, [visibleData, initialAvailableMonths, extraMonths])
 
   const filteredData = React.useMemo(() => {
@@ -346,6 +342,7 @@ export function DataTable({
     })
   }, [visibleData, monthFilter, yearFilter, isYearlyView])
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredData,
     columns,
@@ -382,6 +379,12 @@ export function DataTable({
   React.useEffect(() => {
     if (!initialQuery) return
     loadAllRemaining()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Yearly view is a summary view — load all transactions upfront so the year filter has complete data
+  React.useEffect(() => {
+    if (isYearlyView) loadAllRemaining()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -459,7 +462,7 @@ export function DataTable({
               value={yearFilter}
               onValueChange={(val) => {
                 setYearFilter(val)
-                setStoredFilter({ month: monthFilter, year: val, view: "yearly" })
+                setIsYearlyView(true)
               }}
             >
               <SelectTrigger className="w-28 sm:w-36 shrink-0">
@@ -477,11 +480,7 @@ export function DataTable({
               value={monthFilter}
               onValueChange={(val) => {
                 setMonthFilter(val)
-                setStoredFilter({
-                  month: val,
-                  year: initialYear || new Date().getFullYear().toString(),
-                  view: "monthly",
-                })
+                setIsYearlyView(false)
               }}
             >
               <SelectTrigger className="w-28 sm:w-36 shrink-0">
@@ -564,7 +563,7 @@ export function DataTable({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent border-border">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} style={header.column.columnDef.size !== undefined ? { width: header.column.columnDef.size } : undefined}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
@@ -593,7 +592,7 @@ export function DataTable({
                     className={newRowIds.has(rowId) ? "animate-tx-row-in" : undefined}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell key={cell.id} style={cell.column.columnDef.size !== undefined ? { width: cell.column.columnDef.size } : undefined}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
@@ -654,7 +653,10 @@ export function DataTable({
                     <p className="text-sm font-medium text-foreground truncate">{tx.description}</p>
                     <div className="flex flex-col gap-0.5 mt-1">
                       <span className="text-xs text-muted-foreground">{date}</span>
-                      <Badge variant="secondary" className="text-xs w-fit">{tx.category}</Badge>
+                      <div className="flex items-center gap-1.5">
+                        <CategoryBadgeSelect transaction={tx} initialCategories={initialCategories} onCategoryUpdate={handleCategoryUpdate} />
+                        <RecurringToggle transaction={tx} onRecurringUpdate={handleRecurringUpdate} />
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">

@@ -51,7 +51,6 @@ export function LogPanel({ categories, accounts, onSuccess, onImportComplete, in
     ro.observe(el);
     return () => ro.disconnect();
   // Re-attach whenever Manual Entry re-mounts (switching back from CSV tab).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   const incomeCategories: Category[] = UNIVERSAL_INCOME_CATEGORIES.map((uc) => ({
@@ -147,7 +146,7 @@ export function LogPanel({ categories, accounts, onSuccess, onImportComplete, in
       {mode === "csv" && (
         <div
           className="px-6 pt-4 pb-6 flex flex-col"
-          style={manualHeight ? { height: manualHeight } : undefined}
+          style={manualHeight ? { minHeight: manualHeight } : undefined}
         >
           <CsvUploader
             tall
@@ -155,6 +154,7 @@ export function LogPanel({ categories, accounts, onSuccess, onImportComplete, in
             onActiveChange={setCsvProcessing}
             onImportComplete={onImportComplete}
             accounts={accounts}
+            categories={categories}
           />
         </div>
       )}

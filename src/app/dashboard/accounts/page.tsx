@@ -16,7 +16,7 @@ export default async function AccountsPage() {
   ]);
 
   return (
-    <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 pt-4">
+    <div className="flex-1 w-full mx-auto space-y-8 pt-4">
       <FadeIn delay={0.1}>
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">

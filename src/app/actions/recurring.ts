@@ -203,3 +203,26 @@ export async function toggleRecurringTransaction(
   revalidatePath("/dashboard/settings/recurring");
   return {};
 }
+
+export async function setTransactionRecurring(
+  sk: string,
+  isRecurring: boolean,
+): Promise<{ error?: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Unauthorized" };
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        pk: `USER#${session.user.id}`,
+        sk,
+      },
+      UpdateExpression: "SET isRecurring = :val",
+      ExpressionAttributeValues: { ":val": isRecurring },
+    }),
+  );
+
+  revalidatePath("/dashboard/transactions");
+  return {};
+}

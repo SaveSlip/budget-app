@@ -23,13 +23,25 @@ export interface ColumnMapping {
   date: string;
   description: string;
   amount: string;
+  expenseAmount: string;
+  incomeAmount: string;
   type: string; // "auto" | a CSV header name
 }
 
+const NONE_VALUE = "__none__";
+
 const DATE_ALIASES = ["date", "transaction date", "posted date", "trans date", "posting date"];
 const DESCRIPTION_ALIASES = ["description", "name", "memo", "payee", "narrative", "merchant"];
-const AMOUNT_ALIASES = ["amount", "value", "cad$", "usd$", "debit amount", "credit amount", "transaction amount"];
+const AMOUNT_ALIASES = ["amount", "value", "cad$", "usd$", "transaction amount"];
 const TYPE_ALIASES = ["type", "debit/credit", "transaction type", "credit/debit"];
+const EXPENSE_AMOUNT_ALIASES = [
+  "debit", "debit amount", "withdrawal", "withdrawals",
+  "debit (cad$)", "debit (usd$)", "amount debit", "dr",
+];
+const INCOME_AMOUNT_ALIASES = [
+  "credit", "credit amount", "deposit", "deposits",
+  "credit (cad$)", "credit (usd$)", "amount credit", "cr",
+];
 
 export function autoDetectMapping(headers: string[]): ColumnMapping {
   const normalized = headers.map((h) => h.toLowerCase().trim());
@@ -37,12 +49,31 @@ export function autoDetectMapping(headers: string[]): ColumnMapping {
   const findHeader = (aliases: string[]) =>
     headers[normalized.findIndex((h) => aliases.includes(h))] ?? "";
 
+  // Headerless synthetic columns (col1, col2, ...)
+  const isSynthetic = headers.every((h) => /^col\d+$/.test(h));
+  if (isSynthetic) {
+    return {
+      date: headers[0] ?? "",
+      description: headers[1] ?? "",
+      amount: "",
+      expenseAmount: headers[2] ?? "",
+      incomeAmount: headers[3] ?? "",
+      type: "auto",
+    };
+  }
+
+  const detectedExpense = findHeader(EXPENSE_AMOUNT_ALIASES);
+  const detectedIncome = findHeader(INCOME_AMOUNT_ALIASES);
+  const hasSplitColumns = detectedExpense !== "" && detectedIncome !== "";
+
   const detectedType = findHeader(TYPE_ALIASES);
 
   return {
     date: findHeader(DATE_ALIASES),
     description: findHeader(DESCRIPTION_ALIASES),
-    amount: findHeader(AMOUNT_ALIASES),
+    amount: hasSplitColumns ? "" : findHeader(AMOUNT_ALIASES),
+    expenseAmount: detectedExpense,
+    incomeAmount: detectedIncome,
     type: detectedType || "auto",
   };
 }
@@ -53,18 +84,19 @@ interface FieldRowProps {
   value: string;
   headers: string[];
   includeAuto?: boolean;
+  disabled?: boolean;
   onChange: (value: string) => void;
 }
 
-function FieldRow({ label, hint, value, headers, includeAuto = false, onChange }: FieldRowProps) {
+function FieldRow({ label, hint, value, headers, includeAuto = false, disabled = false, onChange }: FieldRowProps) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3 border-b border-border/50 last:border-0">
+    <div className={`flex items-center justify-between gap-4 py-3 border-b border-border/50 last:border-0 ${disabled ? "opacity-40" : ""}`}>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">{label}</p>
         <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
       <div className="shrink-0 w-44">
-        <Select value={value} onValueChange={onChange}>
+        <Select value={value === "" ? NONE_VALUE : value} onValueChange={onChange} disabled={disabled}>
           <SelectTrigger className="w-full bg-muted border-border text-sm">
             <SelectValue placeholder="Select a column…" />
           </SelectTrigger>
@@ -72,7 +104,8 @@ function FieldRow({ label, hint, value, headers, includeAuto = false, onChange }
             {includeAuto && (
               <SelectItem value="auto">Auto (from sign)</SelectItem>
             )}
-            {headers.map((h) => (
+            <SelectItem value={NONE_VALUE}>— None —</SelectItem>
+            {headers.filter(Boolean).map((h) => (
               <SelectItem key={h} value={h}>
                 {h}
               </SelectItem>
@@ -102,9 +135,15 @@ export function CsvColumnMapper({
   const [mapping, setMapping] = React.useState<ColumnMapping>(initialMapping);
 
   const update = (field: keyof ColumnMapping) => (value: string) =>
-    setMapping((prev) => ({ ...prev, [field]: value }));
+    setMapping((prev) => ({ ...prev, [field]: value === NONE_VALUE ? "" : value }));
 
-  const canConfirm = mapping.date !== "" && mapping.description !== "" && mapping.amount !== "";
+  const usingSplitColumns = mapping.expenseAmount !== "" || mapping.incomeAmount !== "";
+
+  const hasAmounts =
+    mapping.amount !== "" ||
+    (mapping.expenseAmount !== "" && mapping.incomeAmount !== "");
+
+  const canConfirm = mapping.date !== "" && mapping.description !== "" && hasAmounts;
 
   return (
     <div className="space-y-3">
@@ -134,10 +173,25 @@ export function CsvColumnMapper({
         />
         <FieldRow
           label="Amount"
-          hint="Transaction amount"
+          hint={usingSplitColumns ? "Disabled — using split columns below" : "Single signed amount column"}
           value={mapping.amount}
           headers={csvHeaders}
           onChange={update("amount")}
+          disabled={usingSplitColumns}
+        />
+        <FieldRow
+          label="Expense / Debit column"
+          hint="For banks with separate debit and credit columns (optional)"
+          value={mapping.expenseAmount}
+          headers={csvHeaders}
+          onChange={update("expenseAmount")}
+        />
+        <FieldRow
+          label="Income / Credit column"
+          hint="For banks with separate debit and credit columns (optional)"
+          value={mapping.incomeAmount}
+          headers={csvHeaders}
+          onChange={update("incomeAmount")}
         />
         <FieldRow
           label="Type"

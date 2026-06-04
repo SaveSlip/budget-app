@@ -15,7 +15,24 @@ const eslintConfig = defineConfig([
     "sst-env.d.ts",
     ".sst",
     ".open-next",
+    // Generated coverage report — not project source:
+    "coverage/**",
+    // Playwright driver — plain JS, not project source:
+    ".claude/**",
   ]),
+  // Test files: relax no-explicit-any — mock typing with `any` is idiomatic in Vitest.
+  {
+    files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  // Allow _ prefix for intentionally unused destructure targets (e.g. const { foo: _, ...rest } = obj).
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["warn", { varsIgnorePattern: "^_", argsIgnorePattern: "^_" }],
+    },
+  },
 ]);
 
 export default eslintConfig;

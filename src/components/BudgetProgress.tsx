@@ -125,7 +125,7 @@ export function BudgetProgress({
   }
 
   return (
-    <div className="relative space-y-2 w-full p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
+    <div className="relative space-y-2 w-full h-full p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
       {/* Top-right action: lock for universal, delete for custom */}
       <div className="absolute top-2 right-2">
         {isUniversal ? (

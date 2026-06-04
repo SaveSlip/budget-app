@@ -5,8 +5,9 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { TransactionActions } from "@/components/TransactionActions";
+import { CategoryBadgeSelect } from "@/components/CategoryBadgeSelect";
+import { RecurringToggle } from "@/components/RecurringToggle";
 import type { Category, Account } from "@/lib/data/budget";
 
 export type Transaction = {
@@ -20,6 +21,7 @@ export type Transaction = {
   transactionType?: "INCOME" | "EXPENSE";
   accountId?: string;
   importOrder?: number;
+  isRecurring?: boolean;
 };
 
 /** Shared header label style matching the RecentTransactions component. */
@@ -34,8 +36,9 @@ function HeaderLabel({ children }: { children: React.ReactNode }) {
 export function getColumns(
   initialCategories: Category[],
   initialAccounts: Account[],
-  onCategoryUpdate?: (txId: string, category: string) => void,
+  onCategoryUpdate?: (txId: string, category: string, bulk?: { merchantKey: string; transactionType: "INCOME" | "EXPENSE" }) => void,
   onDelete?: (txId: string) => void,
+  onRecurringUpdate?: (txId: string, isRecurring: boolean) => void,
 ): ColumnDef<Transaction>[] {
   return [
   {
@@ -55,6 +58,7 @@ export function getColumns(
   },
   {
     id: "select",
+    size: 40,
     header: ({ table }) => (
       <input
         type="checkbox"
@@ -82,6 +86,7 @@ export function getColumns(
   },
   {
     accessorKey: "date",
+    size: 110,
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -105,20 +110,36 @@ export function getColumns(
     accessorKey: "description",
     header: () => <HeaderLabel>Description</HeaderLabel>,
     cell: ({ row }) => (
-      <span className="text-sm text-foreground font-medium leading-none">
+      <span className="block truncate text-sm text-foreground font-medium leading-none">
         {row.getValue("description")}
       </span>
     ),
   },
   {
     accessorKey: "category",
-    header: () => <HeaderLabel>Category</HeaderLabel>,
+    size: 200,
+    header: () => (
+      <div className="flex justify-end">
+        <HeaderLabel>Category</HeaderLabel>
+      </div>
+    ),
     cell: ({ row }) => (
-      <Badge variant="secondary">{row.getValue("category")}</Badge>
+      <div className="flex items-center justify-end gap-1.5">
+        <CategoryBadgeSelect
+          transaction={row.original}
+          initialCategories={initialCategories}
+          onCategoryUpdate={onCategoryUpdate}
+        />
+        <RecurringToggle
+          transaction={row.original}
+          onRecurringUpdate={onRecurringUpdate}
+        />
+      </div>
     ),
   },
   {
     accessorKey: "amount",
+    size: 120,
     header: ({ column }) => (
       <div className="flex justify-end">
         <Button
@@ -148,11 +169,12 @@ export function getColumns(
   },
   {
     id: "actions",
+    size: 48,
     cell: ({ row }) => {
       const transaction = row.original;
       return (
         <div className="flex justify-end">
-          <TransactionActions transaction={transaction} initialCategories={initialCategories} initialAccounts={initialAccounts} onCategoryUpdate={onCategoryUpdate} onDelete={onDelete} />
+          <TransactionActions transaction={transaction} initialCategories={initialCategories} initialAccounts={initialAccounts} onDelete={onDelete} />
         </div>
       );
     },
