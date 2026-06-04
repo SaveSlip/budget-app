@@ -43,6 +43,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ImportStepper } from "@/components/ImportStepper";
 import { UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
+import { ScrollFade } from "@/components/ScrollFade";
 
 export type PreviewRowErrors = {
   description?: string;
@@ -160,7 +161,7 @@ export function CsvImportPreview({
       </CardHeader>
 
       <CardContent className="pb-2 px-3">
-        <div className="max-h-72 overflow-y-auto rounded-md border border-border">
+        <ScrollFade className="max-h-72 rounded-md border border-border" fadeClassName="to-card/90">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -380,7 +381,7 @@ export function CsvImportPreview({
               })}
             </TableBody>
           </Table>
-        </div>
+        </ScrollFade>
       </CardContent>
 
       <CardFooter className="flex flex-col gap-2 pb-5 pt-3">

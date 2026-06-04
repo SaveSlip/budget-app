@@ -37,7 +37,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const [resolvedParams, availableMonths] = await Promise.all([searchParams, getAvailableMonths()]);
 
   const todayMonth = format(new Date(), "yyyy-MM");
-  if (!resolvedParams.month && availableMonths.length > 0 && !availableMonths.includes(todayMonth)) {
+  if (resolvedParams.view !== "yearly" && !resolvedParams.month && availableMonths.length > 0 && !availableMonths.includes(todayMonth)) {
     redirect(`/dashboard?month=${availableMonths[0]}`);
   }
 

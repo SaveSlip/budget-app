@@ -19,13 +19,14 @@ import {
 } from "@/app/actions/transactions";
 import { saveCategoryRule } from "@/app/actions/categoryRules";
 import { extractMerchant } from "@/lib/transactionUtils";
+import { ScrollFade } from "@/components/ScrollFade";
 import type { Category } from "@/lib/data/budget";
 import type { Transaction } from "@/app/dashboard/transactions/columns";
 
 interface CategoryBadgeSelectProps {
   transaction: Transaction;
   initialCategories: Category[];
-  onCategoryUpdate?: (txId: string, category: string) => void;
+  onCategoryUpdate?: (txId: string, category: string, bulk?: { merchantKey: string; transactionType: "INCOME" | "EXPENSE" }) => void;
 }
 
 export function CategoryBadgeSelect({
@@ -98,7 +99,13 @@ export function CategoryBadgeSelect({
       }
 
       setCurrentCategory(pendingCategory);
-      onCategoryUpdate?.(transaction.id, pendingCategory);
+      onCategoryUpdate?.(
+        transaction.id,
+        pendingCategory,
+        applyToAll
+          ? { merchantKey: extractMerchant(transaction.description), transactionType: transaction.transactionType ?? "EXPENSE" }
+          : undefined,
+      );
     }
 
     setConfirming(false);
@@ -183,7 +190,7 @@ export function CategoryBadgeSelect({
               Change category
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <div className="max-h-64 overflow-y-auto">
+            <ScrollFade className="max-h-64">
               {filteredCategories.map((cat) => (
                 <DropdownMenuItem
                   key={cat.id}
@@ -197,7 +204,7 @@ export function CategoryBadgeSelect({
                   )}
                 </DropdownMenuItem>
               ))}
-            </div>
+            </ScrollFade>
           </>
         )}
       </DropdownMenuContent>

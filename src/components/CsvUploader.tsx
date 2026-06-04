@@ -132,7 +132,7 @@ function extractPreviewRows(
 
 async function importValidRows(rows: PreviewRow[], accountId: string | null): Promise<number> {
   const toImport = rows.filter(
-    (r) => !r.isSkipped && Object.keys(r.errors).length === 0,
+    (r) => !r.isSkipped && !r.isDuplicate && Object.keys(r.errors).length === 0,
   );
   if (toImport.length === 0) return 0;
 
@@ -364,7 +364,7 @@ export default function CsvUploader({
         .map((r) => r.date.slice(0, 7))
         .filter(Boolean)
         .sort();
-      if (importedMonths.length > 0) onImportComplete?.(importedMonths[0]);
+      if (importedMonths.length > 0) onImportComplete?.(importedMonths[importedMonths.length - 1]);
 
       setPendingFiles([]);
       setPendingRejected([]);

@@ -29,6 +29,7 @@ import { RecentTransactions } from "@/components/RecentTransactions";
 import { AddCategoryDialog } from "@/components/AddCategoryDialog";
 import { GlassCard } from "@/components/GlassCard";
 import type { Category, Transaction } from "@/lib/data/budget";
+import { ScrollFade } from "@/components/ScrollFade";
 
 interface Props {
   categories: Category[];
@@ -474,15 +475,17 @@ function BenchmarkingOverview({
                 <RechartsTooltip content={<DonutTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="mt-2 space-y-1.5 max-h-36 overflow-y-auto">
-              {donutData.map((entry, i) => (
-                <div key={entry.name} className="flex items-center gap-2 text-xs">
-                  <span className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                  <span className="text-muted-foreground truncate flex-1">{entry.name}</span>
-                  <span className="font-mono text-foreground">${entry.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                </div>
-              ))}
-            </div>
+            <ScrollFade className="mt-2 max-h-36" fadeClassName="to-card/90">
+              <div className="space-y-1.5">
+                {donutData.map((entry, i) => (
+                  <div key={entry.name} className="flex items-center gap-2 text-xs">
+                    <span className="inline-block h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                    <span className="text-muted-foreground truncate flex-1">{entry.name}</span>
+                    <span className="font-mono text-foreground">${entry.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  </div>
+                ))}
+              </div>
+            </ScrollFade>
           </GlassCard>
           <div className="grid gap-4 content-start grid-cols-2 md:grid-cols-3">
             {categories.map((cat) => (

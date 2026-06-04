@@ -21,6 +21,7 @@ import {
 } from "@/app/actions/onboarding";
 import { saveOnboardingLimits } from "@/app/actions/categories";
 import { UNIVERSAL_CATEGORIES } from "@/lib/constants/categories";
+import { ScrollFade } from "@/components/ScrollFade";
 
 type Step = "name" | "budgets";
 
@@ -182,7 +183,9 @@ export function OnboardingFlow() {
                   Enter a monthly spending limit for each category. Leave blank to set later.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2 max-h-85 overflow-y-auto pr-1">
+              <CardContent>
+                <ScrollFade className="max-h-85 pr-1" fadeClassName="to-card/90">
+                  <div className="space-y-2">
                 {error && (
                   <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md font-medium mb-2">
                     {error}
@@ -207,6 +210,8 @@ export function OnboardingFlow() {
                     </div>
                   </div>
                 ))}
+                  </div>
+                </ScrollFade>
               </CardContent>
               <CardFooter className="flex flex-col gap-3 pb-8 pt-4">
                 <Button

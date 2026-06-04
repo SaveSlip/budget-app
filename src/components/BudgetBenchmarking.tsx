@@ -36,7 +36,7 @@ export function BudgetBenchmarking({
           <Link
             key={category.id}
             href={`${benchmarkHref}&category=${encodeURIComponent(category.name)}`}
-            className="block"
+            className="block h-full"
           >
             <BudgetProgress
               categoryName={category.name}

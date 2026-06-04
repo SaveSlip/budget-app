@@ -307,12 +307,7 @@ export async function countTransactionsByDescription(
   const merchantKey = extractMerchant(description);
 
   try {
-    const transactions = await fetchAllTxItems(
-      userId,
-      "contains(#desc, :descPart) AND transactionType = :txType",
-      { "#desc": "description" },
-      { ":descPart": merchantKey, ":txType": transactionType },
-    );
+    const transactions = await fetchAllTxItems(userId);
 
     const count = transactions.filter(
       (tx) =>
@@ -340,12 +335,7 @@ export async function recategorizeByDescription(
   const merchantKey = extractMerchant(description);
 
   try {
-    const transactions = await fetchAllTxItems(
-      userId,
-      "contains(#desc, :descPart) AND transactionType = :txType",
-      { "#desc": "description" },
-      { ":descPart": merchantKey, ":txType": transactionType },
-    );
+    const transactions = await fetchAllTxItems(userId);
 
     const matches = transactions.filter(
       (tx) =>
@@ -537,7 +527,12 @@ export async function checkDuplicates(
         const isDup = existing.some(
           (ex) => ex.amount === amt && fuzzyMatch(ex.description, row.description),
         );
-        if (isDup) duplicateRowIds.push(row.rowId);
+        if (isDup) {
+          duplicateRowIds.push(row.rowId);
+        } else {
+          // Track this row so later rows in the same batch are checked against it too
+          existing.push({ description: row.description, amount: amt });
+        }
       }
     }
 

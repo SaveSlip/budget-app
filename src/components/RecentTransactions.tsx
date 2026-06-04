@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Transaction, Category, Account } from "@/lib/data/budget";
 import { TransactionActions } from "@/components/TransactionActions";
+import { ScrollFade } from "@/components/ScrollFade";
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
@@ -20,9 +21,8 @@ interface RecentTransactionsProps {
 }
 
 export function RecentTransactions({ transactions, categories = [], accounts = [], emptyMessage, scrollable }: RecentTransactionsProps) {
-  return (
-    <div className={cn("rounded-md border border-border", scrollable && "max-h-130 overflow-y-auto")}>
-      <Table>
+  const tableContent = (
+    <Table>
         <TableHeader className="bg-muted/50">
           <TableRow className="hover:bg-transparent border-border">
             <TableHead className="w-30 text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -86,6 +86,12 @@ export function RecentTransactions({ transactions, categories = [], accounts = [
           )}
         </TableBody>
       </Table>
-    </div>
-  );
+  )
+  return scrollable ? (
+    <ScrollFade className="max-h-130 rounded-md border border-border" fadeClassName="to-card/90">
+      {tableContent}
+    </ScrollFade>
+  ) : (
+    <div className="rounded-md border border-border">{tableContent}</div>
+  )
 }

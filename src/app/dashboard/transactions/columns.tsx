@@ -36,7 +36,7 @@ function HeaderLabel({ children }: { children: React.ReactNode }) {
 export function getColumns(
   initialCategories: Category[],
   initialAccounts: Account[],
-  onCategoryUpdate?: (txId: string, category: string) => void,
+  onCategoryUpdate?: (txId: string, category: string, bulk?: { merchantKey: string; transactionType: "INCOME" | "EXPENSE" }) => void,
   onDelete?: (txId: string) => void,
   onRecurringUpdate?: (txId: string, isRecurring: boolean) => void,
 ): ColumnDef<Transaction>[] {
