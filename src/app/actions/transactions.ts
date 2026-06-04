@@ -307,12 +307,7 @@ export async function countTransactionsByDescription(
   const merchantKey = extractMerchant(description);
 
   try {
-    const transactions = await fetchAllTxItems(
-      userId,
-      "contains(#desc, :descPart) AND transactionType = :txType",
-      { "#desc": "description" },
-      { ":descPart": merchantKey, ":txType": transactionType },
-    );
+    const transactions = await fetchAllTxItems(userId);
 
     const count = transactions.filter(
       (tx) =>
@@ -340,12 +335,7 @@ export async function recategorizeByDescription(
   const merchantKey = extractMerchant(description);
 
   try {
-    const transactions = await fetchAllTxItems(
-      userId,
-      "contains(#desc, :descPart) AND transactionType = :txType",
-      { "#desc": "description" },
-      { ":descPart": merchantKey, ":txType": transactionType },
-    );
+    const transactions = await fetchAllTxItems(userId);
 
     const matches = transactions.filter(
       (tx) =>
