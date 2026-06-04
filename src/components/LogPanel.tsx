@@ -146,7 +146,7 @@ export function LogPanel({ categories, accounts, onSuccess, onImportComplete, in
       {mode === "csv" && (
         <div
           className="px-6 pt-4 pb-6 flex flex-col"
-          style={manualHeight ? { height: manualHeight } : undefined}
+          style={manualHeight ? { minHeight: manualHeight } : undefined}
         >
           <CsvUploader
             tall

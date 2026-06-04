@@ -40,6 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ImportStepper } from "@/components/ImportStepper";
 import { UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
@@ -58,6 +59,7 @@ export interface PreviewRow {
   date: string;
   category: string;
   transactionType: "INCOME" | "EXPENSE";
+  flagged?: boolean;
   errors: PreviewRowErrors;
   isSkipped: boolean;
   isDuplicate: boolean;
@@ -93,8 +95,8 @@ export function CsvImportPreview({
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
 
   const incomeSet = new Set(UNIVERSAL_INCOME_CATEGORIES.map((c) => c.name));
-  const expenseCategories = categories.filter((c) => !incomeSet.has(c));
-  const incomeCategories = categories.filter((c) => incomeSet.has(c));
+  const expenseCategories = categories.filter((c) => !!c && !incomeSet.has(c));
+  const incomeCategories = categories.filter((c) => !!c && incomeSet.has(c));
 
   const importableCount = rows.filter(
     (r) => !r.isSkipped && Object.keys(r.errors).length === 0,
@@ -292,15 +294,22 @@ export function CsvImportPreview({
                     </TableCell>
 
                     <TableCell className="py-1.5">
-                      <span
-                        className={cn(
-                          "text-xs",
-                          row.transactionType === "EXPENSE"
-                            ? "text-destructive"
-                            : "text-success",
+                      <span className="inline-flex items-center gap-1">
+                        <span
+                          className={cn(
+                            "text-xs",
+                            row.transactionType === "EXPENSE"
+                              ? "text-destructive"
+                              : "text-success",
+                          )}
+                        >
+                          {row.transactionType === "EXPENSE" ? "Exp" : "Inc"}
+                        </span>
+                        {row.flagged && (
+                          <span title="Column direction and description disagree — please review">
+                            <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
+                          </span>
                         )}
-                      >
-                        {row.transactionType === "EXPENSE" ? "Exp" : "Inc"}
                       </span>
                     </TableCell>
 

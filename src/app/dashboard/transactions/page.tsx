@@ -34,7 +34,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
     resolvedParams.mode === "csv" ? "csv" : resolvedParams.mode === "manual" ? "manual" : undefined;
 
   return (
-    <div className="flex-1 w-full max-w-5xl mx-auto space-y-8 pt-4">
+    <div className="flex-1 w-full mx-auto space-y-8 pt-4">
       <div>
         <h2 className="text-3xl font-bold tracking-tight text-foreground">
           Transaction Ledger

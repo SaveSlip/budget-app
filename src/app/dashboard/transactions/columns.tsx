@@ -58,6 +58,7 @@ export function getColumns(
   },
   {
     id: "select",
+    size: 40,
     header: ({ table }) => (
       <input
         type="checkbox"
@@ -85,6 +86,7 @@ export function getColumns(
   },
   {
     accessorKey: "date",
+    size: 110,
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -108,16 +110,21 @@ export function getColumns(
     accessorKey: "description",
     header: () => <HeaderLabel>Description</HeaderLabel>,
     cell: ({ row }) => (
-      <span className="text-sm text-foreground font-medium leading-none">
+      <span className="block truncate text-sm text-foreground font-medium leading-none">
         {row.getValue("description")}
       </span>
     ),
   },
   {
     accessorKey: "category",
-    header: () => <HeaderLabel>Category</HeaderLabel>,
+    size: 200,
+    header: () => (
+      <div className="flex justify-end">
+        <HeaderLabel>Category</HeaderLabel>
+      </div>
+    ),
     cell: ({ row }) => (
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-end gap-1.5">
         <CategoryBadgeSelect
           transaction={row.original}
           initialCategories={initialCategories}
@@ -132,6 +139,7 @@ export function getColumns(
   },
   {
     accessorKey: "amount",
+    size: 120,
     header: ({ column }) => (
       <div className="flex justify-end">
         <Button
@@ -161,6 +169,7 @@ export function getColumns(
   },
   {
     id: "actions",
+    size: 48,
     cell: ({ row }) => {
       const transaction = row.original;
       return (

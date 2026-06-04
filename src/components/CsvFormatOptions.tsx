@@ -24,6 +24,7 @@ interface CsvFormatOptionsProps {
   filename: string;
   sampleDates: string[];
   hasTypeColumn: boolean;
+  hasSplitColumns?: boolean;
   initialOptions: FormatOptions;
   onConfirm: (options: FormatOptions) => void;
   onBack: () => void;
@@ -51,6 +52,7 @@ export function CsvFormatOptions({
   filename,
   sampleDates,
   hasTypeColumn,
+  hasSplitColumns = false,
   initialOptions,
   onConfirm,
   onBack,
@@ -66,7 +68,14 @@ export function CsvFormatOptions({
       : "No date samples detected";
 
   function handleConfirm() {
-    onConfirm({ dateFormat, amountConvention: hasTypeColumn ? "type-column" : amountConvention });
+    onConfirm({
+      dateFormat,
+      amountConvention: hasSplitColumns
+        ? "split-columns"
+        : hasTypeColumn
+          ? "type-column"
+          : amountConvention,
+    });
   }
 
   return (
@@ -99,7 +108,7 @@ export function CsvFormatOptions({
             </Select>
           </FieldRow>
 
-          {!hasTypeColumn && (
+          {!hasTypeColumn && !hasSplitColumns && (
             <FieldRow
               label="Amount convention"
               hint="How your bank marks expenses"

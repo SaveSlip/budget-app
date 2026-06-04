@@ -324,7 +324,7 @@ export function DataTable({
       const d = (row as { date?: string }).date
       if (d && d.length >= 7) months.add(d.slice(0, 7))
     })
-    return Array.from(months).sort((a, b) => b.localeCompare(a))
+    return Array.from(months).filter(Boolean).sort((a, b) => b.localeCompare(a))
   }, [visibleData, initialAvailableMonths, extraMonths])
 
   const filteredData = React.useMemo(() => {
@@ -563,7 +563,7 @@ export function DataTable({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent border-border">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} style={header.column.columnDef.size !== undefined ? { width: header.column.columnDef.size } : undefined}>
                     {header.isPlaceholder
                       ? null
                       : flexRender(header.column.columnDef.header, header.getContext())}
@@ -592,7 +592,7 @@ export function DataTable({
                     className={newRowIds.has(rowId) ? "animate-tx-row-in" : undefined}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell key={cell.id} style={cell.column.columnDef.size !== undefined ? { width: cell.column.columnDef.size } : undefined}>
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
@@ -655,7 +655,7 @@ export function DataTable({
                       <span className="text-xs text-muted-foreground">{date}</span>
                       <div className="flex items-center gap-1.5">
                         <CategoryBadgeSelect transaction={tx} initialCategories={initialCategories} onCategoryUpdate={handleCategoryUpdate} />
-                        <RecurringToggle transaction={tx} />
+                        <RecurringToggle transaction={tx} onRecurringUpdate={handleRecurringUpdate} />
                       </div>
                     </div>
                   </div>
