@@ -80,6 +80,7 @@ export function OnboardingFlow() {
       await saveOnboardingLimits(limits);
     }
     await completeOnboarding();
+    localStorage.removeItem("budgify-welcome-seen");
     setIsLoading(false);
     router.push("/dashboard");
   };

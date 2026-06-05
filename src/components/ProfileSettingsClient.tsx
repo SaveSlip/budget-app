@@ -27,6 +27,7 @@ import {
   Monitor,
   Save,
   AlertTriangle,
+  BookOpen,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { updateUserName } from "@/app/actions/onboarding";
@@ -122,7 +123,7 @@ export function ProfileSettingsClient({
   };
 
   return (
-    <div className="mx-auto max-w-4xl flex flex-col gap-6 pb-12">
+    <div className="flex flex-col gap-6 pb-12">
       <FadeIn delay={0.1}>
         <div className="flex items-center">
           <Link href="/dashboard">
@@ -143,10 +144,18 @@ export function ProfileSettingsClient({
             <div className="flex flex-col gap-1 sticky top-24">
               <Link href="/dashboard/settings/profile">
                 <Button
-                  variant="secondary"
+                  variant="ghost"
                   className="w-full justify-start bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
                 >
                   <User className="w-4 h-4 mr-2" /> Profile
+                </Button>
+              </Link>
+              <Link href="/dashboard/settings/reference">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-foreground/10"
+                >
+                  <BookOpen className="w-4 h-4 mr-2" /> Reference
                 </Button>
               </Link>
             </div>

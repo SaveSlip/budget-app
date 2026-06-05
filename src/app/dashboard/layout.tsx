@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import UserNav from "@/components/UserNav";
 import { DashboardNav, MobileNav } from "@/components/DashboardNav";
+import { WelcomeModal } from "@/components/WelcomeModal";
 import { auth } from "@/auth";
 import { getUserProfile } from "@/lib/db";
 import { redirect } from "next/navigation";
@@ -63,6 +64,7 @@ export default async function DashboardLayout({
       <main className="mx-auto w-[95%] md:w-[90%] lg:w-[80%] max-w-7xl py-8">
         {children}
       </main>
+      <WelcomeModal />
     </div>
   );
 }
