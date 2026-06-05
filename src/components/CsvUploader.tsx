@@ -462,7 +462,7 @@ export default function CsvUploader({
       const skipped = finalRows.filter((r) => r.isSkipped || Object.keys(r.errors).length > 0).length;
       const rejected = pendingRejected;
 
-      // Derive the earliest month from successfully imported rows and notify parent
+      // Derive the latest month from successfully imported rows and notify parent
       const importedMonths = finalRows
         .filter((r) => !r.isSkipped && Object.keys(r.errors).length === 0)
         .map((r) => r.date.slice(0, 7))

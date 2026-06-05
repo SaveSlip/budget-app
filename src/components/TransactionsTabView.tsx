@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { DataTable } from "@/app/dashboard/transactions/data-table";
@@ -35,6 +36,9 @@ const TABS: { id: Tab; label: string }[] = [
 export function TransactionsTabView({ transactions, initialCursor, categories, accounts, recurring, initialMonth, initialView, initialYear, initialAvailableMonths, initialTab, initialMode, initialQuery }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? "ledger");
   const [addWithRecurring, setAddWithRecurring] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [, startTransition] = useTransition();
 
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -51,13 +55,16 @@ export function TransactionsTabView({ transactions, initialCursor, categories, a
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
   };
 
-  // Ref-based bridge: CsvUploader (in "add" tab) notifies DataTable (in "ledger" tab)
-  // without either component needing to be mounted at the same time.
   const onImportCompleteRef = useRef<((month: string) => void) | null>(null);
   const handleImportComplete = useCallback((month: string) => {
-    onImportCompleteRef.current?.(month);
     setActiveTab("ledger");
-  }, []);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("month", month);
+    params.delete("view");
+    startTransition(() => {
+      router.push(`/dashboard/transactions?${params.toString()}`);
+    });
+  }, [router, searchParams]);
 
   return (
     <Card className="border-border bg-card/80 backdrop-blur-sm">
