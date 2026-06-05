@@ -25,6 +25,7 @@ interface Props {
   initialTab?: Tab;
   initialMode?: "csv" | "manual";
   initialQuery?: string;
+  userId: string;
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -33,7 +34,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "add", label: "Add Transaction" },
 ];
 
-export function TransactionsTabView({ transactions, initialCursor, categories, accounts, recurring, initialMonth, initialView, initialYear, initialAvailableMonths, initialTab, initialMode, initialQuery }: Props) {
+export function TransactionsTabView({ transactions, initialCursor, categories, accounts, recurring, initialMonth, initialView, initialYear, initialAvailableMonths, initialTab, initialMode, initialQuery, userId }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? "ledger");
   const [addWithRecurring, setAddWithRecurring] = useState(false);
   const router = useRouter();
@@ -61,10 +62,13 @@ export function TransactionsTabView({ transactions, initialCursor, categories, a
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", month);
     params.delete("view");
+    try {
+      localStorage.setItem(`budgify-filter-${userId}`, JSON.stringify({ month, year: month.slice(0, 4), view: "monthly" }));
+    } catch {}
     startTransition(() => {
       router.push(`/dashboard/transactions?${params.toString()}`);
     });
-  }, [router, searchParams]);
+  }, [router, searchParams, userId]);
 
   return (
     <Card className="border-border bg-card/80 backdrop-blur-sm">

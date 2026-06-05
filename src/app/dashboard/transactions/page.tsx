@@ -57,6 +57,7 @@ export default async function TransactionsPage({ searchParams }: PageProps) {
         recurring={recurring}
         initialTab={initialTab}
         initialMode={initialMode}
+        userId={session.user.id!}
       />
     </div>
   );
