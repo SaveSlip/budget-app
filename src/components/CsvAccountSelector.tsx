@@ -60,6 +60,7 @@ export function CsvAccountSelector({
     name: "",
     type: "" as string,
     accountNumber: detectedAccountNumber ?? "",
+    initialBalance: "",
   });
   const [isCreating, setIsCreating] = React.useState(false);
   const [createError, setCreateError] = React.useState<string | null>(null);
@@ -86,7 +87,7 @@ export function CsvAccountSelector({
     const result = await createAccount({
       name: createFormData.name,
       type: createFormData.type as (typeof ACCOUNT_TYPES)[number]["value"],
-      initialBalance: 0,
+      initialBalance: Number(createFormData.initialBalance) || 0,
       accountNumber: createFormData.accountNumber || undefined,
     });
 
@@ -101,7 +102,7 @@ export function CsvAccountSelector({
       id: result.id!,
       name: createFormData.name,
       accountType: createFormData.type as Account["accountType"],
-      initialBalance: 0,
+      initialBalance: Number(createFormData.initialBalance) || 0,
       accountNumber: createFormData.accountNumber || undefined,
       createdAt: new Date().toISOString(),
     };
@@ -215,6 +216,23 @@ export function CsvAccountSelector({
                   value={createFormData.accountNumber}
                   onChange={(e) => setCreateFormData({ ...createFormData, accountNumber: e.target.value })}
                   className="flex h-9 w-full mt-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground">Opening Balance (optional)</label>
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-2 text-muted-foreground text-sm">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={createFormData.initialBalance}
+                  onChange={(e) => setCreateFormData({ ...createFormData, initialBalance: e.target.value })}
+                  onFocus={(e) => { if (e.target.value === "0") setCreateFormData({ ...createFormData, initialBalance: "" }); }}
+                  onBlur={(e) => { if (e.target.value === "") setCreateFormData({ ...createFormData, initialBalance: "" }); }}
+                  className="flex h-9 w-full rounded-md border border-border bg-transparent pl-7 pr-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                 />
               </div>
             </div>
