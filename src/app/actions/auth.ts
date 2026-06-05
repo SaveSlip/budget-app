@@ -28,6 +28,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { formatDuration, intervalToDuration } from "date-fns";
 import { sendEmail } from "@/lib/email";
+import { Resource } from "sst";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
@@ -39,6 +40,16 @@ export async function registerUser(
     const parsed = signupSchema.safeParse(data);
     if (!parsed.success) {
       return { error: "Invalid input data" };
+    }
+
+    const { Item: allowed } = await docClient.send(
+      new GetCommand({
+        TableName: Resource.AllowlistTable.name,
+        Key: { pk: parsed.data.email.toLowerCase() },
+      }),
+    );
+    if (!allowed) {
+      return { error: "Signups are currently invite-only. Your email is not on the allowlist." };
     }
 
     const hashedPassword = await bcrypt.hash(parsed.data.password, 10);

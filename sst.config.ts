@@ -47,8 +47,13 @@ export default $config({
       job: processRecurring,
     });
 
+    const allowlist = new sst.aws.Dynamo("AllowlistTable", {
+      fields: { pk: "string" },
+      primaryIndex: { hashKey: "pk" },
+    });
+
     const web = new sst.aws.Nextjs("BudgifyWeb", {
-      link: [table, email],
+      link: [table, email, allowlist],
       domain: $dev
         ? undefined
         : {
