@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ShieldCheck, ArrowRight, LayoutDashboard, BarChart3, RefreshCw, FileUp } from "lucide-react";
 import {
@@ -15,13 +15,9 @@ import { Button } from "@/components/ui/button";
 const STORAGE_KEY = "budgify-welcome-seen";
 
 export function WelcomeModal() {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      setOpen(true);
-    }
-  }, []);
+  const [open, setOpen] = useState(
+    () => typeof window !== "undefined" && !localStorage.getItem(STORAGE_KEY)
+  );
 
   function dismiss() {
     localStorage.setItem(STORAGE_KEY, "1");
@@ -69,7 +65,7 @@ export function WelcomeModal() {
               <li className="flex gap-2">
                 <span className="text-primary shrink-0 mt-0.5">✓</span>
                 <span>
-                  <strong className="text-foreground">No third-party access.</strong> We don't connect to your bank directly — you download a CSV and import it yourself. No bank credentials ever touch Budgify.
+                  <strong className="text-foreground">No third-party access.</strong> We don&apos;t connect to your bank directly — you download a CSV and import it yourself. No bank credentials ever touch Budgify.
                 </span>
               </li>
               <li className="flex gap-2">
