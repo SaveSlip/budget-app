@@ -6,6 +6,10 @@
 
 declare module "sst" {
   export interface Resource {
+    "AllowlistTable": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
     "BudgifyTable": {
       "name": string
       "type": "sst.aws.Dynamo"

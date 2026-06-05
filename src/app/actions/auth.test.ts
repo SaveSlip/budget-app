@@ -19,7 +19,10 @@ vi.mock("@aws-sdk/client-ses", () => ({
   SendEmailCommand: function SendEmailCommand(input: unknown) { return input; },
 }));
 vi.mock("sst", () => ({
-  Resource: { EmailIdentity: { sender: "noreply@budgify.app" } },
+  Resource: {
+    EmailIdentity: { sender: "noreply@budgify.app" },
+    AllowlistTable: { name: "test-allowlist-table" },
+  },
 }));
 vi.mock("date-fns", async (importOriginal) => {
   const actual = await importOriginal<typeof import("date-fns")>();
@@ -70,22 +73,32 @@ describe("registerUser", () => {
     expect(result).toHaveProperty("error");
   });
 
+  it("returns error when email is not on the allowlist", async () => {
+    mockSend.mockResolvedValueOnce({ Item: undefined } as any);
+    const result = await registerUser({ email: "a@b.com", password: "Password1!", confirmPassword: "Password1!" });
+    expect(result).toHaveProperty("error");
+    expect(result.error).toMatch(/invite-only/i);
+  });
+
   it("creates user and returns success", async () => {
+    mockSend.mockResolvedValueOnce({ Item: { pk: "a@b.com" } } as any);
     mockCreateUserRecord.mockResolvedValue({} as any);
     const result = await registerUser({ email: "a@b.com", password: "Password1!", confirmPassword: "Password1!" });
     expect(result).toEqual({ success: true });
   });
 
   it("handles unverified existing account", async () => {
+    mockSend.mockResolvedValueOnce({ Item: { pk: "a@b.com" } } as any);
     mockCreateUserRecord.mockResolvedValue({ error: "email exists" } as any);
-    mockSend.mockResolvedValue({ Item: { emailVerified: false } } as any);
+    mockSend.mockResolvedValueOnce({ Item: { emailVerified: false } } as any);
     const result = await registerUser({ email: "a@b.com", password: "Password1!", confirmPassword: "Password1!" });
     expect(result).toMatchObject({ error: expect.any(String), needsVerification: true });
   });
 
   it("returns error when user already exists and is verified", async () => {
+    mockSend.mockResolvedValueOnce({ Item: { pk: "a@b.com" } } as any);
     mockCreateUserRecord.mockResolvedValue({ error: "email exists" } as any);
-    mockSend.mockResolvedValue({ Item: { emailVerified: true } } as any);
+    mockSend.mockResolvedValueOnce({ Item: { emailVerified: true } } as any);
     const result = await registerUser({ email: "a@b.com", password: "Password1!", confirmPassword: "Password1!" });
     expect(result).toHaveProperty("error");
     expect(result).not.toHaveProperty("needsVerification");
