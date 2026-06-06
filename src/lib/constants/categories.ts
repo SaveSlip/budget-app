@@ -70,11 +70,6 @@ export const UNIVERSAL_CATEGORIES: UniversalCategory[] = [
     name: "Miscellaneous",
     keywords: ["misc", "miscellaneous", "other", "general"],
   },
-  {
-    id: "account-transfer",
-    name: "Account Transfer",
-    keywords: ["transfer to", "account transfer", "wire transfer", "interac send", "e-transfer sent", "sent to", "bank transfer out"],
-  },
 ];
 
 export const UNIVERSAL_INCOME_CATEGORIES: UniversalCategory[] = [
@@ -102,11 +97,6 @@ export const UNIVERSAL_INCOME_CATEGORIES: UniversalCategory[] = [
     id: "income-business",
     name: "Business Income",
     keywords: ["business income", "revenue", "sales", "profit", "business deposit"],
-  },
-  {
-    id: "income-account-transfer",
-    name: "Account Transfer",
-    keywords: ["transfer from", "account transfer", "wire transfer received", "interac receive", "e-transfer received", "received from", "bank transfer in", "transfer", "e-transfer", "interac transfer", "payment from", "credit card payment"],
   },
   {
     id: "income-other",
