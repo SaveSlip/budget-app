@@ -29,9 +29,10 @@ export default async function BenchmarkingPageRoute({ searchParams }: PageProps)
   const session = await auth();
   if (!session?.user) redirect("/signin");
 
-  const resolved = await searchParams;
+  const [resolved, availableMonths] = await Promise.all([searchParams, getAvailableMonths()]);
   const todayMonth = format(new Date(), "yyyy-MM");
-  const activeMonth = resolved.month || todayMonth;
+  const defaultMonth = availableMonths.includes(todayMonth) ? todayMonth : (availableMonths[0] ?? todayMonth);
+  const activeMonth = resolved.month || defaultMonth;
   const view = resolved.view === "yearly" ? "yearly" : "monthly";
   const activeYear = resolved.year || format(new Date(), "yyyy");
   const initialCategory = resolved.category;
@@ -48,8 +49,7 @@ export default async function BenchmarkingPageRoute({ searchParams }: PageProps)
 
   if (view === "yearly") {
     const isAllYears = activeYear === "all";
-    const [availableMonths, categories, yearlyBalance, prevYearlyBalance] = await Promise.all([
-      getAvailableMonths(),
+    const [categories, yearlyBalance, prevYearlyBalance] = await Promise.all([
       getCategories(),
       isAllYears ? getAllYearsBalance() : getYearlyBalance(activeYear),
       isAllYears ? Promise.resolve({ categorySpending: {} }) : getYearlyBalance(String(Number(activeYear) - 1)),
@@ -97,8 +97,7 @@ export default async function BenchmarkingPageRoute({ searchParams }: PageProps)
   const isAllMonths = activeMonth === "all";
 
   if (isAllMonths) {
-    const [availableMonths, categories, allBalance, allTxs] = await Promise.all([
-      getAvailableMonths(),
+    const [categories, allBalance, allTxs] = await Promise.all([
       getCategories(),
       getAllMonthsBalance(),
       getTransactionTrend(12),
@@ -140,9 +139,8 @@ export default async function BenchmarkingPageRoute({ searchParams }: PageProps)
   const prevMonth1 = getPrevMonth(activeMonth);
   const prevMonth2 = getPrevMonth(prevMonth1);
 
-  const [availableMonths, categories, currentBalance, prevBalance, transactions, sparkMonth2Txs, sparkMonth3Txs] =
+  const [categories, currentBalance, prevBalance, transactions, sparkMonth2Txs, sparkMonth3Txs] =
     await Promise.all([
-      getAvailableMonths(),
       getCategories(activeMonth),
       getMonthlyBalance(activeMonth),
       getMonthlyBalance(prevMonth1),

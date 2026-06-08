@@ -151,7 +151,8 @@ export function DataTable({
   const [monthFilter, setMonthFilter] = React.useState<string>(() => {
     if (initialView === "yearly") return "all"
     if (initialMonth) return initialMonth
-    return `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
+    const todayMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`
+    return initialAvailableMonths?.includes(todayMonth) ? todayMonth : (initialAvailableMonths?.[0] ?? todayMonth)
   })
   const [extraMonths, setExtraMonths] = React.useState<string[]>([])
 

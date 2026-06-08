@@ -33,14 +33,14 @@ export function DashboardFilters({ availableMonths: propMonths, userId }: { avai
       label: format(new Date(value + "-02"), "MMMM yyyy"),
       value,
     }));
+  const latestMonth = months[0]?.value ?? format(new Date(), "yyyy-MM");
 
   const view = searchParams.get("view") === "yearly" ? "yearly" : "monthly";
   const currentYear = format(new Date(), "yyyy");
   const activeYear = searchParams.get("year") || currentYear;
   const years = [0, 1, 2, 3].map((i) => String(Number(currentYear) - i));
 
-  const currentMonth =
-    searchParams.get("month") || format(new Date(), "yyyy-MM");
+  const currentMonth = searchParams.get("month") || latestMonth;
   const currentQuery = searchParams.get("q") || "";
 
   const prevMonth = useRef(currentMonth);
@@ -190,8 +190,8 @@ function updateFilters(updates: Record<string, string>) {
         )}
         <div className="flex items-center gap-1.5 text-sm font-semibold tracking-wide uppercase">
           <button
-            onClick={() => view !== "monthly" && updateFilters({ view: "", year: "", month: format(new Date(), "yyyy-MM") })}
-            onMouseEnter={() => handleViewMouseEnter("monthly", { view: "", year: "", month: format(new Date(), "yyyy-MM") })}
+            onClick={() => view !== "monthly" && updateFilters({ view: "", year: "", month: latestMonth })}
+            onMouseEnter={() => handleViewMouseEnter("monthly", { view: "", year: "", month: latestMonth })}
             onMouseLeave={handleViewMouseLeave}
             className={`transition-colors focus-visible:outline-none ${view === "monthly" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >

@@ -40,7 +40,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     redirect(`/dashboard?month=${availableMonths[0]}`);
   }
 
-  const activeMonth = resolvedParams.month || todayMonth;
+  const defaultMonth = availableMonths.includes(todayMonth) ? todayMonth : (availableMonths[0] ?? todayMonth);
+  const activeMonth = resolvedParams.month || defaultMonth;
   const view = resolvedParams.view === "yearly" ? "yearly" : "monthly";
   const activeYear = resolvedParams.year || format(new Date(), "yyyy");
   const searchQuery = resolvedParams.q?.trim() ?? "";
