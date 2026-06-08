@@ -341,6 +341,7 @@ function BenchmarkingOverview({
       ? availableMonths
       : Array.from({ length: 12 }, (_, i) => format(subMonths(new Date(), i), "yyyy-MM"))
   ).map((value) => ({ label: format(new Date(value + "-02"), "MMMM yyyy"), value }));
+  const latestMonth = months[0]?.value ?? format(new Date(), "yyyy-MM");
 
   function updateFilters(updates: Record<string, string>) {
     const params = new URLSearchParams();
@@ -407,8 +408,8 @@ function BenchmarkingOverview({
         </div>
         <div className="ml-auto flex items-center gap-1.5 text-sm font-semibold tracking-wide uppercase">
           <button
-            onClick={() => view !== "monthly" && updateFilters({ view: "monthly", year: "", month: format(new Date(), "yyyy-MM") })}
-            onMouseEnter={() => handleViewMouseEnter("monthly", { view: "monthly", year: "", month: format(new Date(), "yyyy-MM") })}
+            onClick={() => view !== "monthly" && updateFilters({ view: "monthly", year: "", month: latestMonth })}
+            onMouseEnter={() => handleViewMouseEnter("monthly", { view: "monthly", year: "", month: latestMonth })}
             onMouseLeave={handleViewMouseLeave}
             className={cn("transition-colors focus-visible:outline-none", view === "monthly" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
           >
