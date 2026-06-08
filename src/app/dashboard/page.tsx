@@ -15,12 +15,11 @@ import {
   type CategoryReviewSuggestion,
 } from "@/lib/data/budget";
 import { SummaryCard } from "@/components/SummaryCard";
-import { BudgetBenchmarking } from "@/components/BudgetBenchmarking";
+import { BudgetBenchmarking, PAGE_SIZE } from "@/components/BudgetBenchmarking";
 import { GlassCard } from "@/components/GlassCard";
 import { MonthlyChart } from "@/components/MonthlyChart";
 import { DashboardFilters } from "@/components/DashboardFilters";
 import { QuarterlyReview } from "@/components/QuarterlyReview";
-import { AddCategoryDialog } from "@/components/AddCategoryDialog";
 import { RecentTransactions } from "@/components/RecentTransactions";
 import { EmptyDashboardCta } from "@/components/EmptyDashboardCta";
 import Link from "next/link";
@@ -90,6 +89,20 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     quarterlyReview = quarterly;
   }
 
+  const benchmarkCategories = categories
+    .filter((c) => c.categoryType !== "INCOME")
+    .sort((a, b) => {
+      const spentA = spendingMap[a.name] || 0;
+      const spentB = spendingMap[b.name] || 0;
+      const limitA = adjustedCategoryLimits[a.name] ?? a.limit ?? 0;
+      const limitB = adjustedCategoryLimits[b.name] ?? b.limit ?? 0;
+      const pctA = limitA > 0 ? spentA / limitA : spentA > 0 ? Infinity : 0;
+      const pctB = limitB > 0 ? spentB / limitB : spentB > 0 ? Infinity : 0;
+      return pctB - pctA;
+    });
+  const hiddenBenchmarkCount = benchmarkCategories.length - PAGE_SIZE;
+  const benchmarkHref = `/dashboard/benchmarking?month=${activeMonth}&view=${view}&year=${activeYear}`;
+
   const filteredItems = searchQuery
     ? trendItems.filter((tx) => {
         const q = searchQuery.toLowerCase();
@@ -157,25 +170,22 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between px-1">
             <Link
-              href={`/dashboard/benchmarking?month=${activeMonth}&view=${view}&year=${activeYear}`}
+              href={benchmarkHref}
               className="text-xl font-semibold text-foreground hover:text-primary transition-colors"
             >
               Budget Benchmarking
             </Link>
-            <AddCategoryDialog />
+            {hiddenBenchmarkCount > 0 && (
+              <Link
+                href={benchmarkHref}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Show {hiddenBenchmarkCount} more →
+              </Link>
+            )}
           </div>
           <BudgetBenchmarking
-            categories={categories
-              .filter((c) => c.categoryType !== "INCOME")
-              .sort((a, b) => {
-                const spentA = spendingMap[a.name] || 0;
-                const spentB = spendingMap[b.name] || 0;
-                const limitA = adjustedCategoryLimits[a.name] ?? a.limit ?? 0;
-                const limitB = adjustedCategoryLimits[b.name] ?? b.limit ?? 0;
-                const pctA = limitA > 0 ? spentA / limitA : spentA > 0 ? Infinity : 0;
-                const pctB = limitB > 0 ? spentB / limitB : spentB > 0 ? Infinity : 0;
-                return pctB - pctA;
-              })}
+            categories={benchmarkCategories}
             spendingMap={spendingMap}
             adjustedCategoryLimits={adjustedCategoryLimits}
             rolloverDeltas={rolloverDeltas}

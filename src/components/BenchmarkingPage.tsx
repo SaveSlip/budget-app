@@ -373,7 +373,7 @@ function BenchmarkingOverview({
             Click any category to explore its details
           </p>
         </div>
-        <AddCategoryDialog />
+        <AddCategoryDialog variant="prominent" />
       </div>
 
       {/* Period filter — month/year select + Monthly/Yearly toggle, no search */}
