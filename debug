@@ -1,0 +1,86 @@
+time=2026-06-07T23:00:33.131-07:00 level=INFO msg="checking for pulumi" path="/Users/amanbrar/Library/Application Support/sst/bin/pulumi"
+time=2026-06-07T23:00:33.402-07:00 level=INFO msg="checking for bun" path="/Users/amanbrar/Library/Application Support/sst/bin/bun"
+time=2026-06-07T23:00:33.413-07:00 level=INFO msg="initializing project" version=4.12.11
+time=2026-06-07T23:00:33.414-07:00 level=INFO msg="esbuild building" out=/Users/amanbrar/work/mybudget/budget-app/.sst/platform/sst.config.1780898433413.mjs
+time=2026-06-07T23:00:33.423-07:00 level=INFO msg="esbuild built" outfile=/Users/amanbrar/work/mybudget/budget-app/.sst/platform/sst.config.1780898433413.mjs
+time=2026-06-07T23:00:33.424-07:00 level=INFO msg="evaluating config"
+time=2026-06-07T23:00:33.447-07:00 level=INFO msg="config evaluated"
+time=2026-06-07T23:00:33.448-07:00 level=INFO msg="checking platform"
+time=2026-06-07T23:00:33.449-07:00 level=INFO msg="loading home"
+time=2026-06-07T23:00:33.449-07:00 level=INFO msg="cloudflare account selected" account=8a41673aa7cc165114aa4693c7d269e9
+time=2026-06-07T23:00:34.505-07:00 level=INFO msg="aws credentials found" region=us-west-2 profile=amanbrar-dev
+time=2026-06-07T23:00:34.505-07:00 level=INFO msg="fetching bootstrap"
+time=2026-06-07T23:00:34.634-07:00 level=INFO msg="found existing bootstrap" data="{\"version\":5,\"asset\":\"sst-asset-evzkouumtwac\",\"assetEcrRegistryId\":\"605176345649\",\"assetEcrUrl\":\"605176345649.dkr.ecr.us-west-2.amazonaws.com/sst-asset\",\"state\":\"sst-state-evzkouumtwac\",\"appsyncHttp\":\"\",\"appsyncRealtime\":\"\"}"
+time=2026-06-07T23:00:34.634-07:00 level=INFO msg="loaded config" app=budget-app stage=amanbrar
+time=2026-06-07T23:00:34.635-07:00 level=INFO msg=mosaic project=/Users/amanbrar/work/mybudget/budget-app
+time=2026-06-07T23:00:34.635-07:00 level=INFO msg="server port assigned" port=13557
+time=2026-06-07T23:00:34.635-07:00 level=INFO msg=starting service=watcher root=/Users/amanbrar/work/mybudget/budget-app
+time=2026-06-07T23:00:34.636-07:00 level=INFO msg=starting service=deployer
+time=2026-06-07T23:00:34.635-07:00 level=INFO msg="getting endpoint"
+time=2026-06-07T23:00:34.636-07:00 level=INFO msg=starting service=server
+time=2026-06-07T23:00:34.636-07:00 level=INFO msg="waiting for trigger" service=deployer
+time=2026-06-07T23:00:34.636-07:00 level=INFO msg=starting service=dev
+time=2026-06-07T23:00:34.637-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app
+time=2026-06-07T23:00:34.638-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage
+time=2026-06-07T23:00:34.638-07:00 level=INFO msg=server service=server addr=0.0.0.0:13557
+time=2026-06-07T23:00:34.638-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/app
+time=2026-06-07T23:00:34.638-07:00 level=INFO msg="server ready to accept connections" service=server
+time=2026-06-07T23:00:34.638-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/app/actions
+time=2026-06-07T23:00:34.639-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/app/api
+time=2026-06-07T23:00:34.639-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/app/api/export
+time=2026-06-07T23:00:34.639-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/app/api/export/transactions
+time=2026-06-07T23:00:34.639-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/app/lib
+time=2026-06-07T23:00:34.639-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/components
+time=2026-06-07T23:00:34.639-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/components/ui
+time=2026-06-07T23:00:34.639-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/lib
+time=2026-06-07T23:00:34.640-07:00 level=INFO msg="shutting down server" service=server
+time=2026-06-07T23:00:34.640-07:00 level=ERROR msg="exited with error" err="exit status 1"
+time=2026-06-07T23:00:34.640-07:00 level=INFO msg="server done" service=server
+time=2026-06-07T23:00:34.640-07:00 level=INFO msg=done service=deployer
+time=2026-06-07T23:00:34.640-07:00 level=INFO msg=done service=dev
+time=2026-06-07T23:00:34.640-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/lib/constants
+time=2026-06-07T23:00:34.640-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/lib/data
+time=2026-06-07T23:00:34.640-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/coverage/lib/validations
+time=2026-06-07T23:00:34.641-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/functions
+time=2026-06-07T23:00:34.641-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/public
+time=2026-06-07T23:00:34.641-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src
+time=2026-06-07T23:00:34.642-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app
+time=2026-06-07T23:00:34.642-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/actions
+time=2026-06-07T23:00:34.642-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/api
+time=2026-06-07T23:00:34.643-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/api/auth
+time=2026-06-07T23:00:34.643-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/api/auth/[...nextauth]
+time=2026-06-07T23:00:34.643-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/api/export
+time=2026-06-07T23:00:34.643-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/api/export/transactions
+time=2026-06-07T23:00:34.643-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/check-email
+time=2026-06-07T23:00:34.643-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard
+time=2026-06-07T23:00:34.643-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard/accounts
+time=2026-06-07T23:00:34.643-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard/benchmarking
+time=2026-06-07T23:00:34.643-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard/category
+time=2026-06-07T23:00:34.643-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard/category/[categoryId]
+time=2026-06-07T23:00:34.644-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard/settings
+time=2026-06-07T23:00:34.644-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard/settings/accounts
+time=2026-06-07T23:00:34.644-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard/settings/categories
+time=2026-06-07T23:00:34.644-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard/settings/profile
+time=2026-06-07T23:00:34.644-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard/settings/recurring
+time=2026-06-07T23:00:34.644-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard/settings/reference
+time=2026-06-07T23:00:34.644-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/dashboard/transactions
+time=2026-06-07T23:00:34.644-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/forgot-password
+time=2026-06-07T23:00:34.644-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/lib
+time=2026-06-07T23:00:34.644-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/onboarding
+time=2026-06-07T23:00:34.644-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/reset-password
+time=2026-06-07T23:00:34.645-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/reset-password/[token]
+time=2026-06-07T23:00:34.645-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/signin
+time=2026-06-07T23:00:34.645-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/signup
+time=2026-06-07T23:00:34.645-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/verify-email
+time=2026-06-07T23:00:34.645-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/app/verify-email/[token]
+time=2026-06-07T23:00:34.645-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/components
+time=2026-06-07T23:00:34.646-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/components/ui
+time=2026-06-07T23:00:34.647-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/hooks
+time=2026-06-07T23:00:34.647-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/lib
+time=2026-06-07T23:00:34.647-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/lib/constants
+time=2026-06-07T23:00:34.647-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/lib/data
+time=2026-06-07T23:00:34.648-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/lib/validations
+time=2026-06-07T23:00:34.648-07:00 level=INFO msg=watching service=watcher path=/Users/amanbrar/work/mybudget/budget-app/src/types
+time=2026-06-07T23:00:34.648-07:00 level=INFO msg="file event" service=watcher path=/Users/amanbrar/work/mybudget/budget-app/debug op=WRITE
+time=2026-06-07T23:00:34.648-07:00 level=INFO msg="file event" service=watcher path=/Users/amanbrar/work/mybudget/budget-app/debug op=WRITE
+time=2026-06-07T23:00:34.648-07:00 level=INFO msg=done service=watcher

@@ -4,6 +4,8 @@ import { auth } from "@/auth";
 import { UNIVERSAL_CATEGORIES, UNIVERSAL_INCOME_CATEGORIES } from "@/lib/constants/categories";
 import { format, subMonths } from "date-fns";
 
+const TRANSFER_CATEGORY_NAME = "Account Transfer";
+
 export interface Account {
   id: string;
   name: string;
@@ -270,6 +272,7 @@ async function batchGetItems(
 function computeCategorySpending(transactions: Transaction[]): Record<string, number> {
   const spending: Record<string, number> = {};
   for (const tx of transactions) {
+    if (tx.category === TRANSFER_CATEGORY_NAME) continue;
     if (tx.transactionType === "EXPENSE" && tx.category) {
       const amount = Math.abs(Number(tx.amount) || 0);
       spending[tx.category] = (spending[tx.category] || 0) + amount;
@@ -292,6 +295,7 @@ export async function getMonthlyBalance(month: string): Promise<MonthlyBalance> 
   let totalIncome = 0;
   let totalExpenses = 0;
   for (const tx of transactions) {
+    if (tx.category === TRANSFER_CATEGORY_NAME) continue;
     const amount = Math.abs(Number(tx.amount) || 0);
     const txType = tx.transactionType ?? "EXPENSE";
     if (txType === "INCOME") {
@@ -402,6 +406,7 @@ export async function getYearlyBalance(year: string): Promise<YearlyBalance> {
   const categorySpending: Record<string, number> = {};
 
   for (const tx of allTransactions) {
+    if (tx.category === TRANSFER_CATEGORY_NAME) continue;
     const amount = Math.abs(Number(tx.amount) || 0);
     const txType = tx.transactionType ?? "EXPENSE";
     if (txType === "INCOME") {
@@ -438,6 +443,7 @@ export async function getAllMonthsBalance(): Promise<MonthlyBalance> {
   const categorySpending: Record<string, number> = {};
 
   for (const tx of allTransactions) {
+    if (tx.category === TRANSFER_CATEGORY_NAME) continue;
     const amount = Math.abs(Number(tx.amount) || 0);
     const txType = tx.transactionType ?? "EXPENSE";
     if (txType === "INCOME") {
